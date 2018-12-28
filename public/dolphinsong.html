@@ -235,7 +235,11 @@ body{
 				console.log("decode ok " + buf.length + " frames");
 				mydata.trackLength[index]  = buf.length;
 				mydata.trackBufferLeft[index] = buf.getChannelData(0);
-				mydata.trackBufferRight[index] = buf.getChannelData(1);
+				if (buf.numberOfChannels == 1){
+					mydata.trackBufferRight[index] = buf.getChannelData(0);
+				}else{
+					mydata.trackBufferRight[index] = buf.getChannelData(1);
+				}
 				mydata.trackCurrentFrame[index] = 0;
 				mydata.trackPlaying[index] = 0;
 				mydata.trackLoaded[index] = true;
@@ -260,7 +264,11 @@ body{
 				mydata.currentFrame = buf.length;
 				for (let i = 0; i < buf.length; i++){
 					audioBufferLeft[i] = buf.getChannelData(0)[i];
-					audioBufferRight[i] = buf.getChannelData(1)[i];
+					if (buf.numberOfChannels == 1){
+						audioBufferRight[i] = buf.getChannelData(0)[i];
+					}else{
+						audioBufferRight[i] = buf.getChannelData(1)[i];
+					}
 				}
 				mydata.viewStartFrame = 0;
 				mydata.viewEndFrame = buf.length;
@@ -412,7 +420,8 @@ body{
 
    	function startOutEngine(){
    		audioContext2 = new AudioContext();
-   		var scriptSource = audioContext2.createScriptProcessor(0,2,2);
+   		// var scriptSource = audioContext2.createScriptProcessor(0,2,2);
+   		var scriptSource = audioContext2.createScriptProcessor(256/*latency*/,2,2);
    		scriptSource.onaudioprocess = onAudioProcessOut;
    		var dest = audioContext2.createMediaStreamDestination();
    		scriptSource.connect(dest);
@@ -668,10 +677,63 @@ body{
 			e.stopPropagation();
 			e.preventDefault();
 			break;
+		case 90 /*z*/:
+			if (!e.repeat){
+				e.stopPropagation();
+				e.preventDefault();
+				onPlayStopTrack(0);
+			}
+			break;
+		case 88: /*x*/
+			if (!e.repeat){
+				e.stopPropagation();
+				e.preventDefault();
+				onPlayStopTrack(1);
+			}
+			break;
+		case 67: /*c*/
+			if (!e.repeat){
+				e.stopPropagation();
+				e.preventDefault();
+				onPlayStopTrack(2);
+			}
+			break;
+
+		case 86: /*v*/
+			if (!e.repeat){
+				e.stopPropagation();
+				e.preventDefault();
+				onPlayStopTrack(3);
+			}
+			break;
 
 		}
 	}
 
+	document.onkeyup = function (e){
+		switch(e.keyCode){
+		case 90 /*z*/:
+			e.stopPropagation();
+			e.preventDefault();
+			onPlayStopTrack(0);
+			break;
+		case 88: /*x*/
+			e.stopPropagation();
+			e.preventDefault();
+			onPlayStopTrack(1);
+			break;
+		case 67: /*c*/
+			e.stopPropagation();
+			e.preventDefault();
+			onPlayStopTrack(2);
+			break;
+		case 86: /*v*/
+			e.stopPropagation();
+			e.preventDefault();
+			onPlayStopTrack(3);
+			break;
+		}
+	}
 	function onRight(){
 		const w = document.querySelector("#canvas2").width;
 		const framePerPixel = mydata.currentFrame/w/mydata.viewRate;
