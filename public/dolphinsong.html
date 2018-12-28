@@ -148,6 +148,12 @@ body{
 			b.addEventListener("click", onPlayButtonClicked, false);
 		});
 
+		canvas2.addEventListener("dragover", function(e){
+			e.preventDefault();
+			e.dataTransfer.dropEffect = "copy";
+		});
+		canvas2.addEventListener("drop", onEditorDrop, false);
+
 	});
 
 	function onLoadButtonClicked(e){
@@ -194,6 +200,13 @@ body{
 		onLoadSampleFromFile(index, file);
 	}
 
+	function onEditorDrop(e){
+		e.preventDefault();
+
+		const file = e.dataTransfer.files[0];
+		onEditorLoadSampleFromFile(file);
+	}
+
 	function onLoadSample(index){
 		console.log("loading sample for track:" + (index+1));
 
@@ -237,16 +250,49 @@ body{
 
 	}
 
+	function onEditorLoadSampleFromFile(file){
+		const fileReader = new FileReader();
+		fileReader.onload = function(e){
+			const fileContents = e.target.result;
+			audioContext2.decodeAudioData(fileContents)
+			.then(function(buf){
+				console.log("decode ok " + buf.length + " frames");
+				mydata.currentFrame = buf.length;
+				for (let i = 0; i < buf.length; i++){
+					audioBufferLeft[i] = buf.getChannelData(0)[i];
+					audioBufferRight[i] = buf.getChannelData(1)[i];
+				}
+				mydata.viewStartFrame = 0;
+				mydata.viewEndFrame = buf.length;
+				mydata.viewRate = 1.0;
+				mydata.recording = false;
+				mydata.playing = false
+
+				mydata.selectStartFrame = 0;
+				mydata.selectEndFrame = buf.length;
+				mydata.selected = true;
+				mydata.playStartFrame = 0;
+				mydata.needsRedrawWave = true;
+				redrawCanvas();
+
+			}, function(e){
+				console.log("decode error :");
+				console.log(e);
+
+			});
+			
+		}
+		fileReader.readAsArrayBuffer(file);
+	}
+
 
 	function onPlayStopTrack(index){
 		if(mydata.trackLoaded[index]){
 			if (!mydata.trackPlaying[index]){
 				mydata.trackCurrentFrame[index] = 0;
 				mydata.trackPlaying[index] = true;
-				console.log("play track " + (index+1));
 			}else{
 				mydata.trackPlaying[index] = false;
-				console.log("stop track " + (index+1));
 			}
 		}
 	}
@@ -595,7 +641,8 @@ body{
 
 		case 32 /*space*/:
 			{
-				console.log("space");
+				e.stopPropagation();
+				e.preventDefault();
 				if (mydata.playing){
 					stopPlay();
 				}else{
@@ -906,7 +953,7 @@ body{
 </div>
 <div id="editor">
 	<canvas id="canvas" width="500" height="200"></canvas>
-	<canvas id="canvas2" width="500" height="200"></canvas>
+	<canvas id="canvas2" dropzone="copy" width="500" height="200"></canvas>
 </div>
 <div id="player">
 	<table>
