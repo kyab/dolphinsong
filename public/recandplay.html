@@ -1,0 +1,203 @@
+<html>
+<head>
+<style type="text/css">
+#foo {
+	color:blue; 
+	font-size:20;
+	text-align: center;
+	}
+body{
+	background-color:lightgray;
+	}
+
+#control{
+	background-color:lightgreen;
+	font-size:20;
+	text-align: center;
+	height: 100;
+}
+</style>
+
+<script type="text/javascript">
+
+	mydata = {};
+
+	var audioContext;
+	var audioContext2;
+
+	var audioElem;
+
+	var audioBufferLeft = new Float32Array(44100*10);
+	var audioBufferRight = new Float32Array(44100*10);
+	var currentFrame = 0;
+
+
+	window.addEventListener("load", function(){
+		initMedia();
+	});
+
+
+
+	function initMedia(){
+		navigator.mediaDevices.getUserMedia(
+						{audio:true, video:false})
+		.then( function(stream){
+			console.log("success");
+			getOutputBuiltIn();
+			readyInput();
+
+		},function(err){
+			console.log("err = " + err);
+		});
+	}
+
+	function getOutputBuiltIn(){
+		console.log("changeOutputToBuiltIn");
+		navigator.mediaDevices.enumerateDevices()
+		.then(function(devices){
+			var devId = "";
+			
+			devices.forEach(function(device){
+				if (device.kind == "audiooutput"){
+					console.log(device.label + " id = " + device.deviceId);
+					if (device.label.startsWith("内蔵スピーカー") || 
+						device.label.startsWith("ヘッドフォン")){
+						console.log("found!!!(内蔵スピーカー/ヘッドフォン)");
+						devId = device.deviceId;
+						mydata.outDevId = devId;
+					}
+				}
+			});
+			if (devId == ""){
+				console.log("built-in output not found!");
+				return;
+			}
+
+		});
+	}
+
+
+	function readyInput(){
+		navigator.mediaDevices.enumerateDevices()
+		.then(function(devices){
+			var devId = "";
+			
+			devices.forEach(function(device){
+				if (device.kind == "audioinput"){
+					// console.log(device.label + " id = " + device.deviceId);
+					if (device.label.startsWith("Background Music")){
+						console.log("Background Music device found!!!");
+						if (devId == ""){
+							devId = device.deviceId;
+							mydata.inDevId = devId;
+						}
+					}
+				}
+			});
+
+			if (devId == ""){
+				console.log("Background Music device not found");
+				return;
+			}
+
+			var constrains = {
+				audio:{
+					deviceId : devId,
+					sampleSize : 16,
+					sampleRate : 44100,
+					channelCount : 2,
+					echoCancellation: false, /*this is the point*/
+      				autoGainControl: false,/*this is the point*/
+      				noiseSuppression: false/*this is the point*/
+				},
+				video:false
+			};
+
+
+			var p = navigator.mediaDevices.getUserMedia(constrains)
+			p.then(function(stream){
+				console.log("second getUserMedia OK");
+				streamObtained(stream);
+				console.log("recording Ready");
+			},function(err){
+				console.log(err);
+			});
+
+		});
+	}
+
+
+	function streamObtained(stream) {
+        
+		audioContext = new AudioContext();		
+		audioContext.suspend();
+
+		var mediastreamsource = audioContext.createMediaStreamSource(stream);
+		var scriptProcessor = audioContext.createScriptProcessor(4096, 2, 2);
+  	    scriptProcessor.onaudioprocess = onAudioProcess;
+        mediastreamsource.connect(scriptProcessor);
+        scriptProcessor.connect(audioContext.destination);
+   	}
+
+	var onAudioProcess = function(e) {
+		console.log("onAudioProcess");
+
+    	for (var i=0; i < e.inputBuffer.getChannelData(0).length; i++){
+    		audioBufferLeft[currentFrame] = e.inputBuffer.getChannelData(0)[i];
+    		audioBufferRight[currentFrame] = e.inputBuffer.getChannelData(1)[i];
+    		currentFrame++;
+    	}
+
+	};
+
+	function startRecord(){
+		currentFrame = 0;
+		audioContext.resume();
+	}
+
+	function stopRecord(){
+		audioContext.suspend();
+	}
+
+	function startPlay(){
+		audioContext2 = new AudioContext();
+		var buf = audioContext2.createBuffer(2, currentFrame, 44100);
+		buf.copyToChannel(audioBufferLeft,0);
+		buf.copyToChannel(audioBufferRight,1);
+		var bufNode = audioContext2.createBufferSource();
+		bufNode.buffer = buf;
+		var dest = audioContext2.createMediaStreamDestination();
+		bufNode.connect(dest);
+
+		audioElem = new Audio();
+		audioElem.srcObject = dest.stream;
+		audioElem.setSinkId(mydata.outDevId);
+
+		bufNode.loopStart = 0;
+		bufNode.loopEnd = 44100*10;
+		bufNode.loop = true;
+		bufNode.start();
+		audioElem.play();
+
+	}
+
+	function stopPlay(){
+		audioElem.pause();	
+	}
+
+
+</script>
+
+<title>Rec and Play</title>
+</head>
+<body>
+<div id="foo">Rec and Play</div>
+<div id="control">
+	<input type="button" value="startRecord" onclick="startRecord();"/>
+	<input type="button" value="stopRecord" onclick="stopRecord();"/>
+	<input type="button" value="startPlay" onclick="startPlay();"/>
+	<input type="button" value="stopPlay" onclick="stopPlay();"/>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,79 @@
+<html>
+<head>
+
+
+<script type="text/javascript">
+
+	mydata = {};
+	var audio;
+
+	window.addEventListener("load", function(){
+		console.log("onload");
+		initMedia();
+	});
+
+
+
+	function initMedia(){
+		navigator.mediaDevices.getUserMedia(
+						{audio:true, video:false})
+		.then( function(stream){
+			console.log("success to getUserMedia");
+			startMyWork();
+		},function(err){
+			console.log("err = " + err);
+		});
+	}
+
+
+	function startMyWork(){
+		console.log("startMyWork");
+		navigator.mediaDevices.enumerateDevices()
+		.then(function(devices){
+			var devId = "";
+			
+			devices.forEach(function(device){
+				if (device.kind == "audiooutput"){
+					console.log(device.label + " id = " + device.deviceId);
+					if (device.label.startsWith("内蔵スピーカー") || 
+						device.label.startsWith("ヘッドフォン")){
+						console.log("found!!!(内蔵スピーカー/ヘッドフォン)");
+						devId = device.deviceId;
+						mydata.outDevId = devId;
+					}
+				}
+			});
+			startContext();
+
+		});
+	}
+
+	function startContext(){
+
+
+		//stackOverflow
+		//https://stackoverflow.com/questions/41863094/how-to-select-destination-output-device-using-web-audio-api
+		var ac = new AudioContext();
+		audio = new Audio();
+		var o = ac.createOscillator();
+		o.start();
+		var dest = ac.createMediaStreamDestination();
+		o.connect(dest);
+		audio.srcObject = dest.stream;
+		audio.setSinkId(mydata.outDevId);
+		audio.play();
+	}
+
+	function stop(){
+		audio.pause();
+	}
+
+</script>
+
+<title>Sin</title>
+</head>
+<body>
+hi
+<input type="button" value="stop" onclick="stop()"/>
+</body>
+</html>

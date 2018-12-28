@@ -1,0 +1,485 @@
+<html>
+<head>
+<style type="text/css">
+#foo {
+	color:blue; 
+	font-size:20;
+	text-align: center;
+	}
+body{
+	background-color:lightgray;
+	}
+
+#control{
+	background-color:lightgreen;
+	font-size:20;
+	text-align: center;
+	height: 50;
+}
+
+#editor{
+	margin: 10px 20px;
+	text-align: center;
+
+	position: relative;
+}
+
+#editor canvas {
+	position: absolute;
+	top: 0;
+	left: 0;
+}
+
+
+</style>
+
+<script type="text/javascript">
+
+	mydata = {};
+	mydata.monitor = false;
+	mydata.currentFrame = 0;
+	mydata.currentFramePlay = 0;
+
+	mydata.recording = false;
+	mydata.playing = false;
+	mydata.outAudio = null;
+
+	mydata.needsRedrawWave = false;
+	mydata.startX = 0;
+	mydata.dragging = false;
+	mydata.endX = 0;
+
+
+
+
+	var audioContext;
+	var audioContext2;
+
+	var audioElem;
+
+	var audioBufferLeft = new Float32Array(44100*60*10);
+	var audioBufferRight = new Float32Array(44100*60*10);
+
+	window.addEventListener("resize", function(e){
+		onResize();
+	});
+
+	function onResize(){
+		let canvas = document.querySelector("#canvas");
+		let canvas2 = document.querySelector("#canvas2");
+		let w = document.body.clientWidth;
+		canvas.width = w - 60;
+		canvas2.width = w - 60;
+
+		mydata.needsRedrawWave = true;
+		redrawCanvas();
+	}
+
+	window.addEventListener("load", function(){
+		initMedia();
+
+		let canvas2 = document.querySelector("#canvas2");
+		canvas2.addEventListener("mousedown", onCanvasMousedown, false);
+		canvas2.addEventListener("mousemove", onCanvasMousemove, false);
+		canvas2.addEventListener("mouseup", onCanvasMouseup, false);
+
+		canvas2.addEventListener("wheel", onCanvasScroll, false);
+
+		onResize();
+
+		setInterval(function(){
+			redrawCanvas();
+		},50);
+	});
+
+
+
+	function initMedia(){
+		navigator.mediaDevices.getUserMedia(
+						{audio:true, video:false})
+		.then( function(stream){
+			console.log("calling getOutputBuiltIn()");
+			return getOutputBuiltIn();
+
+		}).then(function(){
+			console.log("calling readyInput()");
+			return readyInput();
+		
+		}).then(function(){
+			console.log("calling startOutEngine()");
+
+			return startOutEngine();
+		});
+
+	}
+
+	function getOutputBuiltIn(){
+
+		return new Promise(function(resolve, reject) {
+			navigator.mediaDevices.enumerateDevices()
+			.then(function(devices){
+				var devId = "";
+				
+				devices.forEach(function(device){
+					if (device.kind == "audiooutput"){
+						// console.log(device.label + " id = " + device.deviceId);
+						if (device.label.startsWith("内蔵スピーカー") || 
+							device.label.startsWith("ヘッドフォン")){
+							console.log("found!!!(内蔵スピーカー/ヘッドフォン)");
+							devId = device.deviceId;
+							mydata.outDevId = devId;
+						}
+					}
+				});
+				if (devId == ""){
+					console.log("built-in output not found!");
+				}
+				resolve();
+			});
+		});
+	}
+
+
+	function readyInput(){
+		return new Promise(function(resolve,reject){
+			navigator.mediaDevices.enumerateDevices()
+			.then(function(devices){
+				var devId = "";
+				
+				devices.forEach(function(device){
+					if (device.kind == "audioinput"){
+						// console.log(device.label + " id = " + device.deviceId);
+						if (device.label.startsWith("Background Music")){
+							console.log("Background Music device found!!!");
+							if (devId == ""){
+								devId = device.deviceId;
+								mydata.inDevId = devId;
+							}
+						}
+					}
+				});
+
+				if (devId == ""){
+					console.log("Background Music device not found");
+					return;
+				}
+
+				var constrains = {
+					audio:{
+						deviceId : devId,
+						sampleSize : 16,
+						sampleRate : 44100,
+						channelCount : 2,
+						echoCancellation: false, /*this is the point*/
+	      				autoGainControl: false,/*this is the point*/
+	      				noiseSuppression: false/*this is the point*/
+					},
+					video:false
+				};
+				var p = navigator.mediaDevices.getUserMedia(constrains)
+				p.then(function(stream){
+					streamObtained(stream);
+					resolve();
+				});
+			});
+		});
+	}
+
+
+	function streamObtained(stream) {
+        
+		audioContext = new AudioContext();		
+
+		var mediastreamsource = audioContext.createMediaStreamSource(stream);
+		
+		var scriptProcessor = audioContext.createScriptProcessor(0, 2, 2);
+  	    scriptProcessor.onaudioprocess = onAudioProcess;
+
+  	    var dest = audioContext.createMediaStreamDestination();
+
+        mediastreamsource.connect(scriptProcessor);
+        scriptProcessor.connect(dest);
+
+		audioElem = new Audio();
+		audioElem.srcObject = dest.stream;
+		audioElem.setSinkId(mydata.outDevId);
+		audioElem.play();
+
+   	}
+
+   	function startOutEngine(){
+   		audioContext2 = new AudioContext();
+   		var scriptSource = audioContext2.createScriptProcessor(0,2,2);
+   		scriptSource.onaudioprocess = onAudioProcessOut;
+   		var dest = audioContext2.createMediaStreamDestination();
+   		scriptSource.connect(dest);
+
+   		var audio = new Audio();
+   		audio.srcObject = dest.stream;
+   		audio.setSinkId(mydata.outDevId);
+   		audio.play();
+
+   		console.log("startOutEngine() completed.")
+   	}
+
+	function onAudioProcess(e) {
+
+		let inbuf = e.inputBuffer;
+		let outbuf = e.outputBuffer;
+
+		if (mydata.monitor){
+	    	for (let i=0; i < inbuf.getChannelData(0).length; i++){
+	    		outbuf.getChannelData(0)[i] = inbuf.getChannelData(0)[i];
+	    		outbuf.getChannelData(1)[i] = inbuf.getChannelData(1)[i];
+	    	}
+	    } else {
+	    	for (let i=0; i < inbuf.getChannelData(0).length; i++){
+	    		outbuf.getChannelData(0)[i] = 0;
+	    		outbuf.getChannelData(1)[i] = 0;
+	    	}
+	    }
+
+	    if (mydata.recording){
+	    	for (let i=0; i < inbuf.getChannelData(0).length; i++){
+		    	audioBufferLeft[mydata.currentFrame] = inbuf.getChannelData(0)[i];
+    			audioBufferRight[mydata.currentFrame] = inbuf.getChannelData(1)[i];
+    			mydata.currentFrame++;
+    			mydata.needsRedrawWave = true;
+
+    		}
+	    }
+	};
+
+	function onAudioProcessOut(e){
+		let outLeft = e.outputBuffer.getChannelData(0);
+		let outRight = e.outputBuffer.getChannelData(1);
+		
+		if (mydata.playing){
+			for (let i = 0 ; i < outLeft.length; i++){
+				outLeft[i] = audioBufferLeft[mydata.currentFramePlay];
+				outRight[i] = audioBufferRight[mydata.currentFramePlay];
+				mydata.currentFramePlay++;
+			}
+		}else{
+			for (let i = 0 ; i < outLeft.length; i++){
+				outLeft[i] = 0;
+				outRight[i] = 0;
+			}
+		}
+
+	}
+
+	function startRecord(){
+		mydata.currentFrame = 0;
+		mydata.recording = true;
+	}
+
+	function stopRecord(){
+		mydata.recording = false;
+		redrawCanvas();
+
+	}
+
+	function startPlay(){
+		mydata.currentFramePlay = 0;
+		mydata.playing = true;	
+	}
+
+	function stopPlay(){
+		mydata.playing = false;
+	}
+
+	function redrawCanvas(){
+
+		const canvas = document.querySelector("#canvas");
+
+		const w = canvas.width;
+		const h = canvas.height;
+
+		let c = canvas.getContext('2d');
+		
+		if (mydata.needsRedrawWave){
+
+			c.clearRect(0,0,w,h);
+
+			c.beginPath();
+			c.fillStyle = "black";
+			c.rect(0,0,w,h);
+			c.fill();
+
+			// for (var i = 0; i < mydata.currentFrame; i++){
+			// 	const x = w / mydata.currentFrame * i;
+			// 	const y = h/2 + audioBufferLeft[i]*h/2;
+			// 	c.lineTo(x,y);
+			// }
+
+			//optimization 1(take max)
+			// const framePerPixel = mydata.currentFrame / w;
+			// for (var i = 0; i < w; i++){
+			// 	var from = Math.floor(i * framePerPixel);
+			// 	var to = Math.floor(from + framePerPixel);
+			// 	if (to > mydata.currentFrame) to = mydata.currentFrame;
+			// 	var max = 0;
+			// 	for (var j = from ; j < to; j++){
+			// 		const s = Math.abs(audioBufferLeft[j]);
+			// 		if (s > max) max = s;
+			// 	}
+			// 	c.beginPath();
+			// 	c.strokeStyle = "lightgreen";
+			// 	c.moveTo(i, h/2 - max*h/2);
+			// 	c.lineTo(i, h/2 + max*h/2);
+			// 	c.stroke();
+			// }
+
+			//optimization 2
+			var loopcount = 0;
+			const framePerPixel = mydata.currentFrame / w ;
+			
+			for (let i = 0; i < w; i++){
+				let from = Math.floor(i * framePerPixel);
+				let to = Math.floor(from + framePerPixel);
+				if (to > mydata.currentFrame) to = mydata.currentFrame;
+				let max = 0;
+
+				let innerLoopCount = 0;
+
+				for(let j = from; j < to; j += Math.ceil((framePerPixel)/100)){
+					const s = Math.abs(audioBufferLeft[j]);
+					if (s > max) max = s;
+					loopcount++;
+					innerLoopCount++;
+				}
+
+				if (max == 0) { //no sound
+					max = 0.002;
+				}
+
+				c.beginPath();
+				c.strokeStyle = "lightgreen";
+				c.moveTo(i, h/2 - max*h/2);
+				c.lineTo(i, h/2 + max*h/2);
+				c.stroke();
+			}	
+		}
+		mydata.needsRedrawWave = false;
+
+
+		c = document.querySelector("#canvas2").getContext('2d');
+		c.clearRect(0,0,w,h);
+
+
+
+		// c.beginPath();
+		// c.strokeStype = "yellow";
+		// c.setLineDash([2, 1]);
+		// c.moveTo(mydata.clickX, 0 );
+		// c.lineTo(mydata.clickX, h);
+		// c.stroke();
+
+		c.beginPath();
+		c.fillStyle ="rgb(123,123,123,0.6)";
+		
+		let from = 0;
+		let to = 0;
+		if (mydata.startX < mydata.endX){
+			from = mydata.startX;
+			to = mydata.endX;
+		}else{
+			from = mydata.endX;
+			to = mydata.startX;
+		}
+
+		c.rect(from, 0, to - from, h);
+		c.fill();
+
+		//play cursor
+		c.beginPath();
+		c.strokeStyle = "white";
+		const x = w * mydata.currentFramePlay / mydata.currentFrame;
+		c.moveTo(x ,0);
+		c.lineTo(x, h);
+		c.stroke();
+	}
+
+	function onMonitorChanged(){
+		checkBox = document.querySelector("#chkMonitor");
+		mydata.monitor = checkBox.checked;
+	}
+
+	document.onkeydown = function (e){
+		if (e.keyCode == 77 /*m*/){
+			checkBox = document.querySelector("#chkMonitor");	
+			if (checkBox.checked){
+				checkBox.checked = false;
+			}else{
+				checkBox.checked = true;
+			}
+			onMonitorChanged();
+		}else if (e.keyCode == 32 /*space*/){
+			console.log("space");
+			if (mydata.playing){
+				stopPlay();
+			}else{
+				startPlay();
+			}
+		}
+	}
+
+	function onCanvasMousedown(e){
+
+    	const rect = e.target.getBoundingClientRect();
+    	const x = e.clientX - rect.left;
+
+    	mydata.dragging = true;
+		mydata.startX = x;
+		mydata.endX = x;
+		redrawCanvas();
+	}
+
+	function onCanvasMousemove(e){
+		if (!mydata.dragging) return;
+
+    	const rect = e.target.getBoundingClientRect();
+    	const x = e.clientX - rect.left;
+
+		// mydata.dragging = true;
+		mydata.endX = x;
+		redrawCanvas();
+	}
+
+
+	function onCanvasMouseup(e){
+
+    	const rect = e.target.getBoundingClientRect();
+    	const x = e.clientX - rect.left;
+
+		mydata.dragging = false;
+		mydata.endX = x;
+		redrawCanvas();
+	}
+
+	function onCanvasScroll(e){
+		e.preventDefault();
+		console.log(e);
+	}
+
+
+</script>
+
+<title>Dolphin Song</title>
+</head>
+<body>
+<div id="control">
+	<input id="chkMonitor" type="checkbox" value="true" onclick="onMonitorChanged();">monitor[m]</input>
+	<input type="button" value="startRecord" onclick="startRecord();"/>
+	<input type="button" value="stopRecord" onclick="stopRecord();"/>
+	<input type="button" value="startPlay" onclick="startPlay();"/>
+	<input type="button" value="stopPlay" onclick="stopPlay();"/>
+</div>
+<div id="editor">
+	<canvas id="canvas" width="500" height="200"></canvas>
+	<canvas id="canvas2" width="500" height="200"></canvas>
+</div>
+
+</body>
+</html>

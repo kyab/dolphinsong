@@ -1,0 +1,83 @@
+<html>
+<head>
+<style type="text/css">
+#dropElem {
+	background-color: cyan;
+	height:100px;
+	}
+</style>
+
+<script type="text/javascript">
+
+	var audioContext;
+	var buffer;
+
+	window.addEventListener("load", function(){
+
+		var fileElem = document.querySelector("#fileElem");
+		fileElem.addEventListener("change", function(){
+			let file = fileElem.files[0];
+			let fileReader = new FileReader();
+			fileReader.onload = fileLoaded;
+			fileReader.readAsArrayBuffer(file);
+		});
+
+		//D&D support
+		var dropElem = document.querySelector("#dropElem");
+		dropElem.addEventListener("dragover", function(e){
+			e.preventDefault();
+			e.dataTransfer.dropEffect = "copy";
+		});
+		dropElem.addEventListener("drop", function(e){
+			e.preventDefault();
+  			console.log("dropped : " + e.dataTransfer.files[0].name);
+  			let file = e.dataTransfer.files[0];
+  			let fileReader = new FileReader();
+  			fileReader.onload = fileLoaded;
+  			fileReader.readAsArrayBuffer(file);
+		});
+	});
+
+	function fileLoaded(e){
+		var fileContents = e.target.result;		//ArrayBuffer
+		console.log(fileContents.byteLength.toString() + "bytes readed");
+
+		audioContext = new AudioContext();
+		audioContext.decodeAudioData(fileContents)
+		.then(function(buf){
+			buffer = buf;				//AudioBuffer
+			console.log("decode audio data OK");
+			console.log(buffer);
+		}, function(e){
+			console.log("decode audio data NG");
+			console.log(e);
+		});
+
+	}
+
+
+
+	function startPlay(){
+		audioContext.suspend();
+
+		let bufNode = audioContext.createBufferSource();
+		bufNode.buffer = buffer;
+		bufNode.connect(audioContext.destination);
+
+		audioContext.resume();
+		bufNode.start()
+
+
+	}
+
+</script>
+
+<title>Play File</title>
+</head>
+<body>
+<input id="fileElem" type="file" value="load file"/>
+<div id="dropElem" dropzone="copy"><p>Drop file here hahaha</p></div>
+<input type="button" value="start play" onclick="startPlay()"/>
+
+</body>
+</html>

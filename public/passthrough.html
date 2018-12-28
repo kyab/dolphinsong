@@ -1,0 +1,124 @@
+<html>
+<head>
+
+
+<script type="text/javascript">
+
+	mydata = {};
+
+	var audio;
+
+	window.addEventListener("load", function(){
+		initMedia();
+	});
+
+
+
+	function initMedia(){
+		navigator.mediaDevices.getUserMedia(
+						{audio:true, video:false})
+		.then( function(stream){
+			getOutputBuiltIn();
+			getInputStream();
+		},function(err){
+			console.log("err = " + err);
+		});
+	}
+
+	function getOutputBuiltIn(){
+		navigator.mediaDevices.enumerateDevices()
+		.then(function(devices){
+			var devId = "";
+			devices.forEach(function(device){
+				if (device.kind == "audiooutput"){
+					// console.log(device.label + " id = " + device.deviceId);
+					if (device.label.startsWith("内蔵スピーカー") || 
+						device.label.startsWith("ヘッドフォン")){
+						console.log("found!!!(内蔵スピーカー/ヘッドフォン)");
+						devId = device.deviceId;
+						mydata.outDevId = devId;
+					}
+				}
+			});
+
+			if (devId == ""){
+				return;
+			}
+
+		});
+	}
+
+
+
+	function getInputStream(){
+		navigator.mediaDevices.enumerateDevices()
+		.then(function(devices){
+			var devId = "";
+			
+			devices.forEach(function(device){
+				if (device.kind == "audioinput"){
+					// console.log(device.label + " id = " + device.deviceId);
+					if (device.label.startsWith("Background Music")){
+						console.log("Background Music device found!!!");
+						if (devId == ""){
+							devId = device.deviceId;
+							mydata.inDevId = devId;
+						}
+					}
+				}
+			});
+
+			if (devId == ""){
+				console.log("Background Music device not found");
+				return;
+			}
+
+			var constrains = {
+				audio:{
+					deviceId : devId,
+					sampleSize : 16,
+					sampleRate : 44100,
+					channelCount : 2,
+					echoCancellation: false, /*this is the point*/
+      				autoGainControl: false,/*this is the point*/
+      				noiseSuppression: false/*this is the point*/
+				},
+				video:false
+			};
+
+			var p = navigator.mediaDevices.getUserMedia(constrains)
+			p.then(function(stream){
+				streamObtained(stream);
+			},function(err){
+				console.log(err);
+			});
+		});
+	}
+
+
+
+	function streamObtained(stream) {
+        var audioContext = new AudioContext();
+		var mediastreamsource = audioContext.createMediaStreamSource(stream);
+		var mediastreamdest = audioContext.createMediaStreamDestination();
+		mediastreamsource.connect(mediastreamdest);
+		audio = new Audio();
+		audio.srcObject = mediastreamdest.stream;
+		audio.setSinkId(mydata.outDevId);
+		audio.play();
+
+  	}
+
+	function stop(){
+		audio.pause(); 
+	}
+
+
+</script>
+
+<title>Pass Through</title>
+</head>
+<body>
+	<input type="button" value="stop" onclick="stop();"/>
+</body>
+</html>
