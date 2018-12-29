@@ -93,11 +93,16 @@ body{
 	}
 
 
+	mydata.isEditorActive = false;
+	mydata.isPlayerActive = false;
+	mydata.timer = null;
 
 	var audioContext;
 	var audioContext2;
 
 	var audioElem;
+	var audioElem2;
+
 
 	var audioBufferLeft = new Float32Array(44100*60*10);
 	var audioBufferRight = new Float32Array(44100*60*10);
@@ -129,9 +134,9 @@ body{
 
 		onResize();
 
-		setInterval(function(){
-			redrawCanvas();
-		},50);
+		// mydata.timer = setInterval(function(){
+		// 	redrawCanvas();
+		// },50);
 
 		const loadButtons = document.querySelectorAll(".loadButton");
 		loadButtons.forEach(function(b){
@@ -230,7 +235,8 @@ body{
 		const fileReader = new FileReader();
 		fileReader.onload = function(e){
 			const fileContents = e.target.result;
-			audioContext2.decodeAudioData(fileContents)
+			const audioContextForDecode = new AudioContext();
+			audioContextForDecode.decodeAudioData(fileContents)
 			.then(function(buf){
 				console.log("decode ok " + buf.length + " frames");
 				mydata.trackLength[index]  = buf.length;
@@ -243,6 +249,7 @@ body{
 				mydata.trackCurrentFrame[index] = 0;
 				mydata.trackPlaying[index] = 0;
 				mydata.trackLoaded[index] = true;
+				audioContextForDecode.close();
 			}, function(e){
 				console.log("decode error :");
 				console.log(e);
@@ -258,7 +265,8 @@ body{
 		const fileReader = new FileReader();
 		fileReader.onload = function(e){
 			const fileContents = e.target.result;
-			audioContext2.decodeAudioData(fileContents)
+			let audioContextForDecode = new AudioContext();
+			audioContextForDecode.decodeAudioData(fileContents)
 			.then(function(buf){
 				console.log("decode ok " + buf.length + " frames");
 				mydata.currentFrame = buf.length;
@@ -281,6 +289,7 @@ body{
 				mydata.selected = true;
 				mydata.playStartFrame = 0;
 				mydata.needsRedrawWave = true;
+				audioContextForDecode.close();
 				redrawCanvas();
 
 			}, function(e){
@@ -303,6 +312,87 @@ body{
 				mydata.trackPlaying[index] = false;
 			}
 		}
+
+		playStateChanged();
+	}
+
+	function playStateChanged(){
+
+		startStopTimer();
+
+		let shouldStop = true;
+		if (mydata.playing){
+			shouldStop = false
+		}
+		for (let i=0; i < 4; i++){
+			if (mydata.trackLoaded[i] && mydata.trackPlaying[i]){
+				shouldStop = false;
+			}
+		}
+
+		if (shouldStop && mydata.isPlayerActive){
+			audioContext2.close();
+			audioContext2 = null;
+			audioElem2.stop();
+			audioElem2 = null;
+			mydata.isPlayerActive = false;
+			return;
+		}
+
+		if (!shouldStop && !mydata.isPlayerActvie){
+			startOutEngine();
+		}
+
+	}
+
+	function editorStateChanged(){
+		startStopTimer();
+
+		let shouldStop = true;
+		if (mydata.monitor){
+			shouldStop = false;
+		}
+		if (mydata.recording){
+			shouldStop = false;
+		}
+
+		if(shouldStop && mydata.isEditorActive){
+			audioContext.close();
+			audioContext = null;
+			audioElem.stop();
+			audioElem = null;
+			mydata.isEditorActive = false;
+			return;
+		}
+
+		if(!shouldStop && !mydata.isEditorActive){
+			streamObtained(mydata.stream);
+		}
+
+	}
+
+	function startStopTimer(){
+		let shouldStop = true;
+		if (mydata.recording){
+			shouldStop = false;
+		}
+		if (mydata.playing){
+			shouldStop = false;
+		}
+
+		if (shouldStop && (mydata.timer != null)){
+			clearInterval(mydata.timer);
+			mydata.timer = null;
+			return;
+		}
+
+		if (!shouldStop && (mydata.timer==null)){
+			mydata.timer = setInterval(function(){
+				redrawCanvas();
+			},50);
+		}
+
+
 	}
 
 
@@ -318,8 +408,8 @@ body{
 			return readyInput();
 		
 		}).then(function(){
-			console.log("calling startOutEngine()");
-			return startOutEngine();
+			// console.log("calling startOutEngine()");
+			// return startOutEngine();
 		});
 
 	}
@@ -389,7 +479,8 @@ body{
 				};
 				var p = navigator.mediaDevices.getUserMedia(constrains)
 				p.then(function(stream){
-					streamObtained(stream);
+					mydata.stream = stream;
+					// streamObtained(stream);
 					resolve();
 				});
 			});
@@ -415,26 +506,28 @@ body{
 		audioElem.srcObject = dest.stream;
 		audioElem.setSinkId(mydata.outDevId);
 		audioElem.play();
+		mydata.isEditorActive = true;
 
    	}
 
    	function startOutEngine(){
    		audioContext2 = new AudioContext();
-   		// var scriptSource = audioContext2.createScriptProcessor(0,2,2);
    		var scriptSource = audioContext2.createScriptProcessor(256/*latency*/,2,2);
    		scriptSource.onaudioprocess = onAudioProcessOut;
    		var dest = audioContext2.createMediaStreamDestination();
    		scriptSource.connect(dest);
 
-   		var audio = new Audio();
-   		audio.srcObject = dest.stream;
-   		audio.setSinkId(mydata.outDevId);
-   		audio.play();
+   		audioElem2 = new Audio();
+   		audioElem2.srcObject = dest.stream;
+   		audioElem2.setSinkId(mydata.outDevId);
+   		audioElem2.play();
+   		mydata.isPlayerActive = true;
 
    		console.log("startOutEngine() completed.")
    	}
 
 	function onAudioProcess(e) {
+		console.log("onAudioProcess");
 
 		let inbuf = e.inputBuffer;
 		let outbuf = e.outputBuffer;
@@ -445,9 +538,12 @@ body{
 	    		outbuf.getChannelData(1)[i] = inbuf.getChannelData(1)[i];
 	    	}
 	    } else {
-	    	for (let i=0; i < inbuf.getChannelData(0).length; i++){
-	    		outbuf.getChannelData(0)[i] = 0;
-	    		outbuf.getChannelData(1)[i] = 0;
+	    	const len = inbuf.getChannelData(0).length;
+	    	const outLeft = outbuf.getChannelData(0);
+	    	const outRight = outbuf.getChannelData(1);
+	    	for (let i=0; i < len; i++){
+	    		outLeft[i] = 0;
+	    		outRight[i] = 0;
 	    	}
 	    }
 
@@ -465,6 +561,7 @@ body{
 	};
 
 	function onAudioProcessOut(e){
+		console.log("onAudioProcessOut");
 		let outLeft = e.outputBuffer.getChannelData(0);
 		let outRight = e.outputBuffer.getChannelData(1);
 		
@@ -479,8 +576,13 @@ body{
 						mydata.currentFramePlay = mydata.selectStartFrame;
 					}					
 				}else{
-					if (mydata.currentFramePlay > mydata.currentFame){
-						mydata.currentFramePlay = mydata.playStartFrame;
+					if (mydata.currentFramePlay > mydata.currentFrame){
+						// mydata.currentFramePlay = mydata.playStartFrame;
+						mydata.playing = false;
+						redrawCanvas();
+						playStateChanged();
+
+						break;
 					}
 				}
 
@@ -523,12 +625,15 @@ body{
 
 		mydata.needsRedrawWave = true;
 		redrawCanvas();
+
+		editorStateChanged();
 	}
 
 	function stopRecord(){
 		mydata.recording = false;
 		mydata.needsRedrawWave = true;
 		redrawCanvas();
+		editorStateChanged();
 
 	}
 
@@ -539,14 +644,19 @@ body{
 
 			mydata.currentFramePlay = mydata.playStartFrame;
 		}
+		//playStateChanged();
 		mydata.playing = true;	
+		playStateChanged();
 	}
 
 	function stopPlay(){
+
 		mydata.playing = false;
+		playStateChanged();
 	}
 
 	function redrawCanvas(){
+		console.log("redrawCanvas");
 
 		const canvas = document.querySelector("#canvas");
 
@@ -632,6 +742,7 @@ body{
 	function onMonitorChanged(){
 		const checkBox = document.querySelector("#chkMonitor");
 		mydata.monitor = checkBox.checked;
+		editorStateChanged();
 	}
 
 	document.onkeydown = function (e){
