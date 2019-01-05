@@ -87,15 +87,21 @@ body{
 	mydata.trackPlaying = new Array(4);
 	mydata.trackCurrentFrame = new Array(4);
 	mydata.trackLength = new Array(4);
+	mydata.trackRatio = new Array(4);
 	for (let i=0;i<4;i++){
 		mydata.trackLoaded[i] = false;
 		mydata.trackPlaying[i] = false;
+		mydata.trackRatio[i] = 1;
+		mydata.trackCurrentFrame[i] = 0;
+		mydata.trackLength[i] = 0;
 	}
 
 
 	mydata.isEditorActive = false;
 	mydata.isPlayerActive = false;
 	mydata.timer = null;
+
+	mydata.grain_size = 4000;
 
 	var audioContext;
 	var audioContext2;
@@ -106,6 +112,29 @@ body{
 
 	var audioBufferLeft = new Float32Array(44100*60*10);
 	var audioBufferRight = new Float32Array(44100*60*10);
+
+
+	var calcState = {};
+	calcState.start = 0;
+	calcState.end = 3000;
+	calcState.i = 0;
+	calcState.currentFrame = 0;
+	
+	calcState.stretchedLX = new Array(4);
+	calcState.stretchedRX = new Array(4);
+	calcState.current_grain_start = new Array(4);
+	calcState.current_x = new Array(4);
+	calcState.current_grain_start2 = new Array(4);
+	calcState.current_x2 = new Array(4);
+	for (let i = 0; i < 4; i++){
+		calcState.stretchedLX[i] = new Float32Array(44100*60);
+		calcState.stretchedRX[i] = new Float32Array(44100*60);
+		calcState.current_grain_start[i] = 0;
+		calcState.current_x[i] = 0;
+		calcState.current_grain_start2[i] = mydata.grain_size / 2;
+		calcState.current_x2[i] = -1.0 * (mydata.grain_size/2*mydata.trackRatio[i]);
+	}
+
 
 	window.addEventListener("resize", function(e){
 		onResize();
@@ -153,6 +182,10 @@ body{
 			b.addEventListener("click", onPlayButtonClicked, false);
 		});
 
+		const speedSliders = document.querySelectorAll(".speedSlider");
+		speedSliders.forEach(function(s){
+			s.addEventListener("input", onSpeedSliderChanged, false);
+		});
 		canvas2.addEventListener("dragover", function(e){
 			e.preventDefault();
 			e.dataTransfer.dropEffect = "copy";
@@ -160,6 +193,20 @@ body{
 		canvas2.addEventListener("drop", onEditorDrop, false);
 
 	});
+
+	function onSpeedSliderChanged(e){
+		const slider = e.currentTarget;
+
+		let index = 0;
+		const speedSliders = document.querySelectorAll(".speedSlider");
+		for (let i = 0; i < speedSliders.length; i++){
+			if (slider == speedSliders[i]){
+				index = i;
+				break;
+			}
+		}
+		onSpeedChanged(index);
+	}
 
 	function onLoadButtonClicked(e){
 		const btn = e.currentTarget;
@@ -250,6 +297,8 @@ body{
 				mydata.trackPlaying[index] = 0;
 				mydata.trackLoaded[index] = true;
 				audioContextForDecode.close();
+				// stretch2(index);
+				console.log("decode done.");
 			}, function(e){
 				console.log("decode error :");
 				console.log(e);
@@ -260,6 +309,278 @@ body{
 		fileReader.readAsArrayBuffer(file);
 
 	}
+
+	function onSpeedChanged(index){
+		const speedSlider = document.querySelectorAll(".speedSlider")[index];
+		const speedLabel = document.querySelectorAll(".speedLabel")[index];
+
+		const val = speedSlider.value;
+		mydata.trackRatio[index] = val / 100.0;
+
+		// calcState.current_grain_start[index] = 0;
+		// calcState.current_x[index] = 0;
+		// calcState.current_grain_start2[index] = mydata.grain_size / 2;
+		// calcState.current_x2[index] = -1.0 * (mydata.grain_size/2*mydata.trackRatio[index]);
+
+		speedLabel.innerHTML = val.toString() + "%";
+	}
+
+	function sinFadeWindow(fadeStartRate, x, val){
+		let y = 0;
+
+		if (x < 0 || x > 1) {return 0;}
+		if (x < fadeStartRate){
+			y = 1.0/2.0 * Math.sin(Math.PI/fadeStartRate*x + 3.0/2*Math.PI) + 1/2;
+		}else if (x < 1.0 - fadeStartRate){
+			y = 1.0;
+		}else{
+			y = 1.0/2.0 * Math.sin(Math.PI/fadeStartRate*x + 3.0/2.0 * Math.PI 
+			- 1.0/fadeStartRate*Math.PI ) + 1.0/2.0;
+		}
+		return val * y;
+	}
+
+	function crossfadeWindow(fadeStartRate, x, val){
+		
+		if (x < 0 || x > 1) {return 0;}
+
+		if (x < fadeStartRate){
+			return val * (1.0/fadeStartRate  * x); 
+		}else if (x < 1.0 - fadeStartRate){
+			return val * 1.0;
+		}else{
+			return val * ( (-1.0/fadeStartRate*x + 1/fadeStartRate));
+		}
+	}
+
+
+	function stretch2(index){
+
+		let grain_size = 4000;
+		let ratio = 1.5;
+
+		let start = 0;
+		let end = grain_size;
+
+		let stretchedL = new Float32Array(44100*60*10);
+		let stretchedR = new Float32Array(44100*60*10);
+		while(true){
+			for (let i = start; i < end; i++){
+
+				let valL = mydata.trackBufferLeft[index][i];
+				let valR = mydata.trackBufferRight[index][i];
+
+				let fadeStartRate = -1/2*ratio + 1;
+				valL = sinFadeWindow(fadeStartRate, (i-start)/grain_size, valL);
+				valR = sinFadeWindow(fadeStartRate, (i-start)/grain_size, valR);
+
+				let iX = Math.round(start * ratio) + (i-start);
+				stretchedL[iX] += valL;
+				stretchedR[iX] += valR;
+			}
+			start = start + grain_size/2;
+			end = end + grain_size/2;
+			if (start > mydata.trackLength[index]){
+				break;
+			}
+		}
+
+		mydata.trackBufferLeft[index] = stretchedL;
+		mydata.trackBufferRight[index] = stretchedR;
+		mydata.trackLength[index] = Math.round(mydata.trackLength[index] * ratio);
+	}
+
+	function stretch_continue3(index, inBufL, inBufR, len){
+
+		let grain_size = mydata.grain_size;
+		let ratio = mydata.trackRatio[index];
+
+		for (let iX = 0; iX < len; iX++){
+
+			if (calcState.current_x[index] > grain_size * (1+ (ratio-1)/2)){
+				calcState.current_grain_start[index] += grain_size;
+				calcState.current_x[index] = (grain_size *  (1+(ratio-1)/2) - grain_size)*(-1)
+			}
+			if (calcState.current_x2[index] > grain_size * (1+(ratio-1)/2)){
+				calcState.current_grain_start2[index] += grain_size;
+				calcState.current_x2[index] = (grain_size * (1+(ratio-1)/2) - grain_size)*(-1);
+			}
+
+			const fadeStartRate = -1/2*ratio + 1;
+			{
+				let x = calcState.current_grain_start[index] + calcState.current_x[index];
+
+				let valL = mydata.trackBufferLeft[index][x];
+				let valR = mydata.trackBufferRight[index][x];
+
+				valL = sinFadeWindow(fadeStartRate, calcState.current_x[index]/grain_size, valL);
+				valR = sinFadeWindow(fadeStartRate, calcState.current_x[index]/grain_size, valR);
+				calcState.stretchedLX[index][mydata.trackCurrentFrame[index]] = valL;
+				calcState.stretchedRX[index][mydata.trackCurrentFrame[index]] = valR;
+			}
+
+			{
+				let x2 = calcState.current_grain_start2[index] + calcState.current_x2[index];
+				let valL2 = mydata.trackBufferLeft[index][x2];
+				let valR2 = mydata.trackBufferRight[index][x2];
+
+				valL2 = sinFadeWindow(fadeStartRate, calcState.current_x2[index]/grain_size, valL2);
+				valR2 = sinFadeWindow(fadeStartRate, calcState.current_x2[index]/grain_size, valR2);
+				calcState.stretchedLX[index][mydata.trackCurrentFrame[index]] += valL2;
+				calcState.stretchedRX[index][mydata.trackCurrentFrame[index]] += valR2;				
+			}
+			calcState.current_x[index]++;
+			calcState.current_x2[index]++;
+
+		
+			inBufL[iX] += calcState.stretchedLX[index][mydata.trackCurrentFrame[index]];
+			inBufR[iX] += calcState.stretchedRX[index][mydata.trackCurrentFrame[index]];
+			
+			mydata.trackCurrentFrame[index]++;
+			if (calcState.current_grain_start[index] + calcState.current_x[index] > mydata.trackLength[index]){
+				mydata.trackCurrentFrame[index] = 0;
+				calcState.current_grain_start[index] = 0;
+				calcState.current_x[index] = 0;
+				calcState.current_grain_start2[index] = mydata.grain_size / 2;
+				calcState.current_x2[index] = -1.0 * (mydata.grain_size/2*mydata.trackRatio[index]);
+			}
+	
+		}
+	}
+
+	// function stretch_continue2(index, inBufL, inBufR, len){
+	// 	let grain_size = 3000;
+	// 	let ratio = 1.5;
+
+	// 	for (let iX = 0; iX < len; iX++){
+	// 		let x = calcState.current_grain_start + calcState.current_x++;
+	// 		if (x - calcState.current_grain_start > grain_size){
+	// 			calcState.current_grain_start = Math.round((mydata.trackCurrentFrame[index] + iX)/ratio);
+	// 			calcState.current_x = 0;
+	// 		}
+
+	// 		let valL = mydata.trackBufferLeft[index][x];
+	// 		let valR = mydata.trackBufferRight[index][x];
+
+	// 		const fadeStartRate = -1/2*ratio + 1;
+
+	// 		let xInGrain = calcState.current_x;
+	// 		valL = sinFadeWindow(fadeStartRate, xInGrain/grain_size, valL);
+	// 		valR = sinFadeWindow(fadeStartRate, xInGrain/grain_size, valR);
+
+	// 		calcState.stretchedLX[mydata.trackCurrentFrame[index] + iX] = valL;
+	// 		calcState.stretchedRX[mydata.trackCurrentFrame[index] + iX] = valR;
+
+	// 		let current_x = 0;
+	// 		if (calcState.currentX > 1/2*grain_size){
+	// 			current_x  = calcState.current_x - 1/2*grain_size;
+	// 			x = calcState.current_grain_start + Math.round(grain_size/2/ratio) + current_x;
+	// 		}else{
+	// 			current_x = calcState.current_x + 1/2*grain_size;
+	// 			x = calcState.current_grain_start - Math.round(grain_size/2/ratio) + current_x;
+	// 		}
+	// 		valL = mydata.trackBufferLeft[index][x];
+	// 		valR = mydata.trackBufferRight[index][x];
+	// 		xInGrain = current_x;
+	// 		valL = sinFadeWindow(fadeStartRate, xInGrain/grain_size, valL);
+	// 		valR = sinFadeWindow(fadeStartRate, xInGrain/grain_size, valR);
+	// 		calcState.stretchedLX[mydata.trackCurrentFrame[index] + iX] += valL;
+	// 		calcState.stretchedRX[mydata.trackCurrentFrame[index] + iX] += valR;
+
+
+	// 	}
+
+	// 	for (let i = 0; i < len ; i++){
+	// 		inBufL[i] += calcState.stretchedLX[mydata.trackCurrentFrame[index]];
+	// 		inBufR[i] += calcState.stretchedRX[mydata.trackCurrentFrame[index]];
+	// 		mydata.trackCurrentFrame[index]++;
+	// 	}
+
+	// }
+
+	// function stretch_continue(index ,inBufL, inBufR , len){
+	// 	let grain_size = 3000;
+	// 	let ratio = 1.5;
+
+	// 	let start = calcState.start;
+	// 	let end = calcState.end;
+	// 	let shouldBreak = false;
+	// 	while(true){
+	// 		for (let i = start; i < end; i++){
+	// 			calcState.i = i;
+	// 			let valL = mydata.trackBufferLeft[index][i];
+	// 			let valR = mydata.trackBufferRight[index][i];
+
+	// 			let fadeStartRate = -1/2*ratio+1;
+	// 			valL = sinFadeWindow(fadeStartRate, (i-start)/grain_size, valL);
+	// 			valR = sinFadeWindow(fadeStartRate, (i-start)/grain_size, valR);
+
+	// 			let iX = Math.round(start * ratio) + (i-start);
+
+	// 			calcState.stretchedLX[iX] += valL;
+	// 			calcState.stretchedRX[iX] += valR;
+
+	// 			if(iX > calcState.currentFrame + len) {
+	// 				shouldBreak = true;
+	// 				break;
+	// 			}
+	// 		}	
+	// 		if (shouldBreak) break;
+	// 		start += grain_size/2;
+	// 		end += grain_size/2;
+	// 		calcState.start = start;
+	// 		calcState.end = end;
+
+	// 		if (start > mydata.trackCurrentFrame[index]*ratio){
+	// 			break;
+	// 		}
+	// 	}
+
+	// 	for (let i = 0; i < len ; i++){
+	// 		inBufL[i] += calcState.stretchedLX[calcState.currentFrame];
+	// 		inBufR[i] += calcState.stretchedRX[calcState.currentFrame];
+	// 		calcState.currentFrame++;
+	// 	}
+
+	// }
+
+
+	// function stretch(index){
+
+	// 	let grain_size = 3000;
+	// 	let ratio = 1.5;
+
+	// 	let start = 0;
+	// 	let end = grain_size;
+
+	// 	let stretchedL = new Float32Array(44100*60*10);
+	// 	let stretchedR = new Float32Array(44100*60*10);
+	// 	while(true){
+	// 		for (let i = start; i < end; i++){
+
+	// 			let valL = mydata.trackBufferLeft[index][i];
+	// 			let valR = mydata.trackBufferRight[index][i];
+
+	// 			let fadeStartRate = 0.2;
+	// 			valL = sinFadeWindow(fadeStartRate, (i-start)/grain_size, valL);
+	// 			valR = sinFadeWindow(fadeStartRate, (i-start)/grain_size, valR);
+
+	// 			let iX = start * ratio + (i-start);
+	// 			stretchedL[iX] += valL;
+	// 			stretchedR[iX] += valR;
+	// 		}
+	// 		start = start + grain_size/2;
+	// 		end = end + grain_size/2;
+	// 		if (end > mydata.trackLength[index]){
+	// 			break;
+	// 		}
+	// 	}
+
+	// 	mydata.trackBufferLeft[index] = stretchedL;
+	// 	mydata.trackBufferRight[index] = stretchedR;
+	// 	mydata.trackLength[index] = Math.round(mydata.trackLength[index] * ratio);
+	// }
+
 
 	function onEditorLoadSampleFromFile(file){
 		const fileReader = new FileReader();
@@ -307,7 +628,14 @@ body{
 		if(mydata.trackLoaded[index]){
 			if (!mydata.trackPlaying[index]){
 				mydata.trackCurrentFrame[index] = 0;
+				calcState.current_grain_start[index] = 0;
+				calcState.current_x[index] = 0;
+				calcState.current_grain_start2[index] = mydata.grain_size / 2;
+				calcState.current_x2[index] = -1.0 * (mydata.grain_size/2*mydata.trackRatio[index]);
+
 				mydata.trackPlaying[index] = true;
+
+
 			}else{
 				mydata.trackPlaying[index] = false;
 			}
@@ -333,7 +661,7 @@ body{
 		if (shouldStop && mydata.isPlayerActive){
 			audioContext2.close();
 			audioContext2 = null;
-			audioElem2.stop();
+			audioElem2.pause();
 			audioElem2 = null;
 			mydata.isPlayerActive = false;
 			return;
@@ -359,7 +687,7 @@ body{
 		if(shouldStop && mydata.isEditorActive){
 			audioContext.close();
 			audioContext = null;
-			audioElem.stop();
+			audioElem.pause();
 			audioElem = null;
 			mydata.isEditorActive = false;
 			return;
@@ -561,7 +889,7 @@ body{
 	};
 
 	function onAudioProcessOut(e){
-		console.log("onAudioProcessOut");
+		// console.log("onAudioProcessOut");
 		let outLeft = e.outputBuffer.getChannelData(0);
 		let outRight = e.outputBuffer.getChannelData(1);
 		
@@ -597,15 +925,16 @@ body{
 		//mix track data
 		for (let i = 0; i < 4; i++){
 			if (mydata.trackPlaying[i]){
-				for(let j = 0; j < outLeft.length;j++){
-					outLeft[j] += mydata.trackBufferLeft[i][mydata.trackCurrentFrame[i]];
-					outRight[j] += mydata.trackBufferRight[i][mydata.trackCurrentFrame[i]];
-					mydata.trackCurrentFrame[i]++;
-					if (mydata.trackCurrentFrame[i] > mydata.trackLength[i]){
-						mydata.trackCurrentFrame[i] = 0;
+				// for(let j = 0; j < outLeft.length;j++){
+				// 	outLeft[j] += mydata.trackBufferLeft[i][mydata.trackCurrentFrame[i]];
+				// 	outRight[j] += mydata.trackBufferRight[i][mydata.trackCurrentFrame[i]];
+				// 	mydata.trackCurrentFrame[i]++;
+				// 	if (mydata.trackCurrentFrame[i] > mydata.trackLength[i]){
+				// 		mydata.trackCurrentFrame[i] = 0;
 					
-					}
-				}
+				// 	}
+				// }
+				stretch_continue3(i, outLeft, outRight, outLeft.length);
 			}
 		}
 
@@ -1204,17 +1533,21 @@ body{
 			<td class="playButton">play</td>
 		</tr>	
 		<tr>
-			<td class="speedRange">
-				<input type="range"/><output>num</output>
+			<td>
+				<input type="range" class="speedSlider" min="50" max="200" value="100" step="1"/>
+				<output class="speedLabel">100%</output>
 			</td>
-			<td class="speedRange">
-				<input type="range"/><output>num</output>
+			<td>
+				<input type="range" class="speedSlider" min="50" max="200" value="100" step="1"/>
+				<output class="speedLabel">100%</output>
 			</td>
-			<td class="speedRange">
-				<input type="range"/><output>num</output>
+			<td>
+				<input type="range" class="speedSlider" min="50" max="200" value="100" step="1"/>
+				<output class="speedLabel">100</output>
 			</td>
-			<td class="speedRange">
-				<input type="range"/><output>num</output>
+			<td>
+				<input type="range" class="speedSlider" min="50" max="200" value="100" step="1"/>
+				<output class="speedLabel">100</output>
 			</td>
 		</tr>	
 	</table>
