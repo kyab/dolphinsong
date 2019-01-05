@@ -658,16 +658,19 @@ body{
 			}
 		}
 
-		if (shouldStop && mydata.isPlayerActive){
+		if (shouldStop && audioContext2){
+			audioContext2.suspend();
 			audioContext2.close();
 			audioContext2 = null;
 			audioElem2.pause();
 			audioElem2 = null;
 			mydata.isPlayerActive = false;
+			console.log("audioEngine stopped");
 			return;
 		}
 
-		if (!shouldStop && !mydata.isPlayerActvie){
+		if (!shouldStop && (audioContext2==null)) {
+			console.log("now start engine");
 			startOutEngine();
 		}
 
@@ -905,7 +908,6 @@ body{
 					}					
 				}else{
 					if (mydata.currentFramePlay > mydata.currentFrame){
-						// mydata.currentFramePlay = mydata.playStartFrame;
 						mydata.playing = false;
 						redrawCanvas();
 						playStateChanged();
@@ -985,7 +987,7 @@ body{
 	}
 
 	function redrawCanvas(){
-		console.log("redrawCanvas");
+		// console.log("redrawCanvas");
 
 		const canvas = document.querySelector("#canvas");
 
