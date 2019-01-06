@@ -101,7 +101,7 @@ body{
 	mydata.isPlayerActive = false;
 	mydata.timer = null;
 
-	mydata.grain_size = 4000;
+	mydata.grain_size = 6000;
 
 	var audioContext;
 	var audioContext2;
@@ -162,10 +162,6 @@ body{
 		canvas2.addEventListener("wheel", onCanvasScroll, false);
 
 		onResize();
-
-		// mydata.timer = setInterval(function(){
-		// 	redrawCanvas();
-		// },50);
 
 		const loadButtons = document.querySelectorAll(".loadButton");
 		loadButtons.forEach(function(b){
@@ -447,140 +443,6 @@ body{
 	
 		}
 	}
-
-	// function stretch_continue2(index, inBufL, inBufR, len){
-	// 	let grain_size = 3000;
-	// 	let ratio = 1.5;
-
-	// 	for (let iX = 0; iX < len; iX++){
-	// 		let x = calcState.current_grain_start + calcState.current_x++;
-	// 		if (x - calcState.current_grain_start > grain_size){
-	// 			calcState.current_grain_start = Math.round((mydata.trackCurrentFrame[index] + iX)/ratio);
-	// 			calcState.current_x = 0;
-	// 		}
-
-	// 		let valL = mydata.trackBufferLeft[index][x];
-	// 		let valR = mydata.trackBufferRight[index][x];
-
-	// 		const fadeStartRate = -1/2*ratio + 1;
-
-	// 		let xInGrain = calcState.current_x;
-	// 		valL = sinFadeWindow(fadeStartRate, xInGrain/grain_size, valL);
-	// 		valR = sinFadeWindow(fadeStartRate, xInGrain/grain_size, valR);
-
-	// 		calcState.stretchedLX[mydata.trackCurrentFrame[index] + iX] = valL;
-	// 		calcState.stretchedRX[mydata.trackCurrentFrame[index] + iX] = valR;
-
-	// 		let current_x = 0;
-	// 		if (calcState.currentX > 1/2*grain_size){
-	// 			current_x  = calcState.current_x - 1/2*grain_size;
-	// 			x = calcState.current_grain_start + Math.round(grain_size/2/ratio) + current_x;
-	// 		}else{
-	// 			current_x = calcState.current_x + 1/2*grain_size;
-	// 			x = calcState.current_grain_start - Math.round(grain_size/2/ratio) + current_x;
-	// 		}
-	// 		valL = mydata.trackBufferLeft[index][x];
-	// 		valR = mydata.trackBufferRight[index][x];
-	// 		xInGrain = current_x;
-	// 		valL = sinFadeWindow(fadeStartRate, xInGrain/grain_size, valL);
-	// 		valR = sinFadeWindow(fadeStartRate, xInGrain/grain_size, valR);
-	// 		calcState.stretchedLX[mydata.trackCurrentFrame[index] + iX] += valL;
-	// 		calcState.stretchedRX[mydata.trackCurrentFrame[index] + iX] += valR;
-
-
-	// 	}
-
-	// 	for (let i = 0; i < len ; i++){
-	// 		inBufL[i] += calcState.stretchedLX[mydata.trackCurrentFrame[index]];
-	// 		inBufR[i] += calcState.stretchedRX[mydata.trackCurrentFrame[index]];
-	// 		mydata.trackCurrentFrame[index]++;
-	// 	}
-
-	// }
-
-	// function stretch_continue(index ,inBufL, inBufR , len){
-	// 	let grain_size = 3000;
-	// 	let ratio = 1.5;
-
-	// 	let start = calcState.start;
-	// 	let end = calcState.end;
-	// 	let shouldBreak = false;
-	// 	while(true){
-	// 		for (let i = start; i < end; i++){
-	// 			calcState.i = i;
-	// 			let valL = mydata.trackBufferLeft[index][i];
-	// 			let valR = mydata.trackBufferRight[index][i];
-
-	// 			let fadeStartRate = -1/2*ratio+1;
-	// 			valL = sinFadeWindow(fadeStartRate, (i-start)/grain_size, valL);
-	// 			valR = sinFadeWindow(fadeStartRate, (i-start)/grain_size, valR);
-
-	// 			let iX = Math.round(start * ratio) + (i-start);
-
-	// 			calcState.stretchedLX[iX] += valL;
-	// 			calcState.stretchedRX[iX] += valR;
-
-	// 			if(iX > calcState.currentFrame + len) {
-	// 				shouldBreak = true;
-	// 				break;
-	// 			}
-	// 		}	
-	// 		if (shouldBreak) break;
-	// 		start += grain_size/2;
-	// 		end += grain_size/2;
-	// 		calcState.start = start;
-	// 		calcState.end = end;
-
-	// 		if (start > mydata.trackCurrentFrame[index]*ratio){
-	// 			break;
-	// 		}
-	// 	}
-
-	// 	for (let i = 0; i < len ; i++){
-	// 		inBufL[i] += calcState.stretchedLX[calcState.currentFrame];
-	// 		inBufR[i] += calcState.stretchedRX[calcState.currentFrame];
-	// 		calcState.currentFrame++;
-	// 	}
-
-	// }
-
-
-	// function stretch(index){
-
-	// 	let grain_size = 3000;
-	// 	let ratio = 1.5;
-
-	// 	let start = 0;
-	// 	let end = grain_size;
-
-	// 	let stretchedL = new Float32Array(44100*60*10);
-	// 	let stretchedR = new Float32Array(44100*60*10);
-	// 	while(true){
-	// 		for (let i = start; i < end; i++){
-
-	// 			let valL = mydata.trackBufferLeft[index][i];
-	// 			let valR = mydata.trackBufferRight[index][i];
-
-	// 			let fadeStartRate = 0.2;
-	// 			valL = sinFadeWindow(fadeStartRate, (i-start)/grain_size, valL);
-	// 			valR = sinFadeWindow(fadeStartRate, (i-start)/grain_size, valR);
-
-	// 			let iX = start * ratio + (i-start);
-	// 			stretchedL[iX] += valL;
-	// 			stretchedR[iX] += valR;
-	// 		}
-	// 		start = start + grain_size/2;
-	// 		end = end + grain_size/2;
-	// 		if (end > mydata.trackLength[index]){
-	// 			break;
-	// 		}
-	// 	}
-
-	// 	mydata.trackBufferLeft[index] = stretchedL;
-	// 	mydata.trackBufferRight[index] = stretchedR;
-	// 	mydata.trackLength[index] = Math.round(mydata.trackLength[index] * ratio);
-	// }
-
 
 	function onEditorLoadSampleFromFile(file){
 		const fileReader = new FileReader();
