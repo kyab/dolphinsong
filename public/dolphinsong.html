@@ -40,9 +40,9 @@ body{
 }
 
 #player table th, #player table td{
-	padding: 5px;
+	padding: 4px;
 	border : 1px solid black;
-	width:100px;
+	width:20px;
 	cursor: default;
 }
 
@@ -51,7 +51,13 @@ body{
 }
 
 #player table td.dropping, #player table th.dropping {
-	border : 3px solid black;
+	border : 2px solid black;
+}
+
+#player table td input.syncButton{
+	width:100%;
+	padding:0px 0px 0px 0px;
+	font-size: 20px;
 }
 
 </style>
@@ -324,9 +330,6 @@ body{
 		title.classList.remove("dropping");
 		playButton.classList.remove("dropping");
 		speed.classList.remove("dropping");
-
-
-
 
 		const file = e.dataTransfer.files[0];
 		onLoadSampleFromFile(index, file);
@@ -1511,6 +1514,35 @@ body{
 				<output class="speedLabel">100%</output>
 			</td>
 		</tr>	
+		<tr>
+			<td class="sync">
+				<input type="button" class="syncButton" value="sync"/>
+			</td>
+			<td class="sync">
+				<input type="button" class="syncButton" value="sync"/>
+			</td>
+			<td class="sync">
+				<input type="button" class="syncButton" value="sync"/>
+			</td>
+			<td class="sync">
+				<input type="button" class="syncButton" value="sync"/>
+			</td>
+		</tr>
+		<tr>
+			<td class="master">
+				<input type="checkbox" class="masterChk">master</input>
+			</td>
+			<td class="master">
+				<input type="checkbox" class="masterChk">master</input>
+			</td>
+			<td class="master">
+				<input type="checkbox" class="masterChk">master</input>
+			</td>
+			<td class="master">
+				<input type="checkbox" class="masterChk">master</input>
+			</td>
+
+		</tr>
 	</table>
 
 </body>
