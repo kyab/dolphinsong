@@ -97,12 +97,14 @@ body{
 	mydata.trackCurrentFrame = new Array(4);
 	mydata.trackLength = new Array(4);
 	mydata.trackRatio = new Array(4);
+	mydata.trackMaster = new Array(4);
 	for (let i=0;i<4;i++){
 		mydata.trackLoaded[i] = false;
 		mydata.trackPlaying[i] = false;
 		mydata.trackRatio[i] = 1;
 		mydata.trackCurrentFrame[i] = 0;
 		mydata.trackLength[i] = 0;
+		mydata.trackMaster[i] = false;
 	}
 
 
@@ -207,6 +209,11 @@ body{
 		const speedSliders = document.querySelectorAll(".speedSlider");
 		speedSliders.forEach(function(s){
 			s.addEventListener("input", onSpeedSliderChanged, false);
+		});
+
+		const masterChks = document.querySelectorAll(".masterChk");
+		masterChks.forEach(function(c){
+			c.addEventListener("change", onMasterChanged, false);
 		});
 
 
@@ -340,6 +347,33 @@ body{
 
 		const file = e.dataTransfer.files[0];
 		onEditorLoadSampleFromFile(file);
+	}
+
+	function onMasterChanged(e){
+		let elem = e.currentTarget;
+
+		//get the index
+		let index = -1;
+		const masterChks = document.querySelectorAll(".masterChk");
+		for (let i = 0; i < masterChks.length; i++){
+			if (elem == masterChks[i]){
+				index = i;
+				break;
+			}
+		}
+
+		if (masterChks[index].checked){
+			mydata.trackMaster[index] = true;
+			for (let i = 0; i < masterChks.length; i++){
+				if (i != index){
+					masterChks[i].checked = false;
+					mydata.trackMaster[i] = false;
+				}
+			}
+		}else{
+			mydata.trackMaster[index] = false;
+		}
+
 	}
 
 	function onLoadSample(index){
