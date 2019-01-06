@@ -46,10 +46,13 @@ body{
 	cursor: default;
 }
 
-#player table td:hover{
+#player table td:hover, #player table th:hover{
 	background-color: lightblue;
 }
 
+#player table td.dropping, #player table th.dropping {
+	border : 3px solid black;
+}
 
 </style>
 
@@ -132,7 +135,7 @@ body{
 		calcState.current_grain_start[i] = 0;
 		calcState.current_x[i] = 0;
 		calcState.current_grain_start2[i] = mydata.grain_size / 2;
-		calcState.current_x2[i] = -1.0 * (mydata.grain_size/2*mydata.trackRatio[i]);
+		calcState.current_x2[i] = -1.0 * Math.round(mydata.grain_size/2*mydata.trackRatio[i]);
 	}
 
 
@@ -166,22 +169,43 @@ body{
 		const loadButtons = document.querySelectorAll(".loadButton");
 		loadButtons.forEach(function(b){
 			b.addEventListener("click", onLoadButtonClicked, false);
-			b.addEventListener("dragover", function(e){
-				e.preventDefault();
-				e.dataTransfer.dropEffect = "copy";
-			});
+			b.addEventListener("dragover", onTrackDragover, false); 
+			b.addEventListener("dragleave", onTrackDragleave, false);
 			b.addEventListener("drop", onTrackDrop,false);
+		});
+
+		const titles = document.querySelectorAll(".title");
+		titles.forEach(function(t){
+			t.addEventListener("dragover", onTrackDragover, false); 
+			t.addEventListener("dragleave", onTrackDragleave, false);
+			t.addEventListener("drop" , onTrackDrop,false);
+
 		});
 
 		const playButtons = document.querySelectorAll(".playButton");
 		playButtons.forEach(function(b){
 			b.addEventListener("click", onPlayButtonClicked, false);
+			b.addEventListener("dragover", onTrackDragover, false); 
+			b.addEventListener("dragleave", onTrackDragleave, false);
+			b.addEventListener("drop" , onTrackDrop,false);
 		});
+
+		const speeds = document.querySelectorAll(".speed");
+		speeds.forEach(function(s){
+			s.addEventListener("dragover", onTrackDragover, false); 
+			s.addEventListener("dragleave", onTrackDragleave, false);
+			s.addEventListener("drop" , onTrackDrop,false);
+		});
+
 
 		const speedSliders = document.querySelectorAll(".speedSlider");
 		speedSliders.forEach(function(s){
 			s.addEventListener("input", onSpeedSliderChanged, false);
 		});
+
+
+
+
 		canvas2.addEventListener("dragover", function(e){
 			e.preventDefault();
 			e.dataTransfer.dropEffect = "copy";
@@ -232,18 +256,78 @@ body{
 		onPlayStopTrack(index);
 	}
 
-	function onTrackDrop(e){
-		const btn = e.currentTarget;
+	function onTrackDragover(e){
+		e.preventDefault();
+		e.dataTransfer.dropEffect = "copy";
+
+		const elem = e.currentTarget;
+
+		let index = getIndexForElem(elem);
+		const loadButton = document.querySelectorAll(".loadButton")[index];
+		const title = document.querySelectorAll(".title")[index];
+		const playButton = document.querySelectorAll(".playButton")[index];
+		const speed = document.querySelectorAll(".speed")[index];
+		loadButton.classList.add("dropping");
+		title.classList.add("dropping");
+		playButton.classList.add("dropping");
+		speed.classList.add("dropping");
+	}
+
+	function onTrackDragleave(e){
 		e.preventDefault();
 
-		let index = 0;
+		const elem = e.currentTarget;
+
+		let index = getIndexForElem(elem);
+		const loadButton = document.querySelectorAll(".loadButton")[index];
+		const title = document.querySelectorAll(".title")[index];
+		const playButton = document.querySelectorAll(".playButton")[index];
+		const speed = document.querySelectorAll(".speed")[index];
+		loadButton.classList.remove("dropping");
+		title.classList.remove("dropping");
+		playButton.classList.remove("dropping");
+		speed.classList.remove("dropping");
+	}
+
+	function getIndexForElem(elem){
+		let index = -1;
 		const loadButtons = document.querySelectorAll(".loadButton");
+		const titles = document.querySelectorAll(".title");
+		const playButtons = document.querySelectorAll(".playButton");
+		const speed = document.querySelectorAll(".speed")
 		for(let i = 0; i < loadButtons.length;i++){
-			if (btn == loadButtons[i]){
+			if (elem == loadButtons[i] || 
+				elem == titles[i] || 
+				elem == playButtons[i] || 
+				elem == speed[i]){
 				index = i;
 				break;
 			}
 		}
+		if (index == -1){
+			console.log("error in getIndexForElem");
+		}
+		return index;		
+	}
+
+	function onTrackDrop(e){
+		const elem = e.currentTarget;
+		e.preventDefault();
+
+		let index = getIndexForElem(elem);
+
+		const loadButton = document.querySelectorAll(".loadButton")[index];
+		const title = document.querySelectorAll(".title")[index];
+		const playButton = document.querySelectorAll(".playButton")[index];
+		const speed = document.querySelectorAll(".speed")[index];
+		loadButton.classList.remove("dropping");
+		title.classList.remove("dropping");
+		playButton.classList.remove("dropping");
+		speed.classList.remove("dropping");
+
+
+
+
 		const file = e.dataTransfer.files[0];
 		onLoadSampleFromFile(index, file);
 	}
@@ -271,6 +355,9 @@ body{
 		mydata.trackCurrentFrame[index] = 0;
 		mydata.trackPlaying[index] = false;
 		mydata.trackLoaded[index] = true;
+
+		let titles = document.querySelectorAll(".title");
+		titles[index].innerText = "sample" + (index+1);
 	}
 
 	function onLoadSampleFromFile(index, file){
@@ -295,6 +382,9 @@ body{
 				audioContextForDecode.close();
 				// stretch2(index);
 				console.log("decode done.");
+				let titles = document.querySelectorAll(".title");
+				titles[index].innerText = file.name;
+
 			}, function(e){
 				console.log("decode error :");
 				console.log(e);
@@ -310,15 +400,22 @@ body{
 		const speedSlider = document.querySelectorAll(".speedSlider")[index];
 		const speedLabel = document.querySelectorAll(".speedLabel")[index];
 
-		const val = speedSlider.value;
-		mydata.trackRatio[index] = val / 100.0;
+		let val = speedSlider.value;
+		let speed = 100;
+		if (val >= 100){
+			speed = val;
+		}else{
+			speed = 1/2 * val + 50;
+		}
+
+		mydata.trackRatio[index] = 1/(speed/100);
 
 		// calcState.current_grain_start[index] = 0;
 		// calcState.current_x[index] = 0;
 		// calcState.current_grain_start2[index] = mydata.grain_size / 2;
 		// calcState.current_x2[index] = -1.0 * (mydata.grain_size/2*mydata.trackRatio[index]);
 
-		speedLabel.innerHTML = val.toString() + "%";
+		speedLabel.innerHTML = speed.toString() + "%";
 	}
 
 	function sinFadeWindow(fadeStartRate, x, val){
@@ -395,11 +492,11 @@ body{
 
 			if (calcState.current_x[index] > grain_size * (1+ (ratio-1)/2)){
 				calcState.current_grain_start[index] += grain_size;
-				calcState.current_x[index] = (grain_size *  (1+(ratio-1)/2) - grain_size)*(-1)
+				calcState.current_x[index] = Math.round((grain_size *  (1+(ratio-1)/2) - grain_size)*(-1))
 			}
 			if (calcState.current_x2[index] > grain_size * (1+(ratio-1)/2)){
 				calcState.current_grain_start2[index] += grain_size;
-				calcState.current_x2[index] = (grain_size * (1+(ratio-1)/2) - grain_size)*(-1);
+				calcState.current_x2[index] = Math.round((grain_size * (1+(ratio-1)/2) - grain_size)*(-1));
 			}
 
 			const fadeStartRate = -1/2*ratio + 1;
@@ -438,7 +535,7 @@ body{
 				calcState.current_grain_start[index] = 0;
 				calcState.current_x[index] = 0;
 				calcState.current_grain_start2[index] = mydata.grain_size / 2;
-				calcState.current_x2[index] = -1.0 * (mydata.grain_size/2*mydata.trackRatio[index]);
+				calcState.current_x2[index] = -1.0 * Math.round(mydata.grain_size/2*mydata.trackRatio[index]);
 			}
 	
 		}
@@ -493,7 +590,7 @@ body{
 				calcState.current_grain_start[index] = 0;
 				calcState.current_x[index] = 0;
 				calcState.current_grain_start2[index] = mydata.grain_size / 2;
-				calcState.current_x2[index] = -1.0 * (mydata.grain_size/2*mydata.trackRatio[index]);
+				calcState.current_x2[index] = -1.0 * Math.round(mydata.grain_size/2*mydata.trackRatio[index]);
 
 				mydata.trackPlaying[index] = true;
 
@@ -1379,10 +1476,10 @@ body{
 <div id="player">
 	<table>
 		<tr>
-			<th>track1</th>
-			<th>track2</th>
-			<th>track3</th>
-			<th>track4</th>
+			<th class="title" dropzone="copy">----</th>
+			<th class="title" dropzone="copy">----</th>
+			<th class="title" dropzone="copy">----</th>
+			<th class="title" dropzone="copy">----</th>
 		</tr>
 		<tr>
 			<td class="loadButton" dropzone="copy">load</td>
@@ -1391,27 +1488,27 @@ body{
 			<td class="loadButton" dropzone="copy">load</td>
 		</tr>	
 		<tr>
-			<td class="playButton">play</td>
-			<td class="playButton">play</td>
-			<td class="playButton">play</td>
-			<td class="playButton">play</td>
+			<td class="playButton" dropzone="copy">play</td>
+			<td class="playButton" dropzone="copy">play</td>
+			<td class="playButton" dropzone="copy">play</td>
+			<td class="playButton" dropzone="copy">play</td>
 		</tr>	
 		<tr>
-			<td>
-				<input type="range" class="speedSlider" min="50" max="200" value="100" step="1"/>
+			<td class="speed">
+				<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
 				<output class="speedLabel">100%</output>
 			</td>
-			<td>
-				<input type="range" class="speedSlider" min="50" max="200" value="100" step="1"/>
+			<td class="speed">
+				<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
 				<output class="speedLabel">100%</output>
 			</td>
-			<td>
-				<input type="range" class="speedSlider" min="50" max="200" value="100" step="1"/>
-				<output class="speedLabel">100</output>
+			<td class="speed">
+				<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
+				<output class="speedLabel">100%</output>
 			</td>
-			<td>
-				<input type="range" class="speedSlider" min="50" max="200" value="100" step="1"/>
-				<output class="speedLabel">100</output>
+			<td class="speed">
+				<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
+				<output class="speedLabel">100%</output>
 			</td>
 		</tr>	
 	</table>
