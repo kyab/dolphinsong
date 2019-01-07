@@ -30,7 +30,7 @@ body{
 	/*text-align: center;*/
 	position:relative;
 	top:220;
-	left:100;
+	left:20;
 }
 
 #player table{
@@ -211,12 +211,16 @@ body{
 			s.addEventListener("input", onSpeedSliderChanged, false);
 		});
 
+
+		const syncButtons = document.querySelectorAll(".syncButton");
+		syncButtons.forEach(function(b){
+			b.addEventListener("click", onSyncClick, false);
+		});
+
 		const masterChks = document.querySelectorAll(".masterChk");
 		masterChks.forEach(function(c){
 			c.addEventListener("change", onMasterChanged, false);
 		});
-
-
 
 
 		canvas2.addEventListener("dragover", function(e){
@@ -228,45 +232,22 @@ body{
 	});
 
 	function onSpeedSliderChanged(e){
-		const slider = e.currentTarget;
 
-		let index = 0;
-		const speedSliders = document.querySelectorAll(".speedSlider");
-		for (let i = 0; i < speedSliders.length; i++){
-			if (slider == speedSliders[i]){
-				index = i;
-				break;
-			}
-		}
+		let index = getIndexForEvent(e, ".speedSlider");
 		onSpeedChanged(index);
 	}
 
 	function onLoadButtonClicked(e){
-		const btn = e.currentTarget;
 
-		let index = 0;
-		const loadButtons = document.querySelectorAll(".loadButton");
-		for(let i = 0; i < loadButtons.length;i++){
-			if (btn == loadButtons[i]){
-				index = i;
-				break;
-			}
-		}
+		let index = getIndexForEvent(e, ".loadButton");
 		onLoadSample(index);
 	}
 
 	function onPlayButtonClicked(e){
-		const btn = e.currentTarget;
 
-		let index = 0;
-		const playButtons = document.querySelectorAll(".playButton");
-		for(let i = 0; i < playButtons.length;i++){
-			if (btn == playButtons[i]){
-				index = i;
-				break;
-			}
-		}
+		let index = getIndexForEvent(e, ".playButton");
 		onPlayStopTrack(index);
+	
 	}
 
 	function onTrackDragover(e){
@@ -276,6 +257,33 @@ body{
 		const elem = e.currentTarget;
 
 		let index = getIndexForElem(elem);
+		setDragHighlight(index);
+
+	}
+
+	function onTrackDragleave(e){
+		e.preventDefault();
+
+		const elem = e.currentTarget;
+
+		let index = getIndexForElem(elem);
+		unsetDragHighlight(index);
+	}
+
+	function onTrackDrop(e){
+		const elem = e.currentTarget;
+		e.preventDefault();
+
+		let index = getIndexForElem(elem);
+		unsetDragHighlight(index);
+
+
+
+		const file = e.dataTransfer.files[0];
+		onLoadSampleFromFile(index, file);
+	}
+
+	function setDragHighlight(index){
 		const loadButton = document.querySelectorAll(".loadButton")[index];
 		const title = document.querySelectorAll(".title")[index];
 		const playButton = document.querySelectorAll(".playButton")[index];
@@ -286,12 +294,7 @@ body{
 		speed.classList.add("dropping");
 	}
 
-	function onTrackDragleave(e){
-		e.preventDefault();
-
-		const elem = e.currentTarget;
-
-		let index = getIndexForElem(elem);
+	function unsetDragHighlight(index){
 		const loadButton = document.querySelectorAll(".loadButton")[index];
 		const title = document.querySelectorAll(".title")[index];
 		const playButton = document.querySelectorAll(".playButton")[index];
@@ -300,6 +303,24 @@ body{
 		title.classList.remove("dropping");
 		playButton.classList.remove("dropping");
 		speed.classList.remove("dropping");
+	}
+
+	function getIndexForEvent(e, selector){
+		let elem = e.currentTarget;
+		let index = -1;
+
+		const elems = document.querySelectorAll(selector);
+		for (let i=0; i < elems.length; i++){
+			if (elem == elems[i]){
+				index = i;
+			}
+		}
+		if (index == -1){
+			console.log("getIndexForEvent error for selector:" + selector);
+			console.log(e);
+		}
+
+		return index;
 	}
 
 	function getIndexForElem(elem){
@@ -323,24 +344,7 @@ body{
 		return index;		
 	}
 
-	function onTrackDrop(e){
-		const elem = e.currentTarget;
-		e.preventDefault();
 
-		let index = getIndexForElem(elem);
-
-		const loadButton = document.querySelectorAll(".loadButton")[index];
-		const title = document.querySelectorAll(".title")[index];
-		const playButton = document.querySelectorAll(".playButton")[index];
-		const speed = document.querySelectorAll(".speed")[index];
-		loadButton.classList.remove("dropping");
-		title.classList.remove("dropping");
-		playButton.classList.remove("dropping");
-		speed.classList.remove("dropping");
-
-		const file = e.dataTransfer.files[0];
-		onLoadSampleFromFile(index, file);
-	}
 
 	function onEditorDrop(e){
 		e.preventDefault();
@@ -349,18 +353,22 @@ body{
 		onEditorLoadSampleFromFile(file);
 	}
 
+	function onSyncClick(e){
+
+		let index = getIndexForEvent(e, ".syncButton");
+		sync(index);
+	}
+
+	function sync(index){
+
+	}
+
 	function onMasterChanged(e){
 		let elem = e.currentTarget;
 
 		//get the index
-		let index = -1;
+		let index = getIndexForEvent(e, ".masterChk");
 		const masterChks = document.querySelectorAll(".masterChk");
-		for (let i = 0; i < masterChks.length; i++){
-			if (elem == masterChks[i]){
-				index = i;
-				break;
-			}
-		}
 
 		if (masterChks[index].checked){
 			mydata.trackMaster[index] = true;
@@ -1513,10 +1521,10 @@ body{
 <div id="player">
 	<table>
 		<tr>
-			<th class="title" dropzone="copy">----</th>
-			<th class="title" dropzone="copy">----</th>
-			<th class="title" dropzone="copy">----</th>
-			<th class="title" dropzone="copy">----</th>
+			<th class="title" title="sample name" dropzone="copy">----</th>
+			<th class="title" title="sample name" dropzone="copy">----</th>
+			<th class="title" title="sample name" dropzone="copy">----</th>
+			<th class="title" title="sample name" dropzone="copy">----</th>
 		</tr>
 		<tr>
 			<td class="loadButton" dropzone="copy">load</td>
@@ -1531,19 +1539,19 @@ body{
 			<td class="playButton" dropzone="copy">play</td>
 		</tr>	
 		<tr>
-			<td class="speed">
+			<td class="speed" title="speed">
 				<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
 				<output class="speedLabel">100%</output>
 			</td>
-			<td class="speed">
+			<td class="speed" title="speed">
 				<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
 				<output class="speedLabel">100%</output>
 			</td>
-			<td class="speed">
+			<td class="speed" title="speed">
 				<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
 				<output class="speedLabel">100%</output>
 			</td>
-			<td class="speed">
+			<td class="speed" title="speed">
 				<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
 				<output class="speedLabel">100%</output>
 			</td>
