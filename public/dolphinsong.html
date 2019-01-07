@@ -360,6 +360,55 @@ body{
 	}
 
 	function sync(index){
+		let masterIndex = getMasterIndex();
+
+		if (masterIndex == -1) return;
+		if (!mydata.trackLoaded[masterIndex]) return;
+		if (!mydata.trackLoaded[index]) return;
+
+
+		//first naive sync
+		let c = 1;
+		while(true){
+			mydata.trackRatio[index] = 
+			mydata.trackRatio[masterIndex] * mydata.trackLength[masterIndex] 
+			/ mydata.trackLength[index] / c ;
+			if (mydata.trackRatio[index] < 0.5){
+				c/=2;
+				continue;
+			}else if (mydata.trackRatio[index] > 2.0){
+				c*=2;
+				continue;
+			}
+			break;
+		}
+
+		console.log("trackRatio for " + (index+1) + " = " + mydata.trackRatio[index]);
+
+		let speedSlider = document.querySelectorAll(".speedSlider");
+		let value = 0;
+		if (1/mydata.trackRatio[index] * 100 >= 100){
+			value = 1/mydata.trackRatio[index]*100;
+		}else{
+			value = 2*(1/mydata.trackRatio[index]*100 - 50);
+		}
+		speedSlider[index].value = value; 
+		let speedLabel = document.querySelectorAll(".speedLabel");
+		let roundedSpeed = 1/mydata.trackRatio[index] * 100;
+		roundedSpeed = Math.round(roundedSpeed *1000) / 1000;
+		speedLabel[index].innerText = roundedSpeed.toString() + "%";
+
+	}
+
+	function getMasterIndex(){
+		let index = -1;
+		for (let i = 0; i < mydata.trackMaster.length; i++){
+			if (mydata.trackMaster[i]){
+				index = i;
+				break;
+			}
+		}
+		return index;
 
 	}
 
