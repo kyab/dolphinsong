@@ -1069,11 +1069,13 @@ body{
 				let max = 0;
 
 				for(let j = from; j < to; j += Math.ceil((framePerPixel)/100)){
-					const s = Math.abs(audioBufferLeft[j + mydata.viewStartFrame]);
+					let s = Math.abs(audioBufferLeft[j + mydata.viewStartFrame]);
+					s += Math.abs(audioBufferRight[j + mydata.viewStartFrame]);
+					s /= 2;
 					if (s > max) max = s;
 				}
 
-				if (max == 0) { //no sound
+				if (max <= 0) { //no sound
 					max = 0.002;
 				}
 
