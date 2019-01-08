@@ -434,7 +434,7 @@ body{
 	}
 
 	function onLoadSample(index){
-		console.log("loading sample for track:" + (index+1));
+		console.log("loading sample from editor for track:" + (index+1));
 
 		mydata.trackLength[index] = mydata.selectEndFrame - mydata.selectStartFrame;
 		
@@ -455,40 +455,166 @@ body{
 	}
 
 	function onLoadSampleFromFile(index, file){
-		console.log("dropped file : " + file.name + " for track:" +(index+1));
-		const fileReader = new FileReader();
-		fileReader.onload = function(e){
-			const fileContents = e.target.result;
-			const audioContextForDecode = new AudioContext();
-			audioContextForDecode.decodeAudioData(fileContents)
-			.then(function(buf){
-				console.log("decode ok " + buf.length + " frames");
-				mydata.trackLength[index]  = buf.length;
-				mydata.trackBufferLeft[index] = buf.getChannelData(0);
-				if (buf.numberOfChannels == 1){
-					mydata.trackBufferRight[index] = buf.getChannelData(0);
-				}else{
-					mydata.trackBufferRight[index] = buf.getChannelData(1);
-				}
-				mydata.trackCurrentFrame[index] = 0;
-				mydata.trackPlaying[index] = 0;
-				mydata.trackLoaded[index] = true;
-				audioContextForDecode.close();
-				// stretch2(index);
-				console.log("decode done.");
-				let titles = document.querySelectorAll(".title");
-				titles[index].innerText = file.name;
-
+		tryLoadSampleFromFileStandard(index, file)
+		.then(function(length){
+			console.log("success standard : " + (index+1).toString());
+			trackLoadedFromFile(index, length, file);
+		}, function(e){
+			console.log("decode error(Standard) : " + e);
+			tryLoadSampleFromFileAAC(index, file)
+			.then(function(length){
+				console.log("success AAC");
+				trackLoadedFromFile(index, length, file);
 			}, function(e){
-				console.log("decode error :");
-				console.log(e);
+				console.log("decode error(AAC) : " + e);
+			});
+		});
+	}
 
+	function trackLoadedFromFile(index, length, file){
+		mydata.trackLength[index] = length;
+		mydata.trackCurrentFrame[index] = 0;
+		mydata.trackPlaying[index] = false;
+		mydata.trackLoaded[index] = true;
+
+		let titles = document.querySelectorAll(".title");
+		titles[index].innerText = file.name;
+	}
+
+	function tryLoadSampleFromFileStandard(index, file){
+		return new Promise(function(resolve, reject){
+			const fileReader = new FileReader();
+			fileReader.onload = function(e){
+				const fileContents = e.target.result;
+				const audioContextForDecode = new AudioContext();
+				audioContextForDecode.decodeAudioData(fileContents)
+				.then(function(buf){
+					mydata.trackBufferLeft[index] = buf.getChannelData(0);
+					if (buf.numberOfChannels == 1){
+						mydata.trackBufferRight[index] = buf.getChannelData(0);
+					}else{
+						mydata.trackBufferRight[index] = buf.getChannelData(1);
+					}
+					audioContextForDecode.close();
+					resolve(buf.length);
+				}, function(e){
+					reject(e);
+				});
+
+			};
+			fileReader.readAsArrayBuffer(file);
+		});
+	}
+
+	function tryLoadSampleFromFileAAC(index, file){
+		//use aac.js/aurora.js to decode caf(AAC compressed Apple Loops)
+		return new Promise(function(resolve, reject){
+			let asset = AV.Asset.fromFile(file);
+			asset.on("error", function(e){
+				reject(e);
 			});
 
-		};
-		fileReader.readAsArrayBuffer(file);
-
+			asset.get("duration", function(duration){
+				console.log("duration = " + duration);
+				asset.decodeToBuffer(function(buffer){
+					mydata.trackBufferLeft[index] = new Float32Array(buffer.length/2);
+					mydata.trackBufferRight[index] = new Float32Array(buffer.length/2);
+					for (let i = 0; i < buffer.length/2; i++){
+						mydata.trackBufferLeft[index][i] = buffer[i*2];
+						mydata.trackBufferRight[index][i] = buffer[i*2+1];
+					}
+					resolve(buffer.length/2);
+				});
+			});
+		});
 	}
+
+	function onEditorLoadSampleFromFile(file){
+		tryEditorLoadSampleFromFileStandard(file)
+		.then(function(length){
+			console.log("success Standard");
+			editorLoaded(length);
+		},function(e){
+			console.log("decode error(Standard) : " + e);
+			tryEditorLoadSampleFromFileAAC(file)
+			.then(function(length){
+				console.log("success AAC");
+				editorLoaded(length);
+			},function(e){
+				console.log("decode error(AAC) : " + e);
+			});
+		});
+	}
+
+	function editorLoaded(length){
+		mydata.currentFrame = length;
+		mydata.viewStartFrame = 0;
+		mydata.viewEndFrame = mydata.currentFrame;
+		mydata.viewRate = 1.0;
+		mydata.recording = false;
+		mydata.playing = false
+
+		mydata.selectStartFrame = 0;
+		mydata.selectEndFrame = mydata.currentFrame;
+		mydata.selected = true;
+		mydata.playStartFrame = 0;
+		mydata.needsRedrawWave = true;
+
+		redrawCanvas();
+	}
+
+	function tryEditorLoadSampleFromFileStandard(file){
+
+		return new Promise(function(resolve, reject){
+			const fileReader = new FileReader();
+			fileReader.onload = function(e){
+				const fileContents = e.target.result;
+				let audioContextForDecode = new AudioContext();
+				audioContextForDecode.decodeAudioData(fileContents)
+				.then(function(buf){
+					for (let i = 0; i < buf.length; i++){
+						audioBufferLeft[i] = buf.getChannelData(0)[i];
+						if (buf.numberOfChannels == 1){
+							audioBufferRight[i] = buf.getChannelData(0)[i];
+						}else{
+							audioBufferRight[i] = buf.getChannelData(1)[i];
+						}
+					}
+					audioContextForDecode.close();				
+					resolve(buf.length);
+
+				}, function(e){
+					reject(e);
+				});
+				
+			}
+			fileReader.readAsArrayBuffer(file);
+		});
+	}
+
+
+	function tryEditorLoadSampleFromFileAAC(file){
+		//use aac.js/aurora.js to decode caf(AAC compressed Apple Loops)
+		return new Promise(function(resolve, reject){
+			let asset = AV.Asset.fromFile(file);
+			asset.on("error", function(e){
+				reject(e);
+			});
+			asset.get("duration", function(duration){
+				console.log("duration = " + duration);
+				asset.decodeToBuffer(function(buffer){
+					for (let i = 0; i < buffer.length/2; i++){
+						audioBufferLeft[i]  = buffer[i*2];
+						audioBufferRight[i] = buffer[i*2+1];
+					}
+					resolve(buffer.length/2);
+				});
+			});
+		});
+	}
+
+
+
 
 	function onSpeedChanged(index){
 		const speedSlider = document.querySelectorAll(".speedSlider")[index];
@@ -633,47 +759,6 @@ body{
 			}
 	
 		}
-	}
-
-	function onEditorLoadSampleFromFile(file){
-		const fileReader = new FileReader();
-		fileReader.onload = function(e){
-			const fileContents = e.target.result;
-			let audioContextForDecode = new AudioContext();
-			audioContextForDecode.decodeAudioData(fileContents)
-			.then(function(buf){
-				console.log("decode ok " + buf.length + " frames");
-				mydata.currentFrame = buf.length;
-				for (let i = 0; i < buf.length; i++){
-					audioBufferLeft[i] = buf.getChannelData(0)[i];
-					if (buf.numberOfChannels == 1){
-						audioBufferRight[i] = buf.getChannelData(0)[i];
-					}else{
-						audioBufferRight[i] = buf.getChannelData(1)[i];
-					}
-				}
-				mydata.viewStartFrame = 0;
-				mydata.viewEndFrame = buf.length;
-				mydata.viewRate = 1.0;
-				mydata.recording = false;
-				mydata.playing = false
-
-				mydata.selectStartFrame = 0;
-				mydata.selectEndFrame = buf.length;
-				mydata.selected = true;
-				mydata.playStartFrame = 0;
-				mydata.needsRedrawWave = true;
-				audioContextForDecode.close();
-				redrawCanvas();
-
-			}, function(e){
-				console.log("decode error :");
-				console.log(e);
-
-			});
-			
-		}
-		fileReader.readAsArrayBuffer(file);
 	}
 
 
@@ -1637,6 +1722,7 @@ body{
 
 		</tr>
 	</table>
-
+	<script src="aurora.js"></script>
+	<script src="aac.js"></script>
 </body>
 </html>
