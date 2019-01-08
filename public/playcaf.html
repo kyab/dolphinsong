@@ -1,0 +1,72 @@
+<html>
+<head>
+<style type="text/css">
+#dropElem {
+	background-color: cyan;
+	height:100px;
+	}
+</style>
+<script src="aurora.js"></script>
+<script src="aac.js"></script>
+
+<script type="text/javascript">
+
+	var audioContext;
+	var buffer;			//Float32Array
+	var asset;
+
+	window.addEventListener("load", function(){
+
+		var fileElem = document.querySelector("#fileElem");
+		fileElem.addEventListener("change", function(){
+
+
+			let file = fileElem.files[0];
+			asset = AV.Asset.fromFile(file);
+			asset.on("error", function(e){
+				console.log("asset error(decode error");
+				console.log(e);
+			});
+			asset.get('duration', function(duration) {
+  				console.log("duration = " + duration);
+	  			asset.decodeToBuffer(function(_buffer){
+					console.log("decode To Buffer");
+					buffer = _buffer;
+				});
+
+			});
+		});
+	});
+
+	function startPlay(){
+		audioContext = new AudioContext();
+		audioContext.suspend();
+
+		var myArrayBuffer = audioContext.createBuffer(2, buffer.length/2, 44100);
+		myArrayBuffer.copyToChannel(buffer, 0, 0);
+
+		for (let i = 0 ; i < buffer.length/2; i++){
+			myArrayBuffer.getChannelData(0)[i] = buffer[i*2];
+			myArrayBuffer.getChannelData(1)[i] = buffer[i*2+1];
+		}
+
+		let bufNode = audioContext.createBufferSource();
+		bufNode.buffer = myArrayBuffer;
+		bufNode.connect(audioContext.destination);
+
+		audioContext.resume();
+		bufNode.start()
+
+
+	}
+
+</script>
+
+<title>Play CAF</title>
+</head>
+<body>
+<input id="fileElem" type="file" value="load file"/>
+<input type="button" value="start play" onclick="startPlay()"/>
+
+</body>
+</html>
