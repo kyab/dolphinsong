@@ -506,6 +506,87 @@ body{
 		});
 	}
 
+
+	//results:validFrames, primingFrames, reminderFrames]
+	function getEncodingDelayForCAF(view){
+
+		let encodingDelay = {};
+		encodingDelay.validFrames = 0;
+		encodingDelay.primingFrames = 0;
+		encodingDelay.reminderFrames = 0;
+		
+		function getFourCC(_view, offset){
+			let ret = "";
+			let c = _view.getUint8(offset);
+			ret += String.fromCharCode(c);
+			c = _view.getUint8(offset+1);
+			ret += String.fromCharCode(c);
+			c = _view.getUint8(offset+2);
+			ret += String.fromCharCode(c);
+			c = _view.getUint8(offset+3);
+			ret += String.fromCharCode(c);
+			return ret;		
+
+		}
+
+		function getInt64(_view, offset){
+			let upper = _view.getInt32(offset, false);
+			let lower = _view.getUint32(offset+4,false);
+			return (upper << 32) + lower;
+		}
+
+		let offset = 0;
+		let signature = getFourCC(view, offset);
+		if (signature != "caff"){
+			return null;
+		}
+		offset += 4;
+		//skip file version
+		offset += 2;
+		//skip file flags
+		offset += 2;
+
+		let got = false;
+
+		while(offset < view.byteLength){
+			let chunkType = getFourCC(view, offset);
+			offset += 4;
+			let chunkSize =  getInt64(view, offset);
+			offset += 8;
+			if (chunkType == "pakt"){
+				console.log("pakt chunk found");
+				
+				//number of packets
+				let numberPackets = getInt64(view, offset);
+				offset += 8;
+
+				encodingDelay.validFrames = getInt64(view, offset);
+				offset += 8;
+				encodingDelay.primingFrames = view.getInt32(offset, false);
+				offset += 4;
+				encodingDelay.reminderFrames = view.getInt32(offset, false);
+				offset += 4;
+				console.log("Packet Num : " + numberPackets);
+				console.log("Encoding Delay : ");
+				console.log("  valid frames = " + encodingDelay.validFrames);
+				console.log("  priming frames = " + encodingDelay.primingFrames);
+				console.log("  reminder frames = " + encodingDelay.reminderFrames);
+				got = true;
+				break;
+			}else{
+				//skip to next chunk
+				console.log(" chunk : " + chunkType);
+				offset += chunkSize;
+			}
+		}
+
+		if(got){
+			return encodingDelay;
+		}else{
+			return null;
+		}
+	}
+
 	function tryLoadSampleFromFileAAC(index, file){
 		//use aac.js/aurora.js to decode caf(AAC compressed Apple Loops)
 		return new Promise(function(resolve, reject){
@@ -516,15 +597,44 @@ body{
 
 			asset.get("duration", function(duration){
 				console.log("duration = " + duration);
-				asset.decodeToBuffer(function(buffer){
-					mydata.trackBufferLeft[index] = new Float32Array(buffer.length/2);
-					mydata.trackBufferRight[index] = new Float32Array(buffer.length/2);
-					for (let i = 0; i < buffer.length/2; i++){
-						mydata.trackBufferLeft[index][i] = buffer[i*2];
-						mydata.trackBufferRight[index][i] = buffer[i*2+1];
-					}
-					resolve(buffer.length/2);
-				});
+
+				//if came here, we assume file is OK.
+				//now get priming/reminder frame (if possible)
+
+				const fileReader = new FileReader();
+				fileReader.onload = function(e){
+					let fileContents = e.target.result;
+					let view = new DataView(fileContents);
+
+					let encodingDelay = getEncodingDelayForCAF(view);
+
+					asset.decodeToBuffer(function(buffer){
+						// if (encodingDelay){
+						// 	let validLen = encodingDelay.validFrames;
+						// 	let primingFrames = encodingDelay.primingFrames;
+						// 	mydata.trackBufferLeft[index] = new Float32Array(validLen);
+						// 	mydata.trackBufferRight[index] = new Float32Array(validLen);
+						// 	for(let i = 0; i < validLen; i++){
+						// 		mydata.trackBufferLeft[index][i] = 
+						// 			buffer[(primingFrames + i)*2];
+						// 		mydata.trackBufferRight[index][i] = 
+						// 			buffer[(primingFrames + i)*2+1];
+						// 	}
+						// 	resolve(validLen);
+
+						// }else{
+							mydata.trackBufferLeft[index] = new Float32Array(buffer.length/2);
+							mydata.trackBufferRight[index] = new Float32Array(buffer.length/2);
+							for (let i = 0; i < buffer.length/2; i++){
+								mydata.trackBufferLeft[index][i] = buffer[i*2];
+								mydata.trackBufferRight[index][i] = buffer[i*2+1];
+							}
+							resolve(buffer.length/2);
+						// }
+					});
+				}
+
+				fileReader.readAsArrayBuffer(file);
 			});
 		});
 	}
@@ -602,13 +712,52 @@ body{
 			});
 			asset.get("duration", function(duration){
 				console.log("duration = " + duration);
-				asset.decodeToBuffer(function(buffer){
-					for (let i = 0; i < buffer.length/2; i++){
-						audioBufferLeft[i]  = buffer[i*2];
-						audioBufferRight[i] = buffer[i*2+1];
-					}
-					resolve(buffer.length/2);
-				});
+
+				const fileReader = new FileReader();
+				fileReader.onload = function(e){
+					let fileContents = e.target.result;
+					let view = new DataView(fileContents);
+
+					let encodingDelay = getEncodingDelayForCAF(view);
+
+					asset.decodeToBuffer(function(buffer){
+
+						// if(encodingDelay){ 
+						// 	let validLen = encodingDelay.validFrames;
+						// 	let primingFrames = encodingDelay.primingFrames;
+						// 	for(let i = 0; i < validLen; i++){
+						// 		audioBufferLeft[i] = buffer[(primingFrames + i)*2];
+						// 		audioBufferRight[i] = buffer[(primingFrames + i)*2+1];
+						// 	}
+						// 	//count silense
+						// 	let s = 0;
+						// 	let i = 0;
+						// 	while(true){
+						// 		//silence
+						// 		if(buffer[i*2] <= 0.001 && buffer[i*2+1] <= 0.001){
+						// 			i++;
+						// 			s++;
+						// 		}else{
+						// 			break;
+						// 		}
+						// 	}
+						// 	console.log("actual silence = " + s);
+						// 	console.log("buffer.length/2 = " + buffer.length/2);
+
+						// 	resolve(validLen);
+
+
+						// }else{
+							for (let i = 0; i < buffer.length/2; i++){
+								audioBufferLeft[i]  = buffer[i*2];
+								audioBufferRight[i] = buffer[i*2+1];
+							}
+							resolve(buffer.length/2);
+						// }
+					});
+				}
+
+				fileReader.readAsArrayBuffer(file);
 			});
 		});
 	}
@@ -725,9 +874,12 @@ body{
 
 				let valL = mydata.trackBufferLeft[index][x];
 				let valR = mydata.trackBufferRight[index][x];
-
-				valL = sinFadeWindow(fadeStartRate, calcState.current_x[index]/grain_size, valL);
-				valR = sinFadeWindow(fadeStartRate, calcState.current_x[index]/grain_size, valR);
+				if (calcState.current_x2[index] < 0){
+					//no windowing for some beggining frames
+				}else{
+					valL = sinFadeWindow(fadeStartRate, calcState.current_x[index]/grain_size, valL);
+					valR = sinFadeWindow(fadeStartRate, calcState.current_x[index]/grain_size, valR);
+				}
 				calcState.stretchedLX[index][mydata.trackCurrentFrame[index]] = valL;
 				calcState.stretchedRX[index][mydata.trackCurrentFrame[index]] = valR;
 			}
