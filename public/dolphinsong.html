@@ -211,6 +211,11 @@ body{
 			s.addEventListener("input", onSpeedSliderChanged, false);
 		});
 
+		const speedResetButtons = document.querySelectorAll(".speedResetButton");
+		speedResetButtons.forEach(function(b){
+			b.addEventListener("click", onSpeedResetClicked, false);
+		});		
+
 
 		const syncButtons = document.querySelectorAll(".syncButton");
 		syncButtons.forEach(function(b){
@@ -233,19 +238,26 @@ body{
 
 	function onSpeedSliderChanged(e){
 
-		let index = getIndexForEvent(e, ".speedSlider");
+		let index = getIndexFromEvent(e, ".speedSlider");
 		onSpeedChanged(index);
 	}
 
+	function onSpeedResetClicked(e){
+		let index = getIndexFromEvent(e, ".speedResetButton");
+		document.querySelectorAll(".speedSlider")[index].value = 100;
+		onSpeedChanged(index);
+	}
+
+
 	function onLoadButtonClicked(e){
 
-		let index = getIndexForEvent(e, ".loadButton");
+		let index = getIndexFromEvent(e, ".loadButton");
 		onLoadSample(index);
 	}
 
 	function onPlayButtonClicked(e){
 
-		let index = getIndexForEvent(e, ".playButton");
+		let index = getIndexFromEvent(e, ".playButton");
 		onPlayStopTrack(index);
 	
 	}
@@ -305,7 +317,7 @@ body{
 		speed.classList.remove("dropping");
 	}
 
-	function getIndexForEvent(e, selector){
+	function getIndexFromEvent(e, selector){
 		let elem = e.currentTarget;
 		let index = -1;
 
@@ -316,7 +328,7 @@ body{
 			}
 		}
 		if (index == -1){
-			console.log("getIndexForEvent error for selector:" + selector);
+			console.log("getIndexFromEvent error for selector:" + selector);
 			console.log(e);
 		}
 
@@ -355,7 +367,7 @@ body{
 
 	function onSyncClick(e){
 
-		let index = getIndexForEvent(e, ".syncButton");
+		let index = getIndexFromEvent(e, ".syncButton");
 		sync(index);
 	}
 
@@ -416,7 +428,7 @@ body{
 		let elem = e.currentTarget;
 
 		//get the index
-		let index = getIndexForEvent(e, ".masterChk");
+		let index = getIndexFromEvent(e, ".masterChk");
 		const masterChks = document.querySelectorAll(".masterChk");
 
 		if (masterChks[index].checked){
@@ -432,6 +444,30 @@ body{
 		}
 
 	}
+
+
+	function onSpeedChanged(index){
+		const speedSlider = document.querySelectorAll(".speedSlider")[index];
+		const speedLabel = document.querySelectorAll(".speedLabel")[index];
+
+		let val = speedSlider.value;
+		let speed = 100;
+		if (val >= 100){
+			speed = val;
+		}else{
+			speed = 1/2 * val + 50;
+		}
+
+		mydata.trackRatio[index] = 1/(speed/100);
+
+		// calcState.current_grain_start[index] = 0;
+		// calcState.current_x[index] = 0;
+		// calcState.current_grain_start2[index] = mydata.grain_size / 2;
+		// calcState.current_x2[index] = -1.0 * (mydata.grain_size/2*mydata.trackRatio[index]);
+
+		speedLabel.innerHTML = speed.toString() + "%";
+	}
+
 
 	function onLoadSample(index){
 		console.log("loading sample from editor for track:" + (index+1));
@@ -764,28 +800,6 @@ body{
 
 
 
-
-	function onSpeedChanged(index){
-		const speedSlider = document.querySelectorAll(".speedSlider")[index];
-		const speedLabel = document.querySelectorAll(".speedLabel")[index];
-
-		let val = speedSlider.value;
-		let speed = 100;
-		if (val >= 100){
-			speed = val;
-		}else{
-			speed = 1/2 * val + 50;
-		}
-
-		mydata.trackRatio[index] = 1/(speed/100);
-
-		// calcState.current_grain_start[index] = 0;
-		// calcState.current_x[index] = 0;
-		// calcState.current_grain_start2[index] = mydata.grain_size / 2;
-		// calcState.current_x2[index] = -1.0 * (mydata.grain_size/2*mydata.trackRatio[index]);
-
-		speedLabel.innerHTML = speed.toString() + "%";
-	}
 
 	function sinFadeWindow(fadeStartRate, x, val){
 		let y = 0;
@@ -1830,18 +1844,22 @@ body{
 			<td class="speed" title="speed">
 				<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
 				<output class="speedLabel">100%</output>
+				<input type="button" class="speedResetButton" value="rst">
 			</td>
 			<td class="speed" title="speed">
 				<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
 				<output class="speedLabel">100%</output>
+				<input type="button" class="speedResetButton" value="rst">
 			</td>
 			<td class="speed" title="speed">
 				<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
 				<output class="speedLabel">100%</output>
+				<input type="button" class="speedResetButton" value="rst">
 			</td>
 			<td class="speed" title="speed">
 				<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
 				<output class="speedLabel">100%</output>
+				<input type="button" class="speedResetButton" value="rst">
 			</td>
 		</tr>	
 		<tr>
