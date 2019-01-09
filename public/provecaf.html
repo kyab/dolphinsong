@@ -1,0 +1,142 @@
+<html>
+<head>
+<style type="text/css">
+#dropElem {
+	background-color: cyan;
+	height:100px;
+	}
+</style>
+
+<script type="text/javascript">
+
+	var fileContents;
+	var view;
+
+	window.addEventListener("load", function(){
+
+		var fileElem = document.querySelector("#fileElem");
+		fileElem.addEventListener("change", function(){
+			onFileSelected(fileElem.files[0]);
+		});
+	});
+
+	function getFourCC(_view, offset){
+		let ret = "";
+		let c = _view.getUint8(offset);
+		ret += String.fromCharCode(c);
+		c = _view.getUint8(offset+1);
+		ret += String.fromCharCode(c);
+		c = _view.getUint8(offset+2);
+		ret += String.fromCharCode(c);
+		c = _view.getUint8(offset+3);
+		ret += String.fromCharCode(c);
+		return ret;		
+
+	}
+
+	function getInt64(_view, offset){
+		let upper = _view.getInt32(offset, false);
+		let lower = _view.getUint32(offset+4,false);
+		return (upper << 32) + lower;
+	}
+
+	function onFileSelected(file){
+		const fileReader = new FileReader();
+
+		fileReader.onload = function(e){
+			fileContents = e.target.result;
+			
+
+			console.log(fileContents);
+			view = new DataView(fileContents);
+
+			//Apple Core Audio Format Specification
+			// https://developer.apple.com/library/archive/documentation/MusicAudio/Reference/CAFSpec/CAF_intro/CAF_intro.html#//apple_ref/doc/uid/TP40001862-CH203-TPXREF101
+
+			//Encoder Delay
+			//https://github.com/uupaa/AAC.js/wiki/EncoderDelay
+			
+			let offset = 0;
+			//"caff"
+			let a = view.getUint8(offset++);
+			console.log(String.fromCharCode(a));
+			a = view.getUint8(offset++);
+			console.log(String.fromCharCode(a));
+			a = view.getUint8(offset++);
+			console.log(String.fromCharCode(a));
+			a = view.getUint8(offset++);
+			console.log(String.fromCharCode(a));
+
+
+			//UInt32 file version
+			let fileVersion = view.getUint16(offset, false);
+			offset += 2;
+			console.log("file version : " + fileVersion);
+
+			let fileFlags = view.getUint16(6, false);
+			offset +=2;
+			console.log("file flags : 0x" + fileFlags.toString(16));
+
+
+			//get first chunk
+			let chunkType = getFourCC(view, offset);
+			offset += 4;
+			console.log("chunk : " + chunkType);
+			let chunkSizeUpper = view.getInt32(offset, false);
+			offset += 4;
+			let chunkSizeLower = view.getUint32(offset, false);
+			offset += 4;
+			let chunkSize = (chunkSizeUpper << 32) + chunkSizeLower;
+			console.log(" --size : " + chunkSize);
+			offset += chunkSize;
+
+
+			while(offset < fileContents.byteLength){
+				let chunkType = getFourCC(view, offset);
+				offset += 4;
+				console.log("chunk : " + chunkType);
+				let chunkSizeUpper = view.getInt32(offset, false);
+				offset += 4;
+				let chunkSizeLower = view.getUint32(offset, false);
+				offset += 4;
+				let chunkSize = (chunkSizeUpper << 32) + chunkSizeLower;
+				console.log(" --size : " + chunkSize);
+
+				if (chunkType == "pakt"){
+					let numberPackets = getInt64(view, offset);
+					offset += 8;
+					console.log(" --numberPackets = " + numberPackets);
+
+					let numberValidFrames = getInt64(view, offset);
+					offset += 8;
+					let primingFrames = view.getInt32(offset);
+					offset += 4;
+					let reminderFrames = view.getInt32(offset);
+					offset += 4;
+
+					console.log(" --numberValidFrames = " + numberValidFrames);
+					console.log(" --primingFrames = " + primingFrames);
+					console.log(" --reminderFrames = " + reminderFrames);
+
+					offset = offset-24+chunkSize;
+				}else{
+					offset += chunkSize;
+				}
+			}
+
+		}
+
+		fileReader.readAsArrayBuffer(file);
+	}
+
+
+</script>
+
+<title>Prove CAF</title>
+</head>
+<body>
+<input id="fileElem" type="file" value="load file"/>
+<!-- <input type="button" value="start play" onclick="startPlay()"/> -->
+
+</body>
+</html>
