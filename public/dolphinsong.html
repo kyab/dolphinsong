@@ -98,6 +98,7 @@ body{
 	mydata.trackLength = new Array(4);
 	mydata.trackRatio = new Array(4);
 	mydata.trackMaster = new Array(4);
+	mydata.trackVolume = new Array(4);
 	for (let i=0;i<4;i++){
 		mydata.trackLoaded[i] = false;
 		mydata.trackPlaying[i] = false;
@@ -105,6 +106,7 @@ body{
 		mydata.trackCurrentFrame[i] = 0;
 		mydata.trackLength[i] = 0;
 		mydata.trackMaster[i] = false;
+		mydata.trackVolume[i] = 1;
 	}
 
 
@@ -227,6 +229,16 @@ body{
 			c.addEventListener("change", onMasterChanged, false);
 		});
 
+		const volumeSliders = document.querySelectorAll(".volumeSlider");
+		volumeSliders.forEach(function(s){
+			s.addEventListener("input", onVolumeSliderChanged, false);
+		});
+
+		const volumeResetButtons = document.querySelectorAll(".volumeResetButton");
+		volumeResetButtons.forEach(function(b){
+			b.addEventListener("click", onVolumeResetClicked, false);
+		});
+
 
 		canvas2.addEventListener("dragover", function(e){
 			e.preventDefault();
@@ -246,6 +258,17 @@ body{
 		let index = getIndexFromEvent(e, ".speedResetButton");
 		document.querySelectorAll(".speedSlider")[index].value = 100;
 		onSpeedChanged(index);
+	}
+
+	function onVolumeSliderChanged(e){
+		let index = getIndexFromEvent(e, ".volumeSlider");
+		onVolumeChanged(index);
+	}
+
+	function onVolumeResetClicked(e){
+		let index = getIndexFromEvent(e, ".volumeResetButton");
+		document.querySelectorAll(".volumeSlider")[index].value = 100;
+		onVolumeChanged(index);
 	}
 
 
@@ -465,7 +488,21 @@ body{
 		// calcState.current_grain_start2[index] = mydata.grain_size / 2;
 		// calcState.current_x2[index] = -1.0 * (mydata.grain_size/2*mydata.trackRatio[index]);
 
-		speedLabel.innerHTML = speed.toString() + "%";
+		speedLabel.innerText = speed.toString() + "%";
+	}
+
+	function onVolumeChanged(index){
+		const volumeSlider = document.querySelectorAll(".volumeSlider")[index];
+		const volumeLabel = document.querySelectorAll(".volumeLabel")[index];
+
+		let val = volumeSlider.value;
+
+		let db = 20*Math.log10(val/100);
+		let roundedDb = Math.round(db *100) / 100;
+
+		mydata.trackVolume[index] = val/100;
+
+		volumeLabel.innerText = roundedDb.toString() + "dB";
 	}
 
 
@@ -912,8 +949,10 @@ body{
 			calcState.current_x2[index]++;
 
 		
-			inBufL[iX] += calcState.stretchedLX[index][mydata.trackCurrentFrame[index]];
-			inBufR[iX] += calcState.stretchedRX[index][mydata.trackCurrentFrame[index]];
+			inBufL[iX] += calcState.stretchedLX[index][mydata.trackCurrentFrame[index]] 
+							* mydata.trackVolume[index];
+			inBufR[iX] += calcState.stretchedRX[index][mydata.trackCurrentFrame[index]]
+							* mydata.trackVolume[index];
 			
 			mydata.trackCurrentFrame[index]++;
 			if (calcState.current_grain_start[index] + calcState.current_x[index] > mydata.trackLength[index]){
@@ -1889,7 +1928,28 @@ body{
 			<td class="master">
 				<input type="checkbox" class="masterChk">master</input>
 			</td>
-
+		</tr>
+		<tr>
+			<td class="volume" title="volume">
+				<input type="range" class="volumeSlider" min="0" max="200" value="100" step="1"/>
+				<output class="volumeLabel">0.0dB</output>
+				<input type="button" class="volumeResetButton" value="rst">
+			</td>
+			<td class="volume" title="volume">
+				<input type="range" class="volumeSlider" min="0" max="200" value="100" step="1"/>
+				<output class="volumeLabel">0.0dB</output>
+				<input type="button" class="volumeResetButton" value="rst">
+			</td>
+			<td class="volume" title="volume">
+				<input type="range" class="volumeSlider" min="0" max="200" value="100" step="1"/>
+				<output class="volumeLabel">0.0dB</output>
+				<input type="button" class="volumeResetButton" value="rst">
+			</td>
+			<td class="volume" title="volume">
+				<input type="range" class="volumeSlider" min="0" max="200" value="100" step="1"/>
+				<output class="volumeLabel">0.0dB</output>
+				<input type="button" class="volumeResetButton" value="rst">
+			</td>
 		</tr>
 	</table>
 	<script src="aurora.js"></script>
