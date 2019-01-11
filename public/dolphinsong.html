@@ -220,16 +220,38 @@ body{
 			b.addEventListener("click", onSpeedResetClicked, false);
 		});		
 
+		const syncs = document.querySelectorAll(".sync");
+		syncs.forEach(function(s){
+			s.addEventListener("dragover", onTrackDragover, false); 
+			s.addEventListener("dragleave", onTrackDragleave, false);
+			s.addEventListener("drop" , onTrackDrop,false);
+		});
+
 
 		const syncButtons = document.querySelectorAll(".syncButton");
 		syncButtons.forEach(function(b){
 			b.addEventListener("click", onSyncClick, false);
 		});
 
+		const masters = document.querySelectorAll(".master");
+		masters.forEach(function(m){
+			m.addEventListener("dragover", onTrackDragover, false); 
+			m.addEventListener("dragleave", onTrackDragleave, false);
+			m.addEventListener("drop" , onTrackDrop,false);
+		});
+
 		const masterChks = document.querySelectorAll(".masterChk");
 		masterChks.forEach(function(c){
 			c.addEventListener("change", onMasterChanged, false);
 		});
+
+		const volumes = document.querySelectorAll(".volume");
+		volumes.forEach(function(v){
+			v.addEventListener("dragover", onTrackDragover, false); 
+			v.addEventListener("dragleave", onTrackDragleave, false);
+			v.addEventListener("drop" , onTrackDrop,false);
+		});
+
 
 		const volumeSliders = document.querySelectorAll(".volumeSlider");
 		volumeSliders.forEach(function(s){
@@ -240,6 +262,14 @@ body{
 		volumeResetButtons.forEach(function(b){
 			b.addEventListener("click", onVolumeResetClicked, false);
 		});
+
+		const pans = document.querySelectorAll(".pan");
+		pans.forEach(function(p){
+			p.addEventListener("dragover", onTrackDragover, false); 
+			p.addEventListener("dragleave", onTrackDragleave, false);
+			p.addEventListener("drop" , onTrackDrop,false);
+		});
+
 
 		const panSliders = document.querySelectorAll(".panSlider");
 		panSliders.forEach(function(s){
@@ -346,10 +376,18 @@ body{
 		const title = document.querySelectorAll(".title")[index];
 		const playButton = document.querySelectorAll(".playButton")[index];
 		const speed = document.querySelectorAll(".speed")[index];
+		const sync = document.querySelectorAll(".sync")[index];
+		const master = document.querySelectorAll(".master")[index];
+		const volume = document.querySelectorAll(".volume")[index];
+		const pan = document.querySelectorAll(".pan")[index];
 		loadButton.classList.add("dropping");
 		title.classList.add("dropping");
 		playButton.classList.add("dropping");
 		speed.classList.add("dropping");
+		sync.classList.add("dropping");
+		master.classList.add("dropping");
+		volume.classList.add("dropping");
+		pan.classList.add("dropping");
 	}
 
 	function unsetDragHighlight(index){
@@ -357,10 +395,18 @@ body{
 		const title = document.querySelectorAll(".title")[index];
 		const playButton = document.querySelectorAll(".playButton")[index];
 		const speed = document.querySelectorAll(".speed")[index];
+		const sync = document.querySelectorAll(".sync")[index];
+		const master = document.querySelectorAll(".master")[index];
+		const volume = document.querySelectorAll(".volume")[index];
+		const pan = document.querySelectorAll(".pan")[index];
 		loadButton.classList.remove("dropping");
 		title.classList.remove("dropping");
 		playButton.classList.remove("dropping");
 		speed.classList.remove("dropping");
+		sync.classList.remove("dropping");
+		master.classList.remove("dropping");
+		volume.classList.remove("dropping");
+		pan.classList.remove("dropping");
 	}
 
 	function getIndexFromEvent(e, selector){
@@ -386,12 +432,20 @@ body{
 		const loadButtons = document.querySelectorAll(".loadButton");
 		const titles = document.querySelectorAll(".title");
 		const playButtons = document.querySelectorAll(".playButton");
-		const speed = document.querySelectorAll(".speed")
+		const speeds = document.querySelectorAll(".speed");
+		const syncs = document.querySelectorAll(".sync");
+		const masters = document.querySelectorAll(".master");
+		const volumes = document.querySelectorAll(".volume");
+		const pans = document.querySelectorAll(".pan");
 		for(let i = 0; i < loadButtons.length;i++){
 			if (elem == loadButtons[i] || 
 				elem == titles[i] || 
 				elem == playButtons[i] || 
-				elem == speed[i]){
+				elem == speeds[i] ||
+				elem == syncs[i] ||
+				elem == masters[i] ||
+				elem == volumes[i] ||
+				elem == pans[i]){
 				index = i;
 				break;
 			}
@@ -1925,94 +1979,94 @@ body{
 			<td class="playButton" dropzone="copy">play</td>
 		</tr>	
 		<tr>
-			<td class="speed" title="speed">
+			<td class="speed" dropzone="copy" title="speed">
 				<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
 				<output class="speedLabel">100%</output>
 				<input type="button" class="speedResetButton" value="rst">
 			</td>
-			<td class="speed" title="speed">
+			<td class="speed" dropzone="copy" title="speed">
 				<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
 				<output class="speedLabel">100%</output>
 				<input type="button" class="speedResetButton" value="rst">
 			</td>
-			<td class="speed" title="speed">
+			<td class="speed" dropzone="copy" title="speed">
 				<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
 				<output class="speedLabel">100%</output>
 				<input type="button" class="speedResetButton" value="rst">
 			</td>
-			<td class="speed" title="speed">
+			<td class="speed" dropzone="copy" title="speed">
 				<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
 				<output class="speedLabel">100%</output>
 				<input type="button" class="speedResetButton" value="rst">
 			</td>
 		</tr>	
 		<tr>
-			<td class="sync">
+			<td class="sync" dropzone="copy">
 				<input type="button" class="syncButton" value="sync"/>
 			</td>
-			<td class="sync">
+			<td class="sync" dropzone="copy">
 				<input type="button" class="syncButton" value="sync"/>
 			</td>
-			<td class="sync">
+			<td class="sync" dropzone="copy">
 				<input type="button" class="syncButton" value="sync"/>
 			</td>
-			<td class="sync">
+			<td class="sync" dropzone="copy">
 				<input type="button" class="syncButton" value="sync"/>
 			</td>
 		</tr>
 		<tr>
-			<td class="master">
+			<td class="master" dropzone="copy">
 				<input type="checkbox" class="masterChk">master</input>
 			</td>
-			<td class="master">
+			<td class="master" dropzone="copy">
 				<input type="checkbox" class="masterChk">master</input>
 			</td>
-			<td class="master">
+			<td class="master" dropzone="copy">
 				<input type="checkbox" class="masterChk">master</input>
 			</td>
-			<td class="master">
+			<td class="master" dropzone="copy">
 				<input type="checkbox" class="masterChk">master</input>
 			</td>
 		</tr>
 		<tr>
-			<td class="volume" title="volume">
+			<td class="volume" dropzone="copy" title="volume">
 				<input type="range" class="volumeSlider" min="0" max="200" value="100" step="1"/>
 				<output class="volumeLabel">0.0dB</output>
 				<input type="button" class="volumeResetButton" value="rst">
 			</td>
-			<td class="volume" title="volume">
+			<td class="volume" dropzone="copy" title="volume">
 				<input type="range" class="volumeSlider" min="0" max="200" value="100" step="1"/>
 				<output class="volumeLabel">0.0dB</output>
 				<input type="button" class="volumeResetButton" value="rst">
 			</td>
-			<td class="volume" title="volume">
+			<td class="volume" dropzone="copy" title="volume">
 				<input type="range" class="volumeSlider" min="0" max="200" value="100" step="1"/>
 				<output class="volumeLabel">0.0dB</output>
 				<input type="button" class="volumeResetButton" value="rst">
 			</td>
-			<td class="volume" title="volume">
+			<td class="volume" dropzone="copy" title="volume">
 				<input type="range" class="volumeSlider" min="0" max="200" value="100" step="1"/>
 				<output class="volumeLabel">0.0dB</output>
 				<input type="button" class="volumeResetButton" value="rst">
 			</td>
 		</tr>
 		<tr>
-			<td class="pan" title="pan">
+			<td class="pan" dropzone="copy" title="pan">
 				<input type="range" class="panSlider" min="-100" max="100" value="0" step="1"/>
 				<output class="panLabel">0.0</output>
 				<input type="button" class="panResetButton" value="rst">
 			</td>
-			<td class="pan" title="pan">
+			<td class="pan" dropzone="copy" title="pan">
 				<input type="range" class="panSlider" min="-100" max="100" value="0" step="1"/>
 				<output class="panLabel">0.0</output>
 				<input type="button" class="panResetButton" value="rst">
 			</td>
-			<td class="pan" title="pan">
+			<td class="pan" dropzone="copy" title="pan">
 				<input type="range" class="panSlider" min="-100" max="100" value="0" step="1"/>
 				<output class="panLabel">0.0</output>
 				<input type="button" class="panResetButton" value="rst">
 			</td>
-			<td class="pan" title="pan">
+			<td class="pan" dropzone="copy" title="pan">
 				<input type="range" class="panSlider" min="-100" max="100" value="0" step="1"/>
 				<output class="panLabel">0.0</output>
 				<input type="button" class="panResetButton" value="rst">
