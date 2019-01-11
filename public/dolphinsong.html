@@ -485,11 +485,11 @@ body{
 			mydata.trackRatio[index] = 
 			mydata.trackRatio[masterIndex] * mydata.trackLength[masterIndex] 
 			/ mydata.trackLength[index] / c ;
-			if (mydata.trackRatio[index] < 0.5){
-				c/=2;
-				continue;
-			}else if (mydata.trackRatio[index] > 2.0){
+			if (1/mydata.trackRatio[index] < 0.75){
 				c*=2;
+				continue;
+			}else if (1/mydata.trackRatio[index] > 1.5){
+				c/=2;
 				continue;
 			}
 			break;
