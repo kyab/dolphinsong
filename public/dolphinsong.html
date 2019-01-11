@@ -505,6 +505,7 @@ body{
 			value = 2*(1/mydata.trackRatio[index]*100 - 50);
 		}
 		speedSlider[index].value = value; 
+
 		let speedLabel = document.querySelectorAll(".speedLabel");
 		let roundedSpeed = 1/mydata.trackRatio[index] * 100;
 		roundedSpeed = Math.round(roundedSpeed *1000) / 1000;
@@ -1019,8 +1020,8 @@ body{
 					valL = sinFadeWindow(fadeStartRate, calcState.current_x[index]/grain_size, valL);
 					valR = sinFadeWindow(fadeStartRate, calcState.current_x[index]/grain_size, valR);
 				}
-				calcState.stretchedLX[index][mydata.trackCurrentFrame[index]] = valL;
-				calcState.stretchedRX[index][mydata.trackCurrentFrame[index]] = valR;
+				calcState.stretchedLX[index][iX] = valL;
+				calcState.stretchedRX[index][iX] = valR;
 			}
 
 			{
@@ -1030,8 +1031,8 @@ body{
 
 				valL2 = sinFadeWindow(fadeStartRate, calcState.current_x2[index]/grain_size, valL2);
 				valR2 = sinFadeWindow(fadeStartRate, calcState.current_x2[index]/grain_size, valR2);
-				calcState.stretchedLX[index][mydata.trackCurrentFrame[index]] += valL2;
-				calcState.stretchedRX[index][mydata.trackCurrentFrame[index]] += valR2;				
+				calcState.stretchedLX[index][iX] += valL2;
+				calcState.stretchedRX[index][iX] += valR2;			
 			}
 			calcState.current_x[index]++;
 			calcState.current_x2[index]++;
@@ -1048,13 +1049,14 @@ body{
 				volRight = 1.0;
 			}
 		
-			inBufL[iX] += calcState.stretchedLX[index][mydata.trackCurrentFrame[index]] 
+			inBufL[iX] += calcState.stretchedLX[index][iX] 
 							* vol*volLeft;
-			inBufR[iX] += calcState.stretchedRX[index][mydata.trackCurrentFrame[index]]
+			inBufR[iX] += calcState.stretchedRX[index][iX]
 							* vol*volRight;
 			
-			mydata.trackCurrentFrame[index]++;
-			if (calcState.current_grain_start[index] + calcState.current_x[index] > mydata.trackLength[index]){
+			mydata.trackCurrentFrame[index] = calcState.current_grain_start[index] + 
+										calcState.current_x[index];
+			if (mydata.trackCurrentFrame[index] > mydata.trackLength[index]){
 				mydata.trackCurrentFrame[index] = 0;
 				calcState.current_grain_start[index] = 0;
 				calcState.current_x[index] = 0;
@@ -1075,6 +1077,23 @@ body{
 				calcState.current_grain_start2[index] = mydata.grain_size / 2;
 				calcState.current_x2[index] = -1.0 * Math.round(mydata.grain_size/2*mydata.trackRatio[index]);
 
+				
+
+				//quantize test
+				{
+					//get master
+					let masterIndex = getMasterIndex();
+
+					if (index != masterIndex && -1 != masterIndex && mydata.trackPlaying[masterIndex]){
+						mydata.trackCurrentFrame[index] = 
+							mydata.trackCurrentFrame[masterIndex]*mydata.trackRatio[masterIndex]
+								/ mydata.trackRatio[index];
+						mydata.trackCurrentFrame[index] = Math.round(mydata.trackCurrentFrame[index]);
+						calcState.current_grain_start[index] = mydata.trackCurrentFrame[index];
+						calcState.current_grain_start2[index] = mydata.trackCurrentFrame[index] + mydata.grain_size / 2;
+
+					}
+				}
 				mydata.trackPlaying[index] = true;
 
 
