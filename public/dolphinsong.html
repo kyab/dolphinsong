@@ -99,6 +99,7 @@ body{
 	mydata.trackRatio = new Array(4);
 	mydata.trackMaster = new Array(4);
 	mydata.trackVolume = new Array(4);
+	mydata.trackPan = new Array(4);
 	for (let i=0;i<4;i++){
 		mydata.trackLoaded[i] = false;
 		mydata.trackPlaying[i] = false;
@@ -107,6 +108,7 @@ body{
 		mydata.trackLength[i] = 0;
 		mydata.trackMaster[i] = false;
 		mydata.trackVolume[i] = 1;
+		mydata.trackPan[i] = 0;
 	}
 
 
@@ -239,6 +241,16 @@ body{
 			b.addEventListener("click", onVolumeResetClicked, false);
 		});
 
+		const panSliders = document.querySelectorAll(".panSlider");
+		panSliders.forEach(function(s){
+			s.addEventListener("input", onPanSliderChanged, false);
+		});
+
+		const panResetButtons = document.querySelectorAll(".panResetButton");
+		panResetButtons.forEach(function(b){
+			b.addEventListener("click", onPanResetClicked, false);
+		});
+
 
 		canvas2.addEventListener("dragover", function(e){
 			e.preventDefault();
@@ -269,6 +281,17 @@ body{
 		let index = getIndexFromEvent(e, ".volumeResetButton");
 		document.querySelectorAll(".volumeSlider")[index].value = 100;
 		onVolumeChanged(index);
+	}
+
+	function onPanSliderChanged(e){
+		let index = getIndexFromEvent(e, ".panSlider");
+		onPanChanged(index);
+	}
+
+	function onPanResetClicked(e){
+		let index = getIndexFromEvent(e, ".panResetButton");
+		document.querySelectorAll(".panSlider")[index].value = 0;
+		onPanChanged(index);
 	}
 
 
@@ -503,6 +526,17 @@ body{
 		mydata.trackVolume[index] = val/100;
 
 		volumeLabel.innerText = roundedDb.toString() + "dB";
+	}
+
+	function onPanChanged(index){
+		const panSlider = document.querySelectorAll(".panSlider")[index];
+		const panLabel = document.querySelectorAll(".panLabel")[index];
+
+		let val = panSlider.value;
+
+		mydata.trackPan[index] = val/100;
+
+		panLabel.innerText = val.toString();
 	}
 
 
@@ -948,11 +982,22 @@ body{
 			calcState.current_x[index]++;
 			calcState.current_x2[index]++;
 
+			let vol = mydata.trackVolume[index];
+			let pan = mydata.trackPan[index];
+			let volLeft = 0;
+			let volRight = 0;
+			if (pan < 0){
+				volLeft = 1.0;
+				volRight = pan + 1;
+			}else{
+				volLeft = -1*pan + 1;
+				volRight = 1.0;
+			}
 		
 			inBufL[iX] += calcState.stretchedLX[index][mydata.trackCurrentFrame[index]] 
-							* mydata.trackVolume[index];
+							* vol*volLeft;
 			inBufR[iX] += calcState.stretchedRX[index][mydata.trackCurrentFrame[index]]
-							* mydata.trackVolume[index];
+							* vol*volRight;
 			
 			mydata.trackCurrentFrame[index]++;
 			if (calcState.current_grain_start[index] + calcState.current_x[index] > mydata.trackLength[index]){
@@ -1949,6 +1994,28 @@ body{
 				<input type="range" class="volumeSlider" min="0" max="200" value="100" step="1"/>
 				<output class="volumeLabel">0.0dB</output>
 				<input type="button" class="volumeResetButton" value="rst">
+			</td>
+		</tr>
+		<tr>
+			<td class="pan" title="pan">
+				<input type="range" class="panSlider" min="-100" max="100" value="0" step="1"/>
+				<output class="panLabel">0.0</output>
+				<input type="button" class="panResetButton" value="rst">
+			</td>
+			<td class="pan" title="pan">
+				<input type="range" class="panSlider" min="-100" max="100" value="0" step="1"/>
+				<output class="panLabel">0.0</output>
+				<input type="button" class="panResetButton" value="rst">
+			</td>
+			<td class="pan" title="pan">
+				<input type="range" class="panSlider" min="-100" max="100" value="0" step="1"/>
+				<output class="panLabel">0.0</output>
+				<input type="button" class="panResetButton" value="rst">
+			</td>
+			<td class="pan" title="pan">
+				<input type="range" class="panSlider" min="-100" max="100" value="0" step="1"/>
+				<output class="panLabel">0.0</output>
+				<input type="button" class="panResetButton" value="rst">
 			</td>
 		</tr>
 	</table>
