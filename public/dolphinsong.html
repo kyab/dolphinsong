@@ -1117,8 +1117,8 @@ body{
 						let cfm = mydata.trackCurrentFrame[masterIndex];
 						let lenm = mydata.trackLength[masterIndex];
 
-						let lag = cfm * rm - Math.floor(16*cfm/lenm)*(lenm*rm/16);
-						if (lag < lenm*rm/32){
+						let lag = cfm * rm - Math.floor(32*cfm/lenm)*(lenm*rm/32);
+						if (lag < lenm*rm/64){
 							//late comming
 
 							mydata.trackCurrentFrame[index] = Math.round(lag/mydata.trackCurrentFrame[index]);
@@ -1126,7 +1126,7 @@ body{
 							calcState.current_grain_start2[index] = mydata.trackCurrentFrame[index] + mydata.grain_size/2;
 						}else{
 							//wait required
-							mydata.trackWaitCount[index] = Math.round(lenm*rm/16 - lag);
+							mydata.trackWaitCount[index] = Math.round(lenm*rm/32 - lag);
 						}
 
 					
