@@ -100,6 +100,8 @@ body{
 	mydata.trackMaster = new Array(4);
 	mydata.trackVolume = new Array(4);
 	mydata.trackPan = new Array(4);
+	mydata.trackOffset = new Array(4);
+	mydata.trackQuantize = new Array(4);
 	mydata.trackWaitCount = new Array(4);
 	for (let i=0;i<4;i++){
 		mydata.trackLoaded[i] = false;
@@ -110,6 +112,8 @@ body{
 		mydata.trackMaster[i] = false;
 		mydata.trackVolume[i] = 1;
 		mydata.trackPan[i] = 0;
+		mydata.trackOffset[i] = 0;
+		mydata.trackQuantize[i] = true;
 		mydata.trackWaitCount[i] = 0;
 	}
 
@@ -283,6 +287,22 @@ body{
 			b.addEventListener("click", onPanResetClicked, false);
 		});
 
+		const quantizeChks = document.querySelectorAll(".quantizeChk");
+		quantizeChks.forEach(function(c){
+			c.addEventListener("change", onQuantizeChanged, false);
+		});
+
+		const offsetSliders = document.querySelectorAll(".offsetSlider");
+		offsetSliders.forEach(function(s){
+			s.addEventListener("input", onOffsetSliderChanged, false);
+		});
+
+		const offsetResetButtons = document.querySelectorAll(".offsetResetButton");
+		offsetResetButtons.forEach(function(b){
+			b.addEventListener("click", onOffsetResetClicked, false);
+		});
+
+
 
 		canvas2.addEventListener("dragover", function(e){
 			e.preventDefault();
@@ -324,6 +344,26 @@ body{
 		let index = getIndexFromEvent(e, ".panResetButton");
 		document.querySelectorAll(".panSlider")[index].value = 0;
 		onPanChanged(index);
+	}
+
+	function onQuantizeChanged(e){
+		let index = getIndexFromEvent(e, ".quantizeChk");
+		if (document.querySelectorAll(".quantizeChk")[index].checked){
+			mydata.trackQuantize[index] = true;
+		}else{
+			mydata.trackQuantize[index] = false;
+		}
+	}
+
+	function onOffsetSliderChanged(e){
+		let index = getIndexFromEvent(e, ".offsetSlider");
+		onOffsetChanged(index);
+	}
+
+	function onOffsetResetClicked(e){
+		let index = getIndexFromEvent(e, ".offsetResetButton");
+		document.querySelectorAll(".offsetSlider")[index].value = 0;
+		onOffsetChanged(index);
 	}
 
 
@@ -594,6 +634,15 @@ body{
 		mydata.trackPan[index] = val/100;
 
 		panLabel.innerText = val.toString();
+	}
+
+	function onOffsetChanged(index){
+		const offsetSlider = document.querySelectorAll(".offsetSlider")[index];
+		const offsetLabel = document.querySelectorAll(".offsetLabel")[index];
+
+		let val = offsetSlider.value;
+		mydata.trackOffset[index] = val;
+		offsetLabel.innerText = val.toString();
 	}
 
 
@@ -1088,30 +1137,11 @@ body{
 				
 
 				//quantize test
-				{
+				if (mydata.trackQuantize[index]){
+					console.log("quantized start");
 					//get master
 					let masterIndex = getMasterIndex();
 
-
-					// if (index != masterIndex && -1 != masterIndex && mydata.trackPlaying[masterIndex]){
-					// 	if(mydata.trackCurrentFrame[masterIndex] < mydata.trackLength[masterIndex]/2){
-					// 		//late comming
-
-					// 		mydata.trackCurrentFrame[index] = 
-					// 			mydata.trackCurrentFrame[masterIndex]*mydata.trackRatio[masterIndex]
-					// 				/ mydata.trackRatio[index];
-					// 		mydata.trackCurrentFrame[index] = Math.round(mydata.trackCurrentFrame[index]);
-					// 		calcState.current_grain_start[index] = mydata.trackCurrentFrame[index];
-					// 		calcState.current_grain_start2[index] = mydata.trackCurrentFrame[index] + mydata.grain_size / 2;
-					// 	}else{
-							
-					// 		//wait required
-					// 		mydata.trackWaitCount[index] = 
-					// 			(mydata.trackLength[masterIndex] - mydata.trackCurrentFrame[masterIndex]) * 
-					// 				mydata.trackRatio[masterIndex];
-					// 		mydata.trackWaitCount[index] = Math.round(mydata.trackWaitCount[index]);
-					// 	}
-					// }
 					if (index != masterIndex && -1 != masterIndex && mydata.trackPlaying[masterIndex]){
 						let rm  = mydata.trackRatio[masterIndex];
 						let cfm = mydata.trackCurrentFrame[masterIndex];
@@ -2129,6 +2159,41 @@ body{
 				<input type="button" class="panResetButton" value="rst">
 			</td>
 		</tr>
+		<tr>
+			<td class="quantize" dropzone="copy">
+				<input type="checkbox" class="quantizeChk" checked>quantize</input>
+			</td>
+			<td class="quantize" dropzone="copy">
+				<input type="checkbox" class="quantizeChk" checked>quantize</input>
+			</td>
+			<td class="quantize" dropzone="copy">
+				<input type="checkbox" class="quantizeChk" checked>quantize</input>
+			</td>
+			<td class="quantize" dropzone="copy">
+				<input type="checkbox" class="quantizeChk" checked>quantize</input>
+			</td>
+		</tr>
+		<tr>
+			<td class="offset" dropzone="copy" title="offset">
+				<input type="range" class="offsetSlider" min="-4410" max="4410" value="0" step="1"/>
+				<output class="offsetLabel">0</output>
+				<input type="button" class="offsetResetButton" value="rst">
+			</td>	
+			<td class="offset" dropzone="copy" title="offset">
+				<input type="range" class="offsetSlider" min="-4410" max="4410" value="0" step="1"/>
+				<output class="offsetLabel">0</output>
+				<input type="button" class="offsetResetButton" value="rst">
+			</td>
+			<td class="offset" dropzone="copy" title="offset">
+				<input type="range" class="offsetSlider" min="-4410" max="4410" value="0" step="1"/>
+				<output class="offsetLabel">0</output>
+				<input type="button" class="offsetResetButton" value="rst">
+			</td>
+			<td class="offset" dropzone="copy" title="offset">
+				<input type="range" class="offsetSlider" min="-4410" max="4410" value="0" step="1"/>
+				<output class="offsetLabel">0</output>
+				<input type="button" class="offsetResetButton" value="rst">
+			</td>	
 	</table>
 	<script src="aurora.js"></script>
 	<script src="aac.js"></script>
