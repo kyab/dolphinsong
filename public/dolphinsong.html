@@ -1134,9 +1134,15 @@ body{
 				calcState.current_grain_start2[index] = mydata.grain_size / 2;
 				calcState.current_x2[index] = -1.0 * Math.round(mydata.grain_size/2*mydata.trackRatio[index]);
 
-				
+				if (mydata.trackOffset[index] >= 0){
+					mydata.trackCurrentFrame[index] = Math.round(mydata.trackOffset[index] * mydata.trackRatio[index]);
+					calcState.current_grain_start[index] = mydata.trackCurrentFrame[index];
+					calcState.current_grain_start2[index] = mydata.trackCurrentFrame[index] + mydata.grain_size/2;
+				}else{
+					mydata.trackWaitCount[index] = Math.round(-1*mydata.trackOffset[index] * mydata.trackRatio[index]);
+				}
 
-				//quantize test
+				//quantize test [TODO:think offset]
 				if (mydata.trackQuantize[index]){
 					console.log("quantized start");
 					//get master
