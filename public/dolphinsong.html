@@ -1289,9 +1289,10 @@ body{
 				
 				devices.forEach(function(device){
 					if (device.kind == "audiooutput"){
-						// console.log(device.label + " id = " + device.deviceId);
+						console.log(device.label + " id = " + device.deviceId);
 						if (device.label.startsWith("内蔵スピーカー") || 
-							device.label.startsWith("ヘッドフォン")){
+							device.label.startsWith("ヘッドフォン") || 
+							device.label.startsWith("スピーカー")){
 							console.log("found!!!(内蔵スピーカー/ヘッドフォン)");
 							devId = device.deviceId;
 							mydata.outDevId = devId;
@@ -1315,8 +1316,9 @@ body{
 				
 				devices.forEach(function(device){
 					if (device.kind == "audioinput"){
-						// console.log(device.label + " id = " + device.deviceId);
-						if (device.label.startsWith("Background Music")){
+						console.log(device.label + " id = " + device.deviceId);
+						if (device.label.startsWith("Background Music") ||
+							device.label.startsWith("ステレオ ミキサー")){
 							console.log("Background Music device found!!!");
 							if (devId == ""){
 								devId = device.deviceId;
@@ -1378,7 +1380,7 @@ body{
 
    	function startOutEngine(){
    		audioContext2 = new AudioContext();
-   		var scriptSource = audioContext2.createScriptProcessor(256/*latency*/,2,2);
+   		var scriptSource = audioContext2.createScriptProcessor(0/*latency*/,2,2);
    		scriptSource.onaudioprocess = onAudioProcessOut;
    		var dest = audioContext2.createMediaStreamDestination();
    		scriptSource.connect(dest);
@@ -1393,7 +1395,7 @@ body{
    	}
 
 	function onAudioProcess(e) {
-		console.log("onAudioProcess");
+		// console.log("onAudioProcess");
 
 		let inbuf = e.inputBuffer;
 		let outbuf = e.outputBuffer;
