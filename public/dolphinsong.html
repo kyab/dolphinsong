@@ -1134,13 +1134,6 @@ body{
 				calcState.current_grain_start2[index] = mydata.grain_size / 2;
 				calcState.current_x2[index] = -1.0 * Math.round(mydata.grain_size/2*mydata.trackRatio[index]);
 
-				if (mydata.trackOffset[index] >= 0){
-					mydata.trackCurrentFrame[index] = Math.round(mydata.trackOffset[index] * mydata.trackRatio[index]);
-					calcState.current_grain_start[index] = mydata.trackCurrentFrame[index];
-					calcState.current_grain_start2[index] = mydata.trackCurrentFrame[index] + mydata.grain_size/2;
-				}else{
-					mydata.trackWaitCount[index] = Math.round(-1*mydata.trackOffset[index] * mydata.trackRatio[index]);
-				}
 
 				//quantize test [TODO:think offset]
 				if (mydata.trackQuantize[index]){
@@ -1157,15 +1150,46 @@ body{
 						if (lag < lenm*rm/64){
 							//late comming
 
-							mydata.trackCurrentFrame[index] = Math.round(lag/mydata.trackCurrentFrame[index]);
+							mydata.trackCurrentFrame[index] = Math.round(lag/mydata.trackRatio[index]);
+
+							//offset
+							if (mydata.trackOffset[index] >= 0){
+								mydata.trackCurrentFrame[index] += Math.round(mydata.trackOffset[index] * mydata.trackRatio[index]);
+							}else{
+								mydata.trackCurrentFrame[index] -= Math.round(-1*mydata.trackOffset[index] * mydata.trackRatio[index]);
+								if (mydata.trackCurrentFrame[index] < 0 ){
+									mydata.trackWaitCount[index] = -1 * mydata.trackCurrentFrame[index];
+									mydata.trackCurrentFrame[index] = 0;
+								}
+							}
 							calcState.current_grain_start[index] = mydata.trackCurrentFrame[index];
 							calcState.current_grain_start2[index] = mydata.trackCurrentFrame[index] + mydata.grain_size/2;
 						}else{
 							//wait required
 							mydata.trackWaitCount[index] = Math.round(lenm*rm/32 - lag);
-						}
 
-					
+							//offset
+							if (mydata.trackOffset[index] >= 0){
+								mydata.trackWaitCount[index] -= Math.round(mydata.trackOffset[index] * mydata.trackRatio[index]);
+								if (mydata.trackWaitCount[index] < 0){
+									mydata.trackCurrentFrame[index] = -1.0*mydata.trackWaitCount[index];
+									mydata.trackWaitCount[index] = 0;
+								}
+							}else{
+								mydata.trackWaitCount[index] += Math.round(-1*mydata.trackOffset[index]*mydata.trackRatio[index]);
+							}
+							calcState.current_grain_start[index] = mydata.trackCurrentFrame[index];
+							calcState.current_grain_start2[index] = mydata.trackCurrentFrame[index] + mydata.grain_size/2;
+						}
+					}
+				}else{
+
+					if (mydata.trackOffset[index] >= 0){
+						mydata.trackCurrentFrame[index] = Math.round(mydata.trackOffset[index] * mydata.trackRatio[index]);
+						calcState.current_grain_start[index] = mydata.trackCurrentFrame[index];
+						calcState.current_grain_start2[index] = mydata.trackCurrentFrame[index] + mydata.grain_size/2;
+					}else{
+						mydata.trackWaitCount[index] = Math.round(-1*mydata.trackOffset[index] * mydata.trackRatio[index]);
 					}
 				}
 				mydata.trackPlaying[index] = true;
