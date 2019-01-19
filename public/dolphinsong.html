@@ -1047,80 +1047,154 @@ body{
 
 		let grain_size = mydata.grain_size;
 		let ratio = mydata.trackRatio[index];
+		const fadeStartRate = -1/2*ratio + 1;
 
+		if(ratio > 1){
 		for (let iX = 0; iX < len; iX++){
 
-			//wait for time to come.
-			if(mydata.trackWaitCount[index] > 0){
-				mydata.trackWaitCount[index]--;
-				continue;
-			}
-
-			if (calcState.current_x[index] > grain_size * (1+ (ratio-1)/2)){
-				calcState.current_grain_start[index] += grain_size;
-				calcState.current_x[index] = Math.round((grain_size *  (1+(ratio-1)/2) - grain_size)*(-1))
-			}
-			if (calcState.current_x2[index] > grain_size * (1+(ratio-1)/2)){
-				calcState.current_grain_start2[index] += grain_size;
-				calcState.current_x2[index] = Math.round((grain_size * (1+(ratio-1)/2) - grain_size)*(-1));
-			}
-
-			const fadeStartRate = -1/2*ratio + 1;
-			{
-				let x = calcState.current_grain_start[index] + calcState.current_x[index];
-
-				let valL = mydata.trackBufferLeft[index][x];
-				let valR = mydata.trackBufferRight[index][x];
-				if (calcState.current_x2[index] < 0){
-					//no windowing for some beggining frames
-				}else{
-					valL = sinFadeWindow(fadeStartRate, calcState.current_x[index]/grain_size, valL);
-					valR = sinFadeWindow(fadeStartRate, calcState.current_x[index]/grain_size, valR);
+				//wait for time to come.
+				if(mydata.trackWaitCount[index] > 0){
+					mydata.trackWaitCount[index]--;
+					continue;
 				}
-				calcState.stretchedLX[index][iX] = valL;
-				calcState.stretchedRX[index][iX] = valR;
-			}
 
-			{
-				let x2 = calcState.current_grain_start2[index] + calcState.current_x2[index];
-				let valL2 = mydata.trackBufferLeft[index][x2];
-				let valR2 = mydata.trackBufferRight[index][x2];
+				const fadeStartRate = -1/2*ratio + 1;
 
-				valL2 = sinFadeWindow(fadeStartRate, calcState.current_x2[index]/grain_size, valL2);
-				valR2 = sinFadeWindow(fadeStartRate, calcState.current_x2[index]/grain_size, valR2);
-				calcState.stretchedLX[index][iX] += valL2;
-				calcState.stretchedRX[index][iX] += valR2;			
-			}
-			calcState.current_x[index]++;
-			calcState.current_x2[index]++;
+				if (calcState.current_x[index] > grain_size * (1+ (ratio-1)/2)){
+					calcState.current_grain_start[index] += grain_size;
+					calcState.current_x[index] = Math.round((grain_size *  (1+(ratio-1)/2) - grain_size)*(-1))
+				}
+				if (calcState.current_x2[index] > grain_size * (1+(ratio-1)/2)){
+					calcState.current_grain_start2[index] += grain_size;
+					calcState.current_x2[index] = Math.round((grain_size * (1+(ratio-1)/2) - grain_size)*(-1));
+				}
 
-			let vol = mydata.trackVolume[index];
-			let pan = mydata.trackPan[index];
-			let volLeft = 0;
-			let volRight = 0;
-			if (pan < 0){
-				volLeft = 1.0;
-				volRight = pan + 1;
-			}else{
-				volLeft = -1*pan + 1;
-				volRight = 1.0;
-			}
-		
-			inBufL[iX] += calcState.stretchedLX[index][iX] 
-							* vol*volLeft;
-			inBufR[iX] += calcState.stretchedRX[index][iX]
-							* vol*volRight;
+
+				{
+					let x = calcState.current_grain_start[index] + calcState.current_x[index];
+
+					let valL = mydata.trackBufferLeft[index][x];
+					let valR = mydata.trackBufferRight[index][x];
+					if (calcState.current_x2[index] < 0){
+						//no windowing for some beggining frames
+					}else{
+						valL = sinFadeWindow(fadeStartRate, calcState.current_x[index]/grain_size, valL);
+						valR = sinFadeWindow(fadeStartRate, calcState.current_x[index]/grain_size, valR);
+					}
+					calcState.stretchedLX[index][iX] = valL;
+					calcState.stretchedRX[index][iX] = valR;
+				}
+
+				{
+					let x2 = calcState.current_grain_start2[index] + calcState.current_x2[index];
+					let valL2 = mydata.trackBufferLeft[index][x2];
+					let valR2 = mydata.trackBufferRight[index][x2];
+
+					valL2 = sinFadeWindow(fadeStartRate, calcState.current_x2[index]/grain_size, valL2);
+					valR2 = sinFadeWindow(fadeStartRate, calcState.current_x2[index]/grain_size, valR2);
+					calcState.stretchedLX[index][iX] += valL2;
+					calcState.stretchedRX[index][iX] += valR2;			
+				}
+				calcState.current_x[index]++;
+				calcState.current_x2[index]++;
+
+				let vol = mydata.trackVolume[index];
+				let pan = mydata.trackPan[index];
+				let volLeft = 0;
+				let volRight = 0;
+				if (pan < 0){
+					volLeft = 1.0;
+					volRight = pan + 1;
+				}else{
+					volLeft = -1*pan + 1;
+					volRight = 1.0;
+				}
 			
-			mydata.trackCurrentFrame[index] = calcState.current_grain_start[index] + 
-										calcState.current_x[index];
-			if (mydata.trackCurrentFrame[index] > mydata.trackLength[index]){
-				mydata.trackCurrentFrame[index] = 0;
-				calcState.current_grain_start[index] = 0;
-				calcState.current_x[index] = 0;
-				calcState.current_grain_start2[index] = mydata.grain_size / 2;
-				calcState.current_x2[index] = -1.0 * Math.round(mydata.grain_size/2*mydata.trackRatio[index]);
+				inBufL[iX] += calcState.stretchedLX[index][iX] 
+								* vol*volLeft;
+				inBufR[iX] += calcState.stretchedRX[index][iX]
+								* vol*volRight;
+				
+				mydata.trackCurrentFrame[index] = calcState.current_grain_start[index] + 
+											calcState.current_x[index];
+				if (mydata.trackCurrentFrame[index] > mydata.trackLength[index]){
+					mydata.trackCurrentFrame[index] = 0;
+					calcState.current_grain_start[index] = 0;
+					calcState.current_x[index] = 0;
+					calcState.current_grain_start2[index] = mydata.grain_size / 2;
+					calcState.current_x2[index] = -1.0 * Math.round(mydata.grain_size/2*mydata.trackRatio[index]);
+				}
+		
 			}
-	
+		}else{
+			for (let iX = 0; iX < len; iX++){
+						//wait for time to come.
+				if(mydata.trackWaitCount[index] > 0){
+					mydata.trackWaitCount[index]--;
+					continue;
+				}	
+
+				const fadeStartRate = 1 - ratio;
+				if (calcState.current_x[index] > grain_size){
+					calcState.current_grain_start[index] += grain_size;
+					calcState.current_x[index] = 0;
+				}
+				if (calcState.current_x2[index] > grain_size){
+					calcState.current_grain_start2[index] += grain_size;
+					calcState.current_x2[index] = 0;
+				}
+				{
+					let x = calcState.current_grain_start[index] + calcState.current_x[index];
+					let valL = mydata.trackBufferLeft[index][x];
+					let valR = mydata.trackBufferRight[index][x];
+
+					valL = sinFadeWindow(fadeStartRate, calcState.current_x[index]/grain_size, valL);
+					valR = sinFadeWindow(fadeStartRate, calcState.current_x[index]/ grain_size, valR);
+					calcState.stretchedLX[index][iX] = valL;
+					calcState.stretchedRX[index][iX] = valR;
+				}
+				{
+					let x2 = calcState.current_grain_start2[index] + calcState.current_x2[index];
+					let valL2 = mydata.trackBufferLeft[index][x2];
+					let valR2 = mydata.trackBufferRight[index][x2];
+
+					valL2 = sinFadeWindow(fadeStartRate, calcState.current_x2[index]/grain_size, valL2);
+					valR2 = sinFadeWindow(fadeStartRate, calcState.current_x2[index]/grain_size, valR2);
+					calcState.stretchedLX[index][iX] += valL2;
+					calcState.stretchedRX[index][iX] += valR2;
+				}
+
+				calcState.current_x[index]++;
+				calcState.current_x2[index]++;
+
+				let vol = mydata.trackVolume[index];
+				let pan = mydata.trackPan[index];
+				let volLeft = 0;
+				let volRight = 0;
+				if (pan < 0){
+					volLeft = 1.0;
+					volRight = pan + 1;
+				}else{
+					volLeft = -1*pan + 1;
+					volRight = 1.0;
+				}
+			
+				inBufL[iX] += calcState.stretchedLX[index][iX] 
+								* vol*volLeft;
+				inBufR[iX] += calcState.stretchedRX[index][iX]
+								* vol*volRight;
+
+				mydata.trackCurrentFrame[index] = calcState.current_grain_start[index] + 
+					calcState.current_x[index];
+				if (mydata.trackCurrentFrame[index] > mydata.trackLength[index]){
+					mydata.trackCurrentFrame[index] = 0;
+					calcState.current_grain_start[index] = 0;
+					calcState.current_x[index] = 0;
+					calcState.current_grain_start2[index] = grain_size;
+					calcState.current_x2[index] = 0;
+				}
+				
+			}
 		}
 	}
 
@@ -1184,6 +1258,7 @@ body{
 					}
 				}else{
 
+					//calc offset
 					if (mydata.trackOffset[index] >= 0){
 						mydata.trackCurrentFrame[index] = Math.round(mydata.trackOffset[index] * mydata.trackRatio[index]);
 						calcState.current_grain_start[index] = mydata.trackCurrentFrame[index];
