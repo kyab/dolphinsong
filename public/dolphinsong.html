@@ -1006,6 +1006,11 @@ body{
 		}
 	}
 
+	function noFadeWindow(fadeStartRate, x, val){
+		if (x < 0 || x > 1) {return 0;}
+		return val;
+	}
+
 
 	function stretch2(index){
 
@@ -1047,7 +1052,6 @@ body{
 
 		let grain_size = mydata.grain_size;
 		let ratio = mydata.trackRatio[index];
-		const fadeStartRate = -1/2*ratio + 1;
 
 		if(ratio >= 1){
 		for (let iX = 0; iX < len; iX++){
@@ -1128,28 +1132,33 @@ body{
 			}
 		}else{
 			for (let iX = 0; iX < len; iX++){
-						//wait for time to come.
+				
+				//wait for time to come.
 				if(mydata.trackWaitCount[index] > 0){
 					mydata.trackWaitCount[index]--;
 					continue;
 				}	
 
 				const fadeStartRate = 1 - ratio;
+				// const fadeStartRate = 0;
 				if (calcState.current_x[index] > grain_size*(1 + ratio-1/2)){
-					calcState.current_grain_start[index] += 2*grain_size;
+					calcState.current_grain_start[index] += grain_size*2;
 					calcState.current_x[index] = Math.round(grain_size*(ratio-1/2)*(-1));
 				}
 				if (calcState.current_x2[index] > grain_size*(1 + ratio-1/2)){
-					calcState.current_grain_start2[index] += 2*grain_size;
+					calcState.current_grain_start2[index] += grain_size*2;
 					calcState.current_x2[index] = Math.round(grain_size*(ratio-1/2)*(-1));
 				}
 				{
 					let x = calcState.current_grain_start[index] + calcState.current_x[index];
 					let valL = mydata.trackBufferLeft[index][x];
 					let valR = mydata.trackBufferRight[index][x];
-
-					valL = sinFadeWindow(fadeStartRate, calcState.current_x[index]/grain_size, valL);
-					valR = sinFadeWindow(fadeStartRate, calcState.current_x[index]/ grain_size, valR);
+					if (calcState.current_x2[index] < 0){
+						//no windowing for some beggining frames
+					}else{
+						valL = sinFadeWindow(fadeStartRate, calcState.current_x[index]/grain_size, valL);
+						valR = sinFadeWindow(fadeStartRate, calcState.current_x[index]/ grain_size, valR);
+					}
 					calcState.stretchedLX[index][iX] = valL;
 					calcState.stretchedRX[index][iX] = valR;
 				}
@@ -1191,7 +1200,7 @@ body{
 					calcState.current_grain_start[index] = 0;
 					calcState.current_x[index] = 0;
 					calcState.current_grain_start2[index] = grain_size;
-					calcState.current_x2[index] = Math.round(grain_size*(ratio-1/2)*(-1));
+					calcState.current_x2[index] = Math.round(grain_size*(ratio)*(-1));
 				}
 				
 			}
@@ -1211,7 +1220,7 @@ body{
 					calcState.current_x2[index] = -1.0 * Math.round(mydata.grain_size/2*mydata.trackRatio[index]);
 				}else{
 					calcState.current_grain_start2[index] = mydata.grain_size;
-					calcState.current_x2[index] = Math.round(mydata.grain_size*(mydata.trackRatio[index]-1/2)*(-1));		
+					calcState.current_x2[index] =  Math.round(mydata.grain_size*(mydata.trackRatio[index])*(-1));	
 				}
 
 				//quantize test [TODO:think offset]
@@ -1286,7 +1295,6 @@ body{
 					}
 				}
 				mydata.trackPlaying[index] = true;
-
 
 			}else{
 				mydata.trackPlaying[index] = false;
