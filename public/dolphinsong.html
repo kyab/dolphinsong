@@ -1419,8 +1419,10 @@ body{
 							device.label.startsWith("ヘッドフォン") || 
 							device.label.startsWith("スピーカー")){
 							console.log("found!!!(内蔵スピーカー/ヘッドフォン)");
-							devId = device.deviceId;
-							mydata.outDevId = devId;
+							if (devId == ""){
+								devId = device.deviceId;
+								mydata.outDevId = devId;
+							}
 						}
 					}
 				});
