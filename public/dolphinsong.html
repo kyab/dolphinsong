@@ -1119,8 +1119,8 @@ body{
 				inBufR[iX] += calcState.stretchedRX[index][iX]
 								* vol*volRight;
 				
-				mydata.trackCurrentFrame[index] = calcState.current_grain_start[index] + 
-											calcState.current_x[index];
+
+				mydata.trackCurrentFrame[index] += 1 * 1/ratio;
 				if (mydata.trackCurrentFrame[index] > mydata.trackLength[index]){
 					mydata.trackCurrentFrame[index] = 0;
 					calcState.current_grain_start[index] = 0;
@@ -1193,8 +1193,7 @@ body{
 				inBufR[iX] += calcState.stretchedRX[index][iX]
 								* vol*volRight;
 
-				mydata.trackCurrentFrame[index] = calcState.current_grain_start[index] + 
-					calcState.current_x[index];
+				mydata.trackCurrentFrame[index] += 1 * 1/ratio;
 				if (mydata.trackCurrentFrame[index] > mydata.trackLength[index]){
 					mydata.trackCurrentFrame[index] = 0;
 					calcState.current_grain_start[index] = 0;
