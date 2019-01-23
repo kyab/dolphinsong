@@ -1380,7 +1380,8 @@ function readyInput(){
 				if (device.kind == "audioinput"){
 					console.log(device.label + " id = " + device.deviceId);
 					if (device.label.startsWith("Background Music") ||
-						device.label.startsWith("ステレオ ミキサー")){
+						device.label.startsWith("ステレオ ミキサー") || 
+						device.label.startsWith("CABLE Output")){
 						console.log("Background Music device found!!!");
 						if (devId == ""){
 							devId = device.deviceId;
