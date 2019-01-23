@@ -1,0 +1,161 @@
+<html>
+<head>
+<style type="text/css">
+
+body{
+	background-color:lightgray;
+}
+
+#control{
+	background-color:lightgreen;
+	font-size:20;
+	text-align: center;
+	height: 50;
+}
+
+#editor{
+	margin: 10px 20px;
+	text-align: center;
+
+	position: relative;
+}
+
+#editor canvas {
+	position: absolute;
+	top: 0;
+	left: 0;
+}
+
+#player {
+	/*text-align: center;*/
+	position:relative;
+	top:220;
+	left:20;
+}
+
+#player table{
+	text-align:center;
+	border-collapse:collapse;
+	background-color:lightcyan;
+}
+
+#player table th, #player table td{
+	padding: 4px;
+	border : 1px solid black;
+	width:20px;
+	cursor: default;
+}
+
+#player table td:hover, #player table th:hover{
+	background-color: lightblue;
+}
+
+#player table td.dropping, #player table th.dropping {
+	border : 2px solid black;
+}
+
+#player table td input.syncButton{
+	width:100%;
+	padding:0px 0px 0px 0px;
+	font-size: 20px;
+}
+
+</style>
+
+<title>Dolphin Song</title>
+</head>
+<body>
+<div id="control">
+	<input id="chkMonitor" type="checkbox" value="true" onclick="onMonitorChanged();">monitor[m]</input>
+	<input type="button" value="startRecord" onclick="startRecord();"/>
+	<input type="button" value="stopRecord" onclick="stopRecord();"/>
+	<input type="button" value="startPlay" onclick="startPlay();"/>
+	<input type="button" value="stopPlay" onclick="stopPlay();"/>
+	<input type="button" value="download" onclick="exportWAV();"/>
+</div>
+<div id="editor">
+	<canvas id="canvas" width="500" height="200"></canvas>
+	<canvas id="canvas2" dropzone="copy" width="500" height="200"></canvas>
+</div>
+<div id="player">
+
+	<table>
+		<tr>
+			<% @track_num.times do |n| %>
+			<th class="title" title="sample name" dropzone="copy">----</th>
+			<% end %>
+		</tr>
+		<tr>
+			<% @track_num.times do |n| %>
+			<td class="loadButton" dropzone="copy">load</td>
+			<% end %>
+		</tr>	
+		<tr>
+			<% @track_num.times do |n| %>
+			<td class="playButton" dropzone="copy">play</td>
+			<% end %>
+		</tr>	
+		<tr>
+			<% @track_num.times do |n| %>
+			<td class="speed" dropzone="copy" title="speed">
+				<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
+				<output class="speedLabel">100%</output>
+				<input type="button" class="speedResetButton" value="rst">
+			</td>
+			<% end %>
+		</tr>	
+		<tr>
+			<% @track_num.times do |n| %>
+			<td class="sync" dropzone="copy">
+				<input type="button" class="syncButton" value="sync"/>
+			</td>
+			<% end %>
+		</tr>
+		<tr>
+			<% @track_num.times do |n| %>
+			<td class="master" dropzone="copy">
+				<input type="checkbox" class="masterChk">master</input>
+			</td>
+			<% end %>
+		</tr>
+		<tr>
+			<% @track_num.times do |n| %>
+			<td class="volume" dropzone="copy" title="volume">
+				<input type="range" class="volumeSlider" min="0" max="200" value="100" step="1"/>
+				<output class="volumeLabel">0.0dB</output>
+				<input type="button" class="volumeResetButton" value="rst">
+			</td>
+			<% end %>
+
+		</tr>
+		<tr>
+			<% @track_num.times do |n| %>
+			<td class="pan" dropzone="copy" title="pan">
+				<input type="range" class="panSlider" min="-100" max="100" value="0" step="1"/>
+				<output class="panLabel">0.0</output>
+				<input type="button" class="panResetButton" value="rst">
+			</td>
+			<% end %>
+		</tr>
+		<tr>
+			<% @track_num.times do |n| %>
+			<td class="quantize" dropzone="copy">
+				<input type="checkbox" class="quantizeChk" checked>quantize</input>
+			</td>
+			<% end %>
+		</tr>
+		<tr>
+			<% @track_num.times do |n| %>
+			<td class="offset" dropzone="copy" title="offset">
+				<input type="range" class="offsetSlider" min="-4410" max="4410" value="0" step="1"/>
+				<output class="offsetLabel">0</output>
+				<input type="button" class="offsetResetButton" value="rst">
+			</td>	
+			<% end %>
+	
+	</table>
+	<script src="aurora.js"></script>
+	<script src="aac.js"></script>
+	<script src="dolphinsong.js"></script>
+</body>
+</html>

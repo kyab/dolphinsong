@@ -1,5 +1,6 @@
 'use strict';
 
+const TRACK_NUM = 5
 
 var mydata = {};
 mydata.monitor = false;
@@ -25,21 +26,21 @@ mydata.selected = false;
 mydata.selectDragStartFrame = 0;
 mydata.shiftDraggingForLeft = false;
 
-mydata.trackLoaded = new Array(4);
+mydata.trackLoaded = new Array(TRACK_NUM);
 
-mydata.trackBufferLeft = new Array(4);
-mydata.trackBufferRight = new Array(4);
-mydata.trackPlaying = new Array(4);
-mydata.trackCurrentFrame = new Array(4);
-mydata.trackLength = new Array(4);
-mydata.trackRatio = new Array(4);
-mydata.trackMaster = new Array(4);
-mydata.trackVolume = new Array(4);
-mydata.trackPan = new Array(4);
-mydata.trackOffset = new Array(4);
-mydata.trackQuantize = new Array(4);
-mydata.trackWaitCount = new Array(4);
-for (let i=0;i<4;i++){
+mydata.trackBufferLeft = new Array(TRACK_NUM);
+mydata.trackBufferRight = new Array(TRACK_NUM);
+mydata.trackPlaying = new Array(TRACK_NUM);
+mydata.trackCurrentFrame = new Array(TRACK_NUM);
+mydata.trackLength = new Array(TRACK_NUM);
+mydata.trackRatio = new Array(TRACK_NUM);
+mydata.trackMaster = new Array(TRACK_NUM);
+mydata.trackVolume = new Array(TRACK_NUM);
+mydata.trackPan = new Array(TRACK_NUM);
+mydata.trackOffset = new Array(TRACK_NUM);
+mydata.trackQuantize = new Array(TRACK_NUM);
+mydata.trackWaitCount = new Array(TRACK_NUM);
+for (let i=0;i<TRACK_NUM;i++){
 	mydata.trackLoaded[i] = false;
 	mydata.trackPlaying[i] = false;
 	mydata.trackRatio[i] = 1;
@@ -77,13 +78,13 @@ calcState.end = 3000;
 calcState.i = 0;
 calcState.currentFrame = 0;
 
-calcState.stretchedLX = new Array(4);
-calcState.stretchedRX = new Array(4);
-calcState.current_grain_start = new Array(4);
-calcState.current_x = new Array(4);
-calcState.current_grain_start2 = new Array(4);
-calcState.current_x2 = new Array(4);
-for (let i = 0; i < 4; i++){
+calcState.stretchedLX = new Array(TRACK_NUM);
+calcState.stretchedRX = new Array(TRACK_NUM);
+calcState.current_grain_start = new Array(TRACK_NUM);
+calcState.current_x = new Array(TRACK_NUM);
+calcState.current_grain_start2 = new Array(TRACK_NUM);
+calcState.current_x2 = new Array(TRACK_NUM);
+for (let i = 0; i < TRACK_NUM; i++){
 	calcState.stretchedLX[i] = new Float32Array(44100*60);
 	calcState.stretchedRX[i] = new Float32Array(44100*60);
 	calcState.current_grain_start[i] = 0;
@@ -1247,7 +1248,7 @@ function playStateChanged(){
 	if (mydata.playing){
 		shouldStop = false
 	}
-	for (let i=0; i < 4; i++){
+	for (let i=0; i < TRACK_NUM; i++){
 		if (mydata.trackLoaded[i] && mydata.trackPlaying[i]){
 			shouldStop = false;
 		}
@@ -1525,7 +1526,7 @@ function onAudioProcessOut(e){
 	}
 
 	//mix track data
-	for (let i = 0; i < 4; i++){
+	for (let i = 0; i < TRACK_NUM; i++){
 		if (mydata.trackPlaying[i]){
 			// for(let j = 0; j < outLeft.length;j++){
 			// 	outLeft[j] += mydata.trackBufferLeft[i][mydata.trackCurrentFrame[i]];
@@ -1751,6 +1752,14 @@ document.onkeydown = function (e){
 		}
 		break;
 
+	case 66: /*b*/
+		if (!e.repeat){
+			e.stopPropagation();
+			e.preventDefault();
+			onPlayStopTrack(4);
+		}
+		break;	
+
 	}
 }
 
@@ -1776,6 +1785,11 @@ document.onkeyup = function (e){
 		e.preventDefault();
 		onPlayStopTrack(3);
 		break;
+	case 66: /*b*/
+		e.stopPropagation();
+		e.preventDefault();
+		onPlayStopTrack(4);
+		break;	
 	}
 }
 function onRight(){

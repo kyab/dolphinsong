@@ -5,6 +5,11 @@ get "/" do
 	"hello"
 end
 
+get "/dolphinsong" do
+	@track_num = 5
+	erb :dolphinsong
+end
+
 get "/testerb" do
 	@foo = "hoge"
 
