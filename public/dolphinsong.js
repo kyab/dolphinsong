@@ -176,6 +176,16 @@ window.addEventListener("load", function(){
 		b.addEventListener("click", onSyncClick, false);
 	});
 
+	const halfSpeedButtons = document.querySelectorAll(".halfSpeedButton");
+	halfSpeedButtons.forEach(function(b){
+		b.addEventListener("click", onHalfSpeedClick, false);
+	});
+
+	const doubleSpeedButtons = document.querySelectorAll(".doubleSpeedButton");
+	doubleSpeedButtons.forEach(function(b){
+		b.addEventListener("click", onDoubleSpeedClick, false);
+	});
+
 	const masters = document.querySelectorAll(".master");
 	masters.forEach(function(m){
 		m.addEventListener("dragover", onTrackDragover, false); 
@@ -476,6 +486,11 @@ function sync(index){
 
 	console.log("trackRatio for " + (index+1) + " = " + mydata.trackRatio[index]);
 
+	updateSpeedLabel(index);
+
+}
+
+function updateSpeedLabel(index){
 	let speedSlider = document.querySelectorAll(".speedSlider");
 	let value = 0;
 	if (1/mydata.trackRatio[index] * 100 >= 100){
@@ -489,7 +504,20 @@ function sync(index){
 	let roundedSpeed = 1/mydata.trackRatio[index] * 100;
 	roundedSpeed = Math.round(roundedSpeed *1000) / 1000;
 	speedLabel[index].innerText = roundedSpeed.toString() + "%";
+}
 
+function onHalfSpeedClick(e){
+
+	let index = getIndexFromEvent(e, ".halfSpeedButton");
+	mydata.trackRatio[index] *= 2;
+	updateSpeedLabel(index);
+}
+
+function onDoubleSpeedClick(e){
+
+	let index = getIndexFromEvent(e, ".doubleSpeedButton");
+	mydata.trackRatio[index] /= 2;
+	updateSpeedLabel(index);
 }
 
 function getMasterIndex(){

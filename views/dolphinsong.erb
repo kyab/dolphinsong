@@ -55,10 +55,19 @@ body{
 }
 
 #player table td input.syncButton{
-	width:100%;
-	padding:0px 0px 0px 0px;
+	margin : 0px;
+	width:50%;
 	font-size: 20px;
 }
+
+#player table td input.halfSpeedButton{
+	margin : 0px;
+}
+
+#player table td input.doubleSpeedButton{
+	margin : 0px;
+}
+
 
 </style>
 
@@ -107,7 +116,9 @@ body{
 		<tr>
 			<% @track_num.times do |n| %>
 			<td class="sync" dropzone="copy">
+				<input type="button" class="halfSpeedButton" value="/2"/>
 				<input type="button" class="syncButton" value="sync"/>
+				<input type="button" class="doubleSpeedButton" value="x2"/>
 			</td>
 			<% end %>
 		</tr>
