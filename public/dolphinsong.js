@@ -234,9 +234,23 @@ window.addEventListener("load", function(){
 		b.addEventListener("click", onPanResetClicked, false);
 	});
 
+	const quantizes = document.querySelectorAll(".quantize");
+	quantizes.forEach(function(q){
+		q.addEventListener("dragover", onTrackDragover, false); 
+		q.addEventListener("dragleave", onTrackDragleave, false);
+		q.addEventListener("drop" , onTrackDrop,false);
+	});
+
 	const quantizeChks = document.querySelectorAll(".quantizeChk");
 	quantizeChks.forEach(function(c){
 		c.addEventListener("change", onQuantizeChanged, false);
+	});
+
+	const offsets = document.querySelectorAll(".offsets");
+	offsets.forEach(function(o){
+		o.addEventListener("dragover", onTrackDragover, false); 
+		o.addEventListener("dragleave", onTrackDragleave, false);
+		o.addEventListener("drop" , onTrackDrop,false);
 	});
 
 	const offsetSliders = document.querySelectorAll(".offsetSlider");
@@ -248,7 +262,6 @@ window.addEventListener("load", function(){
 	offsetResetButtons.forEach(function(b){
 		b.addEventListener("click", onOffsetResetClicked, false);
 	});
-
 
 
 	canvas2.addEventListener("dragover", function(e){
@@ -354,8 +367,6 @@ function onTrackDrop(e){
 	let index = getIndexForElem(elem);
 	unsetDragHighlight(index);
 
-
-
 	const file = e.dataTransfer.files[0];
 	onLoadSampleFromFile(index, file);
 }
@@ -369,6 +380,9 @@ function setDragHighlight(index){
 	const master = document.querySelectorAll(".master")[index];
 	const volume = document.querySelectorAll(".volume")[index];
 	const pan = document.querySelectorAll(".pan")[index];
+	const quantize = document.querySelectorAll(".quantize")[index];
+	const offset = document.querySelectorAll(".offset")[index];
+
 	loadButton.classList.add("dropping");
 	title.classList.add("dropping");
 	playButton.classList.add("dropping");
@@ -377,6 +391,8 @@ function setDragHighlight(index){
 	master.classList.add("dropping");
 	volume.classList.add("dropping");
 	pan.classList.add("dropping");
+	quantize.classList.add("dropping");
+	offset.classList.add("dropping");
 }
 
 function unsetDragHighlight(index){
@@ -388,6 +404,9 @@ function unsetDragHighlight(index){
 	const master = document.querySelectorAll(".master")[index];
 	const volume = document.querySelectorAll(".volume")[index];
 	const pan = document.querySelectorAll(".pan")[index];
+	const quantize = document.querySelectorAll(".quantize")[index];
+	const offset = document.querySelectorAll(".offset")[index];
+
 	loadButton.classList.remove("dropping");
 	title.classList.remove("dropping");
 	playButton.classList.remove("dropping");
@@ -396,6 +415,8 @@ function unsetDragHighlight(index){
 	master.classList.remove("dropping");
 	volume.classList.remove("dropping");
 	pan.classList.remove("dropping");
+	quantize.classList.remove("dropping");
+	offset.classList.remove("dropping");
 }
 
 function getIndexFromEvent(e, selector){
@@ -426,6 +447,8 @@ function getIndexForElem(elem){
 	const masters = document.querySelectorAll(".master");
 	const volumes = document.querySelectorAll(".volume");
 	const pans = document.querySelectorAll(".pan");
+	const quantizes = document.querySelectorAll(".quantize");
+	const offsets = document.querySelectorAll(".offset");
 	for(let i = 0; i < loadButtons.length;i++){
 		if (elem == loadButtons[i] || 
 			elem == titles[i] || 
@@ -434,7 +457,9 @@ function getIndexForElem(elem){
 			elem == syncs[i] ||
 			elem == masters[i] ||
 			elem == volumes[i] ||
-			elem == pans[i]){
+			elem == pans[i] ||
+			elem == quantizes[i] ||
+			elem == offsets[i]){
 			index = i;
 			break;
 		}
