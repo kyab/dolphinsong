@@ -246,7 +246,7 @@ window.addEventListener("load", function(){
 		c.addEventListener("change", onQuantizeChanged, false);
 	});
 
-	const offsets = document.querySelectorAll(".offsets");
+	const offsets = document.querySelectorAll(".offset");
 	offsets.forEach(function(o){
 		o.addEventListener("dragover", onTrackDragover, false); 
 		o.addEventListener("dragleave", onTrackDragleave, false);
