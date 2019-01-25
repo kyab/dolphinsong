@@ -593,10 +593,15 @@ function onSpeedChanged(index){
 
 	mydata.trackRatio[index] = 1/(speed/100);
 
-	// calcState.current_grain_start[index] = 0;
-	// calcState.current_x[index] = 0;
-	// calcState.current_grain_start2[index] = mydata.grain_size / 2;
-	// calcState.current_x2[index] = -1.0 * (mydata.grain_size/2*mydata.trackRatio[index]);
+	calcState.current_grain_start[index] = Math.round(mydata.trackCurrentFrame[index])
+	calcState.current_x[index] = 0;
+	if (mydata.trackRatio[index] >= 1){
+		calcState.current_grain_start2[index] = calcState.current_grain_start[index] + mydata.grain_size / 2;
+		calcState.current_x2[index] = -1.0 * Math.round(mydata.grain_size/2*mydata.trackRatio[index]);
+	}else{
+		calcState.current_grain_start2[index] = calcState.current_grain_start[index] + mydata.grain_size;
+		calcState.current_x2[index] = Math.round(mydata.grain_size*(mydata.trackRatio[index])*(-1));
+	}
 
 	speedLabel.innerText = speed.toString() + "%";
 }
@@ -1497,7 +1502,7 @@ function streamObtained(stream) {
 
 	function startOutEngine(){
 		audioContext2 = new AudioContext();
-		var scriptSource = audioContext2.createScriptProcessor(0/*latency*/,2,2);
+		var scriptSource = audioContext2.createScriptProcessor(256/*latency*/,2,2);
 		scriptSource.onaudioprocess = onAudioProcessOut;
 		var dest = audioContext2.createMediaStreamDestination();
 		scriptSource.connect(dest);
