@@ -2,4 +2,6 @@
 /.bundle
 /vender/bundle/
 Gemfile.lock
+/vender
+
 
