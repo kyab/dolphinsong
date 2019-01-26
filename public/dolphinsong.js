@@ -102,8 +102,8 @@ function onResize(){
 	let canvas = document.querySelector("#canvas");
 	let canvas2 = document.querySelector("#canvas2");
 	let w = document.body.clientWidth;
-	canvas.width = w - 60;
-	canvas2.width = w - 60;
+	// canvas.width = w;
+	// canvas2.width = w;
 
 	mydata.needsRedrawWave = true;
 	redrawCanvas();
