@@ -101,9 +101,12 @@ window.addEventListener("resize", function(e){
 function onResize(){
 	let canvas = document.querySelector("#canvas");
 	let canvas2 = document.querySelector("#canvas2");
-	let w = document.body.clientWidth;
-	// canvas.width = w;
-	// canvas2.width = w;
+	let w = canvas.clientWidth;
+	let h = canvas.clientHeight;
+	canvas.width = w;
+	canvas2.width = w;
+	canvas.height = h;
+	canvas2.height = h;
 
 	mydata.needsRedrawWave = true;
 	redrawCanvas();
@@ -1502,7 +1505,7 @@ function streamObtained(stream) {
 
 	function startOutEngine(){
 		audioContext2 = new AudioContext();
-		var scriptSource = audioContext2.createScriptProcessor(256/*latency*/,2,2);
+		var scriptSource = audioContext2.createScriptProcessor(512/*latency*/,2,2);
 		scriptSource.onaudioprocess = onAudioProcessOut;
 		var dest = audioContext2.createMediaStreamDestination();
 		scriptSource.connect(dest);
@@ -1650,8 +1653,8 @@ function redrawCanvas(){
 
 	const canvas = document.querySelector("#canvas");
 
-	const w = canvas.width;
-	const h = canvas.height;
+	const w = canvas.clientWidth;
+	const h = canvas.clientHeight;
 
 	let c = canvas.getContext('2d');
 	
@@ -1662,6 +1665,11 @@ function redrawCanvas(){
 		c.beginPath();
 		c.fillStyle = "black";
 		c.rect(0,0,w,h);
+		c.fill();
+
+		c.beginPath();
+		c.fillStyle = "yellow"
+		c.rect(10,10,100,100);
 		c.fill();
 
 		//optimization 2
