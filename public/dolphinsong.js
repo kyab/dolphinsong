@@ -1667,13 +1667,7 @@ function redrawCanvas(){
 		c.rect(0,0,w,h);
 		c.fill();
 
-		c.beginPath();
-		c.fillStyle = "yellow"
-		c.rect(10,10,100,100);
-		c.fill();
-
 		//optimization 2
-
 		const framePerPixel = (mydata.viewEndFrame - mydata.viewStartFrame) / w ;
 		
 		for (let i = 0; i < w; i++){
