@@ -17,5 +17,9 @@ class DolphinSong < Sinatra::Base
 		erb :index, :locals=> {:one=>"one", :two=>"two"}
 	end
 
-	run! if app_file == $0
+	if app_file == $0
+		puts app_file
+		puts "now run!"
+		run!
+	end
 end
