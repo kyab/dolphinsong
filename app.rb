@@ -2,6 +2,8 @@ require "sinatra/base"
 require "sinatra/reloader"
 
 class DolphinSong < Sinatra::Base
+
+	set :bind, "0.0.0.0"
 	get "/" do
 		"hello"
 	end
