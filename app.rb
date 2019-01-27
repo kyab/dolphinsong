@@ -1,17 +1,21 @@
-require "sinatra"
+require "sinatra/base"
 require "sinatra/reloader"
 
-get "/" do
-	"hello"
-end
+class DolphinSong < Sinatra::Base
+	get "/" do
+		"hello"
+	end
 
-get "/dolphinsong" do
-	@track_num = 5
-	erb :dolphinsong
-end
+	get "/dolphinsong" do
+		@track_num = 5
+		erb :dolphinsong
+	end
 
-get "/testerb" do
-	@foo = "hoge"
+	get "/testerb" do
+		@foo = "hoge"
 
-	erb :index, :locals=> {:one=>"one", :two=>"two"}
+		erb :index, :locals=> {:one=>"one", :two=>"two"}
+	end
+
+	run! if app_file == $0
 end
