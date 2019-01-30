@@ -8,9 +8,16 @@ body{
 
 #control{
 	background-color:lightgreen;
-	font-size:20;
+	font-size:1em;
 	text-align: center;
-	height: 50;
+	height: 3em;
+	display : table;
+	width:100%
+}
+
+#control-inner{
+	vertical-align: middle;
+	display: table-cell;
 }
 
 #editor{
@@ -52,7 +59,7 @@ body{
 }
 
 #player table td.dropping, #player table th.dropping {
-	border : 2px solid black;
+	border : 0.2em solid black;
 }
 
 #player table td input.syncButton{
@@ -77,12 +84,14 @@ body{
 </head>
 <body>
 <div id="control">
-	<input id="chkMonitor" type="checkbox" value="true" onclick="onMonitorChanged();">monitor[m]</input>
-	<input type="button" value="startRecord" onclick="startRecord();"/>
-	<input type="button" value="stopRecord" onclick="stopRecord();"/>
-	<input type="button" value="startPlay" onclick="startPlay();"/>
-	<input type="button" value="stopPlay" onclick="stopPlay();"/>
-	<input type="button" value="download" onclick="exportWAV();"/>
+	<div id="control-inner">
+		<input id="chkMonitor" type="checkbox" value="true" onclick="onMonitorChanged();">monitor[m]</input>
+		<input type="button" value="startRecord" onclick="startRecord();"/>
+		<input type="button" value="stopRecord" onclick="stopRecord();"/>
+		<input type="button" value="startPlay" onclick="startPlay();"/>
+		<input type="button" value="stopPlay" onclick="stopPlay();"/>
+		<input type="button" value="download" onclick="exportWAV();"/>
+	</div>
 </div>
 <div id="editor">
 	<canvas id="canvas"></canvas>

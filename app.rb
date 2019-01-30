@@ -4,11 +4,11 @@ require "sinatra/reloader"
 class DolphinSong < Sinatra::Base
 
 	set :bind, "0.0.0.0"
-	get "/" do
+	get "/hello" do
 		"hello"
 	end
 
-	get "/dolphinsong" do
+	get "/" do
 		@track_num = 5
 		erb :dolphinsong
 	end
