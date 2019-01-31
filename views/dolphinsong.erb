@@ -3,39 +3,59 @@
 <style type="text/css">
 
 body{
-	background-color:lightgray;
+	margin:0 0;
+	background-color:darkgray;
+}
+
+#sidebar{
+	background-color:deepskyblue;
+	float:left;
+	height:100%;
+	width:150px;
+}
+
+#sidebar select{
+	display:block;
+	width:145px;
+	margin:5px;
+	background-color: darkslategrey;
+}
+
+#main{
+	padding-left:150px;
+	text-align:center;
+	background-color:lightblue;
+	height:100%;
 }
 
 #control{
-	background-color:lightgreen;
-	font-size:1em;
+	display : table;
 	text-align: center;
 	height: 3em;
-	display : table;
-	width:100%
+	width:100% 
 }
 
 #control-inner{
-	vertical-align: middle;
+	text-align: center;
 	display: table-cell;
 }
 
 #editor{
-	margin: 10px 20px;
 	text-align: center;
 	position: relative;
-	height: 12em;
+	height: 13em;
 }
 
 #editor canvas {
-	position: absolute;
-	top: 0;
-	left: 0;
-	width:100%;
+	position :absolute;
+	top: 0.5em;
+	left: 10%;
+	width:80%;
 	height:12em;
 }
 
 #player {
+	margin-top:20px;
 	text-align: center;
 	position:relative;
 }
@@ -83,6 +103,20 @@ body{
 <title>Dolphin Song</title>
 </head>
 <body>
+
+<div id="sidebar">
+	foobarbaz
+	<select size=40>
+		<option value="1">1</option>
+		<option value="2">2</option>
+
+
+
+	</select>
+
+</div>
+
+<div id="main">
 <div id="control">
 	<div id="control-inner">
 		<input id="chkMonitor" type="checkbox" value="true" onclick="onMonitorChanged();">monitor[m]</input>
@@ -98,7 +132,6 @@ body{
 	<canvas id="canvas2" dropzone="copy"></canvas>
 </div>
 <div id="player">
-
 	<table>
 		<tr>
 			<% @track_num.times do |n| %>
@@ -176,6 +209,7 @@ body{
 			<% end %>
 	
 	</table>
+	</div>
 	<script src="aurora.js"></script>
 	<script src="aac.js"></script>
 	<script src="dolphinsong.js"></script>
