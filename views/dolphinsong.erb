@@ -18,7 +18,8 @@ body{
 	display:block;
 	width:145px;
 	margin:5px;
-	background-color: darkslategrey;
+	background-color: rgb(56, 139, 139);
+	font-size:0.8em;
 }
 
 #main{
@@ -107,12 +108,12 @@ body{
 
 <div id="sidebar">
 	foobarbaz
-	<select size=40>
+	<select id="soundList" dropzone="copy" size=40>
+		<% @files.each do |filename| %>
+			<option value="<%=filename%>"><%=filename%></option>
+		<% end %>
 		<option value="1">1</option>
 		<option value="2">2</option>
-
-
-
 	</select>
 
 </div>
@@ -211,6 +212,7 @@ body{
 	
 	</table>
 	</div>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
 	<script src="aurora.js"></script>
 	<script src="aac.js"></script>
 	<script src="dolphinsong.js"></script>

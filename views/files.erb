@@ -5,8 +5,9 @@
 </head>
 
 <body>
-
-    <p><%= @filename %></p>
+    <% @files.each do |filename| %>
+        <p><%= filename %></p>
+    <% end %>
 
 </body>
 

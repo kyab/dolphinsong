@@ -273,6 +273,11 @@ window.addEventListener("load", function(){
 	});
 	canvas2.addEventListener("drop", onEditorDrop, false);
 
+	const soundList = document.querySelector("#soundList");
+	soundList.addEventListener("dragover", onSoundListDragOver, false);
+	soundList.addEventListener("dragleave", onSoundListDragleave, false);
+	soundList.addEventListener("drop", onSoundListDrop, false);
+
 });
 
 function onSpeedSliderChanged(e){
@@ -473,7 +478,39 @@ function getIndexForElem(elem){
 	return index;		
 }
 
+function onSoundListDragOver(e){
+	e.preventDefault();
+	e.dataTransfer.dropEffect = "copy";
+}
 
+function onSoundListDragleave(e){
+	e.preventDefault();
+}
+
+function onSoundListDrop(e){
+	e.preventDefault();
+	var fileName = e.dataTransfer.files[0].name;
+	console.log("onSoundListDrop()" + "file:" + fileName);
+
+	var formData = new FormData();
+	formData.append("upfile", e.dataTransfer.files[0]);
+
+	$.ajax("./upload", {
+		method:"POST",
+		data: formData,
+		contentType : false,
+		processData : false,
+		complete : function(){
+			console.log("upload done");
+			var list = document.querySelector("#soundList");
+			var opt = new Option();
+			opt.value = fileName;
+			opt.innerText = fileName;
+			list.add(opt);
+		}
+	});
+	
+}
 
 function onEditorDrop(e){
 	e.preventDefault();

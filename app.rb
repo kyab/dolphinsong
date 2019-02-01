@@ -1,6 +1,8 @@
 require "sinatra/base"
 require "sinatra/reloader"
 
+require "json"
+
 class DolphinSong < Sinatra::Base
 
 	set :bind, "0.0.0.0"
@@ -18,6 +20,10 @@ class DolphinSong < Sinatra::Base
 
 	get "/" do
 		@track_num = 5
+		@files = Dir.glob("*" , base:"public/sounds").sort do |a,b|
+			ret = a.casecmp(b)
+			ret == 0 ? a<=>b : ret
+		end
 		erb :dolphinsong
 	end
 
@@ -36,11 +42,23 @@ class DolphinSong < Sinatra::Base
 		File.open(save_path , "wb") do |f|
 			f.write params[:upfile][:tempfile].read
 		end
-		@files = Dir.glob("*" , base:"public/sounds")
+		@files = Dir.glob("*" , base:"public/sounds").sort do |a,b|
+			ret = a.casecmp(b)
+			ret == 0 ? a<=>b : ret
+		end
 		puts "files = :" 
 		p @files
 		erb :files
 	end
+
+	get "/soundlist" do
+		@files = Dir.glob("*" , base:"public/sounds").sort do |a,b|
+			ret = a.casecmp(b)
+			ret == 0 ? a<=>b : ret
+		end
+		@files.to_json
+	end
+
 
 	if app_file == $0
 		puts app_file
