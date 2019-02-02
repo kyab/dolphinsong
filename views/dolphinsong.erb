@@ -7,25 +7,25 @@ body{
 	background-color:darkgray;
 }
 
+
 #sidebar{
-	background-color:deepskyblue;
 	float:left;
 	height:100%;
-	width:150px;
+	width:180px;
 }
 
 #sidebar select{
 	display:block;
-	width:145px;
+	width:175px;
 	margin:5px;
 	background-color: rgb(56, 139, 139);
 	font-size:0.8em;
+	overflow:auto;
 }
 
 #main{
-	padding-left:150px;
+	padding-left:180px;
 	text-align:center;
-	/* background-color:lightblue; */
 	height:100%;
 }
 
@@ -51,8 +51,8 @@ body{
 #editor canvas {
 	position :absolute;
 	top: 0.5em;
-	left: 10%;
-	width:80%;
+	left: 5%;
+	width:90%;
 	height:12em;
 }
 
@@ -108,12 +108,10 @@ body{
 
 <div id="sidebar">
 	foobarbaz
-	<select id="soundList" dropzone="copy" size=40>
+	<select id="soundList" dropzone="copy" size=30>
 		<% @files.each do |filename| %>
 			<option value="<%=filename%>"><%=filename%></option>
 		<% end %>
-		<option value="1">1</option>
-		<option value="2">2</option>
 	</select>
 
 </div>
