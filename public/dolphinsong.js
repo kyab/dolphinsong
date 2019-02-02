@@ -2156,7 +2156,7 @@ function onCanvasScroll(e){
 
 //https://qiita.com/HirokiTanaka/items/56f80844f9a32020ee3b
 //https://github.com/mattdiamond/Recorderjs/blob/master/lib/recorder.js
-function exportWAV(){
+function createWAVBlob(){
 
 	let sampleNum = mydata.selectEndFrame - mydata.selectStartFrame;
 
@@ -2201,10 +2201,33 @@ function exportWAV(){
 	var dataview = encodeWAV();
 
 	var audioBlob = new Blob([dataview], {type:"audio\/wav"});
+
+	return audioBlob;
+}
+
+function exportWAV(){
+	var blob = createWAVBlob();
 	var a = document.createElement("a");
 	a.download = "sample.wav";
-	a.href = window.URL.createObjectURL(audioBlob);
+	a.href = window.URL.createObjectURL(blob);
 	a.click();
+}
 
+function uploadWAV(){
+	var blob = createWAVBlob();
+	var formData = new FormData();
+	formData.append("upfile", blob);
+	formData.append("fname","anything.wav" );
+
+	$.ajax("./uploadblob", {
+		method:"POST",
+		data:formData,
+		contentType : false,
+		processData : false,
+		complete : function(data) {
+			console.log("upload done(blob)");
+			console.log(data);
+		}
+	});
 }
 

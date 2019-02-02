@@ -33,6 +33,18 @@ class DolphinSong < Sinatra::Base
 		erb :index, :locals=> {:one=>"one", :two=>"two"}
 	end
 
+	helpers do
+		def filelist
+			@files = Dir.glob("*" , base:"public/sounds").sort do |a,b|
+				ret = a.casecmp(b)
+				ret == 0 ? a<=>b : ret
+			end
+			puts "files = :" 
+			p @files
+			@files.to_json
+		end
+	end
+
 	post "/upload" do
 
 		@filename = params[:upfile][:filename]
@@ -42,21 +54,26 @@ class DolphinSong < Sinatra::Base
 		File.open(save_path , "wb") do |f|
 			f.write params[:upfile][:tempfile].read
 		end
-		@files = Dir.glob("*" , base:"public/sounds").sort do |a,b|
-			ret = a.casecmp(b)
-			ret == 0 ? a<=>b : ret
+		content_type :json
+		filelist
+
+	end
+
+	post "/uploadblob" do
+		@filename = params[:fname]
+		save_path = "./public/sounds/#{@filename}"
+		
+		puts "Saving : #{save_path}"
+		File.open(save_path , "wb") do |f|
+			f.write params[:upfile][:tempfile].read
 		end
-		puts "files = :" 
-		p @files
-		erb :files
+		content_type :json
+		filelist
 	end
 
 	get "/soundlist" do
-		@files = Dir.glob("*" , base:"public/sounds").sort do |a,b|
-			ret = a.casecmp(b)
-			ret == 0 ? a<=>b : ret
-		end
-		@files.to_json
+		content_type :json
+		filelist
 	end
 
 
