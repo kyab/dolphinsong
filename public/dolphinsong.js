@@ -132,6 +132,14 @@ window.addEventListener("load", function(){
 		b.addEventListener("drop", onTrackDrop,false);
 	});
 
+	const load2Buttons = document.querySelectorAll(".loadButton2");
+	load2Buttons.forEach(function(b){
+		b.addEventListener("click", onLoadButton2Clicked, false);
+		b.addEventListener("dragover", onTrackDragover, false);
+		b.addEventListener("dragleave", onTrackDragleave, false);
+		b.addEventListener("drop", onTrackDrop, false);
+	});
+
 	const titles = document.querySelectorAll(".title");
 	titles.forEach(function(t){
 		t.addEventListener("dragover", onTrackDragover, false); 
@@ -341,6 +349,12 @@ function onLoadButtonClicked(e){
 	onLoadSample(index);
 }
 
+function onLoadButton2Clicked(e){
+	let index = getIndexFromEvent(e, ".loadButton2");
+	onLoadSampleFromList(index);
+}
+
+
 function onPlayButtonClicked(e){
 
 	let index = getIndexFromEvent(e, ".playButton");
@@ -448,6 +462,7 @@ function getIndexFromEvent(e, selector){
 function getIndexForElem(elem){
 	let index = -1;
 	const loadButtons = document.querySelectorAll(".loadButton");
+	const load2Buttons = document.querySelectorAll(".loadButon2");
 	const titles = document.querySelectorAll(".title");
 	const playButtons = document.querySelectorAll(".playButton");
 	const speeds = document.querySelectorAll(".speed");
@@ -459,6 +474,7 @@ function getIndexForElem(elem){
 	const offsets = document.querySelectorAll(".offset");
 	for(let i = 0; i < loadButtons.length;i++){
 		if (elem == loadButtons[i] || 
+			elem == load2Buttons[i] ||
 			elem == titles[i] || 
 			elem == playButtons[i] || 
 			elem == speeds[i] ||
@@ -706,30 +722,69 @@ function onLoadSampleFromFile(index, file){
 	tryLoadSampleFromFileStandard(index, file)
 	.then(function(length){
 		console.log("success standard : " + (index+1).toString());
-		trackLoadedFromFile(index, length, file);
+		trackLoadedFromFile(index, length, file.name);
 	}, function(e){
 		console.log("decode error(Standard) : " + e);
 		tryLoadSampleFromFileAAC(index, file)
 		.then(function(length){
 			console.log("success AAC");
-			trackLoadedFromFile(index, length, file);
+			trackLoadedFromFile(index, length, file.name);
 		}, function(e){
 			console.log("decode error(AAC) : " + e);
 		});
 	});
 }
 
-function trackLoadedFromFile(index, length, file){
+function onLoadSampleFromList(index){
+	//get blob by ajax
+	var xhr = new XMLHttpRequest();
+
+	var select = document.querySelector("#soundList");
+	var soundName = select.options[select.selectedIndex].value;
+
+	if (!soundName) return;
+
+	xhr.open("GET", "/sounds/" + soundName);
+	xhr.responseType = "blob";
+	xhr.onreadystatechange = function(){
+		if (this.readyState == 4 && this.status == 200){
+			done(this.response);
+		}
+	}
+
+	//read and done;
+	var done = function(blob){
+		console.log(blob);
+		tryLoadSampleFromFileStandard(index, blob)
+		.then(function (length) {
+			console.log("success standard : " + (index + 1).toString());
+			trackLoadedFromFile(index, length, soundName);
+		}, function (e) {
+			console.log("decode error(Standard) : " + e);
+			tryLoadSampleFromFileAAC(index, blob)
+			.then(function (length) {
+				console.log("success AAC");
+				trackLoadedFromFile(index, length, soundName);
+			}, function (e) {
+				console.log("decode error(AAC) : " + e);
+			});
+		});
+	}
+	xhr.send();
+
+}
+
+function trackLoadedFromFile(index, length, name){
 	mydata.trackLength[index] = length;
 	mydata.trackCurrentFrame[index] = 0;
 	mydata.trackPlaying[index] = false;
 	mydata.trackLoaded[index] = true;
 
 	let titles = document.querySelectorAll(".title");
-	titles[index].innerText = file.name;
+	titles[index].innerText = name
 }
 
-function tryLoadSampleFromFileStandard(index, file){
+function tryLoadSampleFromFileStandard(index, blob){
 	return new Promise(function(resolve, reject){
 		const fileReader = new FileReader();
 		fileReader.onload = function(e){
@@ -750,7 +805,7 @@ function tryLoadSampleFromFileStandard(index, file){
 			});
 
 		};
-		fileReader.readAsArrayBuffer(file);
+		fileReader.readAsArrayBuffer(blob);
 	});
 }
 
@@ -835,10 +890,10 @@ function getEncodingDelayForCAF(view){
 	}
 }
 
-function tryLoadSampleFromFileAAC(index, file){
+function tryLoadSampleFromFileAAC(index, blob){
 	//use aac.js/aurora.js to decode caf(AAC compressed Apple Loops)
 	return new Promise(function(resolve, reject){
-		let asset = AV.Asset.fromFile(file);
+		let asset = AV.Asset.fromFile(blob);
 		asset.on("error", function(e){
 			reject(e);
 		});
@@ -882,19 +937,19 @@ function tryLoadSampleFromFileAAC(index, file){
 				});
 			}
 
-			fileReader.readAsArrayBuffer(file);
+			fileReader.readAsArrayBuffer(blob);
 		});
 	});
 }
 
-function onEditorLoadSampleFromFile(file){
-	tryEditorLoadSampleFromFileStandard(file)
+function onEditorLoadSampleFromFile(blob){
+	tryEditorLoadSampleFromFileStandard(blob)
 	.then(function(length){
 		console.log("success Standard");
 		editorLoaded(length);
 	},function(e){
 		console.log("decode error(Standard) : " + e);
-		tryEditorLoadSampleFromFileAAC(file)
+		tryEditorLoadSampleFromFileAAC(blob)
 		.then(function(length){
 			console.log("success AAC");
 			editorLoaded(length);
@@ -921,7 +976,7 @@ function editorLoaded(length){
 	redrawCanvas();
 }
 
-function tryEditorLoadSampleFromFileStandard(file){
+function tryEditorLoadSampleFromFileStandard(blob){
 
 	return new Promise(function(resolve, reject){
 		const fileReader = new FileReader();
@@ -946,15 +1001,15 @@ function tryEditorLoadSampleFromFileStandard(file){
 			});
 			
 		}
-		fileReader.readAsArrayBuffer(file);
+		fileReader.readAsArrayBuffer(blob);
 	});
 }
 
 
-function tryEditorLoadSampleFromFileAAC(file){
+function tryEditorLoadSampleFromFileAAC(blob){
 	//use aac.js/aurora.js to decode caf(AAC compressed Apple Loops)
 	return new Promise(function(resolve, reject){
-		let asset = AV.Asset.fromFile(file);
+		let asset = AV.Asset.fromFile(blob);
 		asset.on("error", function(e){
 			reject(e);
 		});
@@ -1005,7 +1060,7 @@ function tryEditorLoadSampleFromFileAAC(file){
 				});
 			}
 
-			fileReader.readAsArrayBuffer(file);
+			fileReader.readAsArrayBuffer(blob);
 		});
 	});
 }

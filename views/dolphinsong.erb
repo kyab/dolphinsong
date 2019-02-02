@@ -143,9 +143,14 @@ body{
 		</tr>
 		<tr>
 			<% @track_num.times do |n| %>
-			<td class="loadButton" dropzone="copy">load</td>
+			<td class="loadButton" dropzone="copy">loadEditor</td>
 			<% end %>
 		</tr>	
+		<tr>
+			<% @track_num.times do |n| %>
+			<td class="loadButton2" dropzone="copy">loadLeft</td>
+			<% end %>
+		</tr>
 		<tr>
 			<% @track_num.times do |n| %>
 			<td class="playButton" dropzone="copy">play</td>
