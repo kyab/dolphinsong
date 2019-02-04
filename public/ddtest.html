@@ -1,0 +1,71 @@
+<html>
+<style type="text/css">
+#item{
+    background-color:rgb(141, 141, 95);
+    height:100px;
+    width:100px;
+}
+
+#zone{
+    background-color:rgb(161, 161, 219);
+    margin:50px 50px;
+    
+    height:100px;
+    width:100px;
+
+    word-break : break-all;
+
+}
+
+#zone.dragging{
+    border:solid 2px;
+}
+
+</style>
+
+<script>
+    window.addEventListener("load", function () {
+        var item = document.querySelector("#item");
+        item.addEventListener("dragstart", function(e){
+            console.log("dragstart");
+            e.dataTransfer.setData("text", item.innerText);
+            e.stopPropagation();
+        });
+
+        var zone = document.querySelector("#zone");
+        zone.addEventListener("dragenter", function(e){
+            console.log("dragenter");
+            zone.classList.add("dragging");
+            e.dataTransfer.dropEffect = "link"
+            zone.toggleCass
+            e.preventDefault();
+        });
+
+        zone.addEventListener("dragover", function(e){
+            e.dataTransfer.dropEffect = "link"
+            e.preventDefault();
+        });
+    
+        zone.addEventListener("drop", function (e) {
+            console.log("drop:" + e.dataTransfer.getData("text"));
+            zone.classList.remove("dragging");
+            zone.innerText += e.dataTransfer.getData("text");
+            e.preventDefault();
+            
+        });
+    });
+
+</script>
+<head>
+    <title>Drag And Drop Test</title>
+</head>
+
+<body>
+<div id="item" draggable="true">
+    foo
+</div>
+<div id="zone">
+    D&D to here
+</div>
+</body>
+</html>

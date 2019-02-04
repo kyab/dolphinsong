@@ -1,0 +1,176 @@
+<html>
+<style type="text/css">
+
+#sounds{
+    background-color:rgb(141, 141, 95);
+    margin-top:20px;
+    height:100px;
+    width:100px;
+    overflow:scroll;
+}
+
+.item{
+    padding:0px 0px;
+    margin:0px 0px;
+}
+
+.item.selected{
+    background-color:rgb(126, 119, 119);
+}
+
+#zone{
+    background-color:rgb(161, 161, 219);
+    margin:50px 50px;
+    
+    height:100px;
+    width:100px;
+    word-break : break-all;
+}
+
+#zone.dragging{
+    border:solid 2px;
+}
+
+</style>
+
+<script>
+    var currentSelectIndex = -1;
+    window.addEventListener("load", function () {
+
+        // var list = document.querySelector("#list");
+        document.querySelector("#list").addEventListener("keydown",onKeyDown);
+
+        var items = document.querySelectorAll(".item");
+        items.forEach(function(item){
+            item.addEventListener("click", itemClicked);
+            item.addEventListener("dragstart", function(e){
+                console.log("dragstart");
+                e.dataTransfer.setData("text", item.innerText);
+                e.stopPropagation();
+            });
+        });
+
+        var zone = document.querySelector("#zone");
+        zone.addEventListener("dragenter", function(e){
+            console.log("dragenter");
+            zone.classList.add("dragging");
+            e.dataTransfer.dropEffect = "link"
+            e.preventDefault();
+        });
+
+        zone.addEventListener("dragover", function(e){
+            e.dataTransfer.dropEffect = "link"
+            e.preventDefault();
+        });
+    
+        zone.addEventListener("drop", function (e) {
+            console.log("drop:" + e.dataTransfer.getData("text"));
+            zone.classList.remove("dragging");
+            zone.innerText += e.dataTransfer.getData("text");
+            e.preventDefault();
+            
+        });
+    });
+
+    function itemClicked(e){
+        
+        let items = document.querySelectorAll(".item");
+        let item = e.target;
+        for (let i = 0; i < items.length; i++){
+            if (item == items[i]){
+                currentSelectIndex = i;
+            }
+        }
+        selectChanged();
+    }
+
+    function selectChanged(){
+        let items = document.querySelectorAll(".item");
+        for (let i = 0; i < items.length; i++) {
+            items[i].classList.remove("selected");
+            if (i == currentSelectIndex) {
+                items[i].classList.add("selected");
+            }
+        }
+
+
+        let sounds = document.querySelector("#sounds");
+        let pixelPerItem = sounds.scrollHeight / items.length;
+        
+        console.log("clientHeight = " + sounds.clientHeight);
+        console.log("scrollHeight = " + sounds.scrollHeight);
+        console.log("scrollTop = " + sounds.scrollTop);
+        console.log("pixelPerItem = " + pixelPerItem);
+        if (pixelPerItem * currentSelectIndex < sounds.scrollTop){
+            sounds.scrollTop = pixelPerItem * currentSelectIndex;
+        }else if(sounds.scrollTop + sounds.clientHeight < 
+                    pixelPerItem * (currentSelectIndex+1) ){
+            sounds.scrollTop = pixelPerItem * (currentSelectIndex+1) - sounds.clientHeight;
+        }
+    }
+
+
+
+    function onKeyDown(e){
+        switch(e.keyCode){
+        case 38: //up
+            if (e.target == document.querySelector("#list")){
+                e.stopPropagation();
+                e.preventDefault();
+
+                console.log("up");
+                let items = document.querySelectorAll(".item");
+                if (currentSelectIndex == 0) break;
+                currentSelectIndex--;
+
+                selectChanged();
+
+            }
+            break;
+        case 40: //down
+            if (e.target == document.querySelector("#list")) {
+                e.stopPropagation();
+                e.preventDefault();
+                console.log("down");
+
+                let items = document.querySelectorAll(".item");
+                if (currentSelectIndex == items.length-1) break;
+                currentSelectIndex++;
+
+                selectChanged();
+
+            }
+            break;
+        }
+    }
+
+</script>
+<head>
+    <title>Drag And Drop Test</title>
+</head>
+
+<body>
+<div id="sounds">
+    <div id="list" tabindex="-1">
+        <p class="item" draggable="true" value="1">one</p>
+        <p class="item" draggable="true" value="2">two</p>
+        <p class="item" draggable="true" value="3">thrre</p>
+        <p class="item" draggable="true" value="4">four</p>
+        <p class="item" draggable="true" value="4">five</p>
+        <p class="item" draggable="true" value="4">six</p>
+        <p class="item" draggable="true" value="4">seven</p>
+        <p class="item" draggable="true" value="4">eight</p>
+        <p class="item" draggable="true" value="4">ten</p>
+        <p class="item" draggable="true" value="4">11</p>
+        <p class="item" draggable="true" value="4">12</p>
+        <p class="item" draggable="true" value="4">13</p>
+        <p class="item" draggable="true" value="4">14</p>
+        <p class="item" draggable="true" value="4">15</p>
+        <p class="item" draggable="true" value="4">sixteeen_longlong</p>
+    </div>
+</div>
+<div id="zone">
+    D&D to here
+</div>
+</body>
+</html>
