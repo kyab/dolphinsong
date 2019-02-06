@@ -286,6 +286,8 @@ window.addEventListener("load", function(){
 	soundList.addEventListener("dragleave", onSoundListDragleave, false);
 	soundList.addEventListener("drop", onSoundListDrop, false);
 
+	mydata.soundList = new MyListBox(soundList);
+
 });
 
 function onSpeedSliderChanged(e){
@@ -364,7 +366,7 @@ function onPlayButtonClicked(e){
 
 function onTrackDragover(e){
 	e.preventDefault();
-	e.dataTransfer.dropEffect = "copy";
+	e.dataTransfer.dropEffect = "link";
 
 	const elem = e.currentTarget;
 
@@ -390,7 +392,13 @@ function onTrackDrop(e){
 	unsetDragHighlight(index);
 
 	const file = e.dataTransfer.files[0];
-	onLoadSampleFromFile(index, file);
+	if (file){
+		console.log("dropped from file");
+		onLoadSampleFromFile(index, file);
+	}else{
+		console.log("dropped from list");
+		loadSample(index, e.dataTransfer.getData("text"));
+	}
 }
 
 function setDragHighlight(index){
@@ -518,11 +526,12 @@ function onSoundListDrop(e){
 		processData : false,
 		complete : function(){
 			console.log("upload done");
-			var list = document.querySelector("#soundList");
-			var opt = new Option();
-			opt.value = fileName;
-			opt.innerText = fileName;
-			list.add(opt);
+			// var list = document.querySelector("#soundList");
+			// var opt = new Option();
+			// opt.value = fileName;
+			// opt.innerText = fileName;
+			// list.add(opt);
+			mydata.soundList.reload();
 		}
 	});
 	
@@ -736,14 +745,14 @@ function onLoadSampleFromFile(index, file){
 }
 
 function onLoadSampleFromList(index){
+
+
+	loadSample(index, mydata.soundList.selectedText());
+}
+
+function loadSample(index, soundName){
 	//get blob by ajax
-	var xhr = new XMLHttpRequest();
-
-	var select = document.querySelector("#soundList");
-	var soundName = select.options[select.selectedIndex].value;
-
-	if (!soundName) return;
-
+	var xhr = new XMLHttpRequest();	
 	xhr.open("GET", "/sounds/" + soundName);
 	xhr.responseType = "blob";
 	xhr.onreadystatechange = function(){

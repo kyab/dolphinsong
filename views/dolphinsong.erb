@@ -12,15 +12,31 @@ body{
 	float:left;
 	height:100%;
 	width:180px;
+
 }
 
-#sidebar select{
-	display:block;
+#soundList{
+
 	width:175px;
-	margin:5px;
-	background-color: rgb(56, 139, 139);
+	height:200px;
+	margin:5px 5px;
+	background-color: rgb(71, 194, 194);
 	font-size:0.8em;
-	overflow:auto;
+	overflow:scroll;
+	
+}
+
+.soundItem{
+	display:inline-block;
+	width:175px;
+	padding: 0px 0px;
+	margin: 0px 0px;
+	white-space:nowrap;
+}
+
+
+.soundItem.selected{
+	background-color: rgb(126, 119, 119);
 }
 
 #main{
@@ -57,7 +73,7 @@ body{
 }
 
 #player {
-	margin-top:20px;
+	margin-top:10px;
 	text-align: center;
 	position:relative;
 }
@@ -108,11 +124,11 @@ body{
 
 <div id="sidebar">
 	foobarbaz
-	<select id="soundList" dropzone="copy" size=30>
+	<div id="soundList" dropzone="copy" tabindex="-1">
 		<% @files.each do |filename| %>
-			<option value="<%=filename%>"><%=filename%></option>
+			<div class="soundItem" draggable="true"><%=filename%></div>
 		<% end %>
-	</select>
+	</div>
 
 </div>
 
@@ -219,6 +235,7 @@ body{
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
 	<script src="aurora.js"></script>
 	<script src="aac.js"></script>
+	<script src="sidebar.js"></script>
 	<script src="dolphinsong.js"></script>
 </body>
 </html>

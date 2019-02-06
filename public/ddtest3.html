@@ -1,0 +1,199 @@
+<html>
+<style type="text/css">
+
+#sounds{
+    background-color:rgb(141, 141, 95);
+    margin-top:20px;
+    height:100px;
+    width:100px;
+    /* overflow:scroll; */
+}
+
+#list{
+    height:100%;
+    overflow:scroll;
+}
+
+.item{
+    padding:0px 0px;
+    margin:0px 0px;
+    white-space:nowrap;     /*no wrap*/
+}
+
+.item.selected{
+    background-color:rgb(126, 119, 119);
+}
+
+#zone{
+    background-color:rgb(161, 161, 219);
+    margin:50px 50px;
+    
+    height:100px;
+    width:100px;
+    word-break : break-all;
+}
+
+#zone.dragging{
+    border:solid 2px;
+}
+
+</style>
+
+<script>
+    function MyListBox(element){
+        this._target = element;
+        this._selectedIndex = -1;
+        this._selectedText = "";
+
+        this._target.addEventListener("keydown", onKeyDown);
+        
+        var items = this._target.querySelectorAll(".item");
+        items.forEach(function (item) {
+            item.addEventListener("click", itemClicked);
+            item.addEventListener("dragstart", function (e) {
+                console.log("dragstart");
+                e.dataTransfer.setData("text", item.innerText);
+                e.stopPropagation();
+            });
+        });
+
+        this.selectedIndex = function(){
+            return this._selectedIndex;
+        }
+
+        this.selectedText = function(){
+            let items = this._target.querySelectorAll(".item");
+            return items[this._selectedIndex].innerText;
+            
+        }
+
+        var that = this;
+
+        function onKeyDown(e) {
+            switch (e.keyCode) {
+                case 38: //up
+                    if (e.target == that._target) {
+                        e.stopPropagation();
+                        e.preventDefault();
+
+                        console.log("up");
+                        let items = that._target.querySelectorAll(".item");
+                        if (that._selectedIndex == 0) break;
+                        that._selectedIndex--;
+
+                        selectChanged();
+
+                    }
+                    break;
+                case 40: //down
+                    if (e.target == that._target) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        console.log("down");
+
+                        let items = that._target.querySelectorAll(".item");
+                        if (that._selectedIndex == items.length - 1) break;
+                        that._selectedIndex++;
+
+                        selectChanged();
+
+                    }
+                    break;
+            }
+        }
+
+        function selectChanged(){
+            let items = that._target.querySelectorAll(".item");
+            for (let i = 0; i < items.length; i++) {
+                items[i].classList.remove("selected");
+                if (i == that._selectedIndex) {
+                    items[i].classList.add("selected");
+                }
+            }
+
+            let pixelPerItem = that._target.scrollHeight / items.length;
+
+            console.log("clientHeight = " + that._target.clientHeight);
+            console.log("scrollHeight = " + that._target.scrollHeight);
+            console.log("scrollTop = " + that._target.scrollTop);
+            console.log("pixelPerItem = " + pixelPerItem);
+            if (pixelPerItem * that._selectedIndex < that._target.scrollTop) {
+                that._target.scrollTop = pixelPerItem * that._selectedIndex;
+            } else if (that._target.scrollTop + that._target.clientHeight <
+                pixelPerItem * (that._selectedIndex + 1)) {
+                that._target.scrollTop = pixelPerItem * (that._selectedIndex + 1) - that._target.clientHeight;
+            }
+        }
+
+        function itemClicked(e) {
+
+            let items = that._target.querySelectorAll(".item");
+            let item = e.target;
+            for (let i = 0; i < items.length; i++) {
+                if (item == items[i]) {
+                    that._selectedIndex = i;
+                }
+            }
+            selectChanged();
+        }
+
+    }
+
+    window.addEventListener("load", function () {
+
+        let myListBox = new MyListBox(document.querySelector("#list"));
+
+        var zone = document.querySelector("#zone");
+        zone.addEventListener("dragenter", function(e){
+            console.log("dragenter");
+            zone.classList.add("dragging");
+            e.dataTransfer.dropEffect = "link"
+            e.preventDefault();
+        });
+
+        zone.addEventListener("dragover", function(e){
+            e.dataTransfer.dropEffect = "link"
+            e.preventDefault();
+        });
+    
+        zone.addEventListener("drop", function (e) {
+            console.log("drop:" + e.dataTransfer.getData("text"));
+            zone.classList.remove("dragging");
+            zone.innerText += e.dataTransfer.getData("text");
+            e.preventDefault();
+            
+        });
+    });
+
+
+
+</script>
+<head>
+    <title>Drag And Drop Test</title>
+</head>
+
+<body>
+<div id="sounds">
+    <div id="list" tabindex="-1">
+        <p class="item" draggable="true" value="1">one</p>
+        <p class="item" draggable="true" value="2">two</p>
+        <p class="item" draggable="true" value="3">thrre</p>
+        <p class="item" draggable="true" value="4">four</p>
+        <p class="item" draggable="true" value="4">five</p>
+        <p class="item" draggable="true" value="4">six</p>
+        <p class="item" draggable="true" value="4">seven</p>
+        <p class="item" draggable="true" value="4">eight</p>
+        <p class="item" draggable="true" value="4">ten</p>
+        <p class="item" draggable="true" value="4">11</p>
+        <p class="item" draggable="true" value="4">12</p>
+        <p class="item" draggable="true" value="4">13</p>
+        <p class="item" draggable="true" value="4">14</p>
+        <p class="item" draggable="true" value="4">15</p>
+        <p class="item" draggable="true" value="4">sixteeen long long</p>
+    </div>
+</div>
+<div id="zone">
+    D&D to here
+</div>
+</body>
+</html>
