@@ -4,12 +4,15 @@ function MyListBox(element) {
     this._target = element;
     this._selectedIndex = -1;
     this._selectedText = "";
+    this.onDblClick = null;
+    this.onClick = null;
 
     this._target.addEventListener("keydown", onKeyDown);
 
     var items = this._target.querySelectorAll(".soundItem");
     items.forEach(function (item) {
         item.addEventListener("click", itemClicked);
+
         item.addEventListener("dragstart", function (e) {
             console.log("dragstart");
             e.dataTransfer.setData("text", item.innerText);
@@ -58,8 +61,7 @@ function MyListBox(element) {
     
             }
         });
-        //add items (p)
-        //
+
     }
     function escapeHTML(str) {
         return str.replace(/&/g, '&amp;')
@@ -115,11 +117,6 @@ function MyListBox(element) {
         }
 
         let pixelPerItem = that._target.scrollHeight / items.length;
-
-        console.log("clientHeight = " + that._target.clientHeight);
-        console.log("scrollHeight = " + that._target.scrollHeight);
-        console.log("scrollTop = " + that._target.scrollTop);
-        console.log("pixelPerItem = " + pixelPerItem);
         if (pixelPerItem * that._selectedIndex < that._target.scrollTop) {
             that._target.scrollTop = pixelPerItem * that._selectedIndex;
         } else if (that._target.scrollTop + that._target.clientHeight <
@@ -128,16 +125,44 @@ function MyListBox(element) {
         }
     }
 
+    var clicked = false;
+
     function itemClicked(e) {
 
-        let items = that._target.querySelectorAll(".soundItem");
-        let item = e.target;
-        for (let i = 0; i < items.length; i++) {
-            if (item == items[i]) {
-                that._selectedIndex = i;
-            }
-        }
-        selectChanged();
-    }
+        if(clicked){
+            //double click
+            clicked = false;
 
+            let items = that._target.querySelectorAll(".soundItem");
+            let item = e.target;
+            for (let i = 0; i < items.length; i++) {
+                if (item == items[i]) {
+                    that._selectedIndex = i;
+                }
+            }
+            selectChanged();
+
+            if (that.onDblClick){
+                that.onDblClick(that);
+            }
+            return;
+        }
+
+        clicked = true;
+        setTimeout(function(){
+            if (clicked){
+                //single click
+                let items = that._target.querySelectorAll(".soundItem");
+                let item = e.target;
+                for (let i = 0; i < items.length; i++) {
+                    if (item == items[i]) {
+                        that._selectedIndex = i;
+                    }
+                }
+                selectChanged();
+                clicked = false;
+                if (that.onClick) that.onClick(that);
+            }
+        },200);
+    }
 }

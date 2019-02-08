@@ -287,6 +287,8 @@ window.addEventListener("load", function(){
 	soundList.addEventListener("drop", onSoundListDrop, false);
 
 	mydata.soundList = new MyListBox(soundList);
+	mydata.soundList.onClick = onSoundListClick;
+	mydata.soundList.onDblClick = onSoundListDblClick;
 
 });
 
@@ -2295,3 +2297,10 @@ function uploadWAV(){
 	});
 }
 
+function onSoundListClick(){
+	console.log("single click");
+}
+
+function onSoundListDblClick(){
+	console.log("double click");
+}

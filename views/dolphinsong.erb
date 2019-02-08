@@ -18,7 +18,7 @@ body{
 #soundList{
 
 	width:175px;
-	height:200px;
+	height:400px;
 	margin:5px 5px;
 	background-color: rgb(71, 194, 194);
 	font-size:0.8em;
@@ -123,7 +123,6 @@ body{
 <body>
 
 <div id="sidebar">
-	foobarbaz
 	<div id="soundList" dropzone="copy" tabindex="-1">
 		<% @files.each do |filename| %>
 			<div class="soundItem" draggable="true"><%=filename%></div>
