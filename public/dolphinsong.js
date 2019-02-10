@@ -2333,6 +2333,7 @@ function onSoundListDblClick(){
 			.then(function () {
 				console.log("vtrack load done");
 				mydata.vTrack.setQuantize(false);
+				mydata.vTrack.setLoop(false);
 				mydata.vTrack.play();
 			}, function (e) {
 				console.log("vtrack load failed:" + e);

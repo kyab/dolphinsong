@@ -14,6 +14,7 @@ function MyTrack() {
     this._quantize = true;
     this._waitCount = 0;
 	this._name = "";
+	this._loop = true;
 	this.onStateChanged = null;
 
 	const grain_size = 6000;
@@ -60,11 +61,15 @@ function MyTrack() {
 	}
 
 	function triggerStateChanged(){
-		if (that.onStateChanged) that.onStateChanged(this);
+		if (that.onStateChanged) that.onStateChanged(that);
 	}
 
 	this.setQuantize = function(val){
 		this._quantize = val;
+	}
+
+	this.setLoop = function(val){
+		this._loop = val;
 	}
 	
 
@@ -166,7 +171,6 @@ function MyTrack() {
 		let calcState = this._calcState;
 		let ratio = this._ratio;
 
-		console.log("process");
 
 		if (ratio >= 1) {
 			for (let iX = 0; iX < len; iX++) {
@@ -242,6 +246,11 @@ function MyTrack() {
 					calcState.current_x = 0;
 					calcState.current_grain_start2 = grain_size / 2;
 					calcState.current_x2 = -1.0 * Math.round(grain_size / 2 * ratio);
+					if (!this._loop){
+						this._playing = false;
+						triggerStateChanged();
+						break;
+					}
 				}
 
 			}
@@ -315,6 +324,12 @@ function MyTrack() {
 					calcState.current_x = 0;
 					calcState.current_grain_start2 = grain_size;
 					calcState.current_x2 = Math.round(grain_size * (ratio) * (-1));
+
+					if (!this._loop) {
+						this._playing = false;
+						triggerStateChanged();
+						break;
+					}
 				}
 
 			}
