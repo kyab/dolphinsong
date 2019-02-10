@@ -61,6 +61,8 @@ mydata.timer = null;
 
 mydata.grain_size = 6000;
 
+mydata.vTrack = new MyTrack();
+
 var audioContext;
 var audioContext2;
 
@@ -289,6 +291,8 @@ window.addEventListener("load", function(){
 	mydata.soundList = new MyListBox(soundList);
 	mydata.soundList.onClick = onSoundListClick;
 	mydata.soundList.onDblClick = onSoundListDblClick;
+
+	mydata.vTrack.onStateChanged = playStateChanged;
 
 });
 
@@ -1418,6 +1422,10 @@ function playStateChanged(){
 		}
 	}
 
+	if (mydata.vTrack.isPlaying()){
+		shouldStop = false;
+	}
+
 	if (shouldStop && audioContext2){
 		audioContext2.suspend();
 		audioContext2.close();
@@ -1704,6 +1712,11 @@ function onAudioProcessOut(e){
 			stretch_continue3(i, outLeft, outRight, outLeft.length);
 		}
 	}
+
+	if (mydata.vTrack.isPlaying()){
+		mydata.vTrack.process(outLeft, outRight, outLeft.length);
+	}
+
 
 }
 
@@ -2299,8 +2312,33 @@ function uploadWAV(){
 
 function onSoundListClick(){
 	console.log("single click");
+	mydata.vTrack.pause();
 }
 
 function onSoundListDblClick(){
-	console.log("double click");
+	mydata.vTrack.pause();
+
+	let soundName = mydata.soundList.selectedText();
+
+	console.log("double click for sound name = " + soundName);
+
+
+	//get blob by ajax
+	let xhr = new XMLHttpRequest();
+	xhr.open("GET", "/sounds/" + soundName);
+	xhr.responseType = "blob";
+	xhr.onreadystatechange = function () {
+		if (this.readyState == 4 && this.status == 200) {
+			mydata.vTrack.loadSampleFromFile(this.response, "vTrack")
+			.then(function () {
+				console.log("vtrack load done");
+				mydata.vTrack.setQuantize(false);
+				mydata.vTrack.play();
+			}, function (e) {
+				console.log("vtrack load failed:" + e);
+			});
+		}
+	}
+
+	xhr.send();
 }

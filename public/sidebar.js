@@ -3,7 +3,6 @@
 function MyListBox(element) {
     this._target = element;
     this._selectedIndex = -1;
-    this._selectedText = "";
     this.onDblClick = null;
     this.onClick = null;
 
