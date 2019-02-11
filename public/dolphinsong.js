@@ -4,6 +4,8 @@ const TRACK_NUM = 5
 
 var mydata = {};
 mydata.monitor = false;
+mydata.level = true;
+mydata.inputLevel = 0;
 mydata.currentFrame = 0;
 mydata.currentFramePlay = 0;
 
@@ -1454,8 +1456,12 @@ function editorStateChanged(){
 	if (mydata.recording){
 		shouldStop = false;
 	}
+	if (mydata.level){
+		shouldStop = false;
+	}
 
 	if(shouldStop && mydata.isEditorActive){
+		console.log("EditoEngine stopped");
 		audioContext.close();
 		audioContext = null;
 		audioElem.pause();
@@ -1465,7 +1471,7 @@ function editorStateChanged(){
 	}
 
 	if(!shouldStop && !mydata.isEditorActive){
-		streamObtained(mydata.stream);
+		startEditorEngine(mydata.stream);
 	}
 
 }
@@ -1476,6 +1482,9 @@ function startStopTimer(){
 		shouldStop = false;
 	}
 	if (mydata.playing){
+		shouldStop = false;
+	}
+	if (mydata.level){
 		shouldStop = false;
 	}
 
@@ -1490,8 +1499,6 @@ function startStopTimer(){
 			redrawCanvas();
 		},50);
 	}
-
-
 }
 
 
@@ -1509,6 +1516,7 @@ function initMedia(){
 	}).then(function(){
 		// console.log("calling startOutEngine()");
 		// return startOutEngine();
+		editorStateChanged();
 	});
 
 }
@@ -1584,7 +1592,7 @@ function readyInput(){
 			var p = navigator.mediaDevices.getUserMedia(constrains)
 			p.then(function(stream){
 				mydata.stream = stream;
-				// streamObtained(stream);
+				// startEditorEngine(stream);
 				resolve();
 			});
 		});
@@ -1592,7 +1600,7 @@ function readyInput(){
 }
 
 
-function streamObtained(stream) {
+function startEditorEngine(stream) {
     
 	audioContext = new AudioContext();		
 
@@ -1612,29 +1620,32 @@ function streamObtained(stream) {
 	audioElem.play();
 	mydata.isEditorActive = true;
 
-	}
+	console.log("EditoEngine started");
 
-	function startOutEngine(){
-		audioContext2 = new AudioContext();
-		var scriptSource = audioContext2.createScriptProcessor(512/*latency*/,2,2);
-		scriptSource.onaudioprocess = onAudioProcessOut;
-		var dest = audioContext2.createMediaStreamDestination();
-		scriptSource.connect(dest);
+}
 
-		audioElem2 = new Audio();
-		audioElem2.srcObject = dest.stream;
-		audioElem2.setSinkId(mydata.outDevId);
-		audioElem2.play();
-		mydata.isPlayerActive = true;
+function startOutEngine(){
+	audioContext2 = new AudioContext();
+	var scriptSource = audioContext2.createScriptProcessor(512/*latency*/,2,2);
+	scriptSource.onaudioprocess = onAudioProcessOut;
+	var dest = audioContext2.createMediaStreamDestination();
+	scriptSource.connect(dest);
 
-		console.log("startOutEngine() completed.")
-	}
+	audioElem2 = new Audio();
+	audioElem2.srcObject = dest.stream;
+	audioElem2.setSinkId(mydata.outDevId);
+	audioElem2.play();
+	mydata.isPlayerActive = true;
+
+	console.log("startOutEngine() completed.")
+}
 
 function onAudioProcess(e) {
 	// console.log("onAudioProcess");
 
 	let inbuf = e.inputBuffer;
 	let outbuf = e.outputBuffer;
+
 
 	if (mydata.monitor){
     	for (let i=0; i < inbuf.getChannelData(0).length; i++){
@@ -1650,6 +1661,18 @@ function onAudioProcess(e) {
     		outRight[i] = 0;
     	}
     }
+
+	if (mydata.level){
+		//input level calc
+		let level = 0.0;
+		for (let i = 0; i < inbuf.getChannelData(0).length; i++){
+			let valL = Math.abs(inbuf.getChannelData(0)[i]);
+			if (valL > level) level = valL;
+			let valR = Math.abs(inbuf.getChannelData(1)[i]);
+			if (valR > level) level = valR;
+		}
+		mydata.inputLevel = level;
+	}
 
     if (mydata.recording){
     	for (let i=0; i < inbuf.getChannelData(0).length; i++){
@@ -1764,8 +1787,30 @@ function stopPlay(){
 	playStateChanged();
 }
 
+function drawInputLevel(){
+	const canvas = document.querySelector("#inputLevelCanvas");
+	const w = canvas.clientWidth;
+	const h = canvas.clientHeight;
+
+	let c = canvas.getContext("2d");
+	c.clearRect(0, 0, w, h);
+
+	c.beginPath();
+	c.fillStyle = "black";
+	c.rect(0, 0, w, h);
+	c.fill();
+
+	c.beginPath();
+	c.fillStyle = "gray";
+	c.rect(0,0, mydata.inputLevel*w, h);
+	c.fill();
+
+}
+
 function redrawCanvas(){
 	// console.log("redrawCanvas");
+
+	drawInputLevel();
 
 	const canvas = document.querySelector("#canvas");
 
@@ -1852,6 +1897,14 @@ function redrawCanvas(){
 function onMonitorChanged(){
 	const checkBox = document.querySelector("#chkMonitor");
 	mydata.monitor = checkBox.checked;
+	editorStateChanged();
+}
+
+function onLevelChanged(){
+	const checkBox = document.querySelector("#chkLevel");
+	mydata.level = checkBox.checked;
+	mydata.inputLevel = 0;
+	redrawCanvas();
 	editorStateChanged();
 }
 

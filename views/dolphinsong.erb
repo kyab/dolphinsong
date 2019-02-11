@@ -46,19 +46,32 @@ body{
 }
 
 #control{
-	display : table;
+	margin-top:20px;
+	/* display : table; */
 	text-align: center;
-	height: 3em;
+	/* height: 100px; */
 	width:100% 
 }
 
 #control-inner{
-	text-align: center;
-	display: table-cell;
-	vertical-align:bottom;
+	/* display : inline-block; */
+	/* border : 0.1em solid black; */
+	/* padding-bottom: 200px; */
+	/* vertical-align: center; */
+}
+
+#inputLevel{
+	/* border : 0.1em solid white; */
+	display:inline-block;
+	vertical-align: center;
+
+	/* font-size:0.1em; */
+	
+
 }
 
 #editor{
+	margin-top:10px;
 	text-align: center;
 	position: relative;
 	height: 13em;
@@ -128,7 +141,6 @@ body{
 			<div class="soundItem" draggable="true"><%=filename%></div>
 		<% end %>
 	</div>
-
 </div>
 
 <div id="main">
@@ -141,6 +153,11 @@ body{
 		<input type="button" value="stopPlay" onclick="stopPlay();"/>
 		<input type="button" value="download" onclick="exportWAV();"/>
 		<input type="button" value="upload" onclick="uploadWAV()";/>
+		<div id="inputLevel">
+			<canvas width=60 height=10;  id="inputLevelCanvas"></canvas>
+		</div>
+		<input id="chkLevel" type="checkbox" checked onclick="onLevelChanged();" />
+		
 	</div>
 </div>
 <div id="editor">
