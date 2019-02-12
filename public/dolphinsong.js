@@ -65,6 +65,10 @@ mydata.grain_size = 6000;
 
 mydata.vTrack = new MyTrack();
 
+mydata.tapTimes = new Array(8);
+mydata.bpm = 120.0;
+mydata.tapMaster = false;
+
 var audioContext;
 var audioContext2;
 
@@ -296,6 +300,11 @@ window.addEventListener("load", function(){
 
 	mydata.vTrack.onStateChanged = playStateChanged;
 
+	const tapButton = document.querySelector("#tapButton");
+	tapButton.addEventListener("click", onTapClicked, false);
+
+	const tapMasterChk = document.querySelector("#tapMasterChk");
+	tapMasterChk.addEventListener("change", onMasterChanged, false);
 });
 
 function onSpeedSliderChanged(e){
@@ -561,16 +570,27 @@ function onSyncClick(e){
 function sync(index){
 	let masterIndex = getMasterIndex();
 
-	if (masterIndex == -1) return;
-	if (!mydata.trackLoaded[masterIndex]) return;
+	if (masterIndex == -1) return;	//no master
+	if (masterIndex != 99){
+		if (!mydata.trackLoaded[masterIndex]) return;
+	}
 	if (!mydata.trackLoaded[index]) return;
 
 
-	//first naive sync
 	let c = 1;
+	let masterRatio = 0;
+	let masterLength = 0;
+	if (masterIndex == 99){
+		masterRatio = 1.0;
+		masterLength = 60 / mydata.bpm * 44100;
+	}else{
+		masterRatio = mydata.trackRatio[masterIndex];
+		masterLength = mydata.trackLength[masterIndex];
+	}
+
 	while(true){
 		mydata.trackRatio[index] = 
-		mydata.trackRatio[masterIndex] * mydata.trackLength[masterIndex] 
+			masterRatio * masterLength 
 		/ mydata.trackLength[index] / c ;
 		if (1/mydata.trackRatio[index] < 0.75){
 			c*=2;
@@ -618,8 +638,13 @@ function onDoubleSpeedClick(e){
 	updateSpeedLabel(index);
 }
 
+
+//return 99 if tap is master
 function getMasterIndex(){
 	let index = -1;
+	
+	if (mydata.tapMaster) return 99;
+
 	for (let i = 0; i < mydata.trackMaster.length; i++){
 		if (mydata.trackMaster[i]){
 			index = i;
@@ -631,22 +656,33 @@ function getMasterIndex(){
 }
 
 function onMasterChanged(e){
-	let elem = e.currentTarget;
 
-	//get the index
-	let index = getIndexFromEvent(e, ".masterChk");
+	const tapMasterChk = document.querySelector("#tapMasterChk");
 	const masterChks = document.querySelectorAll(".masterChk");
 
-	if (masterChks[index].checked){
-		mydata.trackMaster[index] = true;
+	let checkBox = e.currentTarget;
+	let index = getIndexFromEvent(e, ".masterChk");
+	if (checkBox.checked){
 		for (let i = 0; i < masterChks.length; i++){
 			if (i != index){
 				masterChks[i].checked = false;
 				mydata.trackMaster[i] = false;
 			}
 		}
+
+		if (checkBox == tapMasterChk){
+			mydata.tapMaster = true;
+		}else{
+			tapMasterChk.checked = false;
+			mydata.tapMaster = false;
+			mydata.trackMaster[index] = true;
+		}
 	}else{
-		mydata.trackMaster[index] = false;
+		if (checkBox == tapMasterChk){
+			mydata.tapMaster = false;
+		}else{
+			mydata.trackMaster[index] = false;
+		}
 	}
 
 }
@@ -1335,7 +1371,7 @@ function onPlayStopTrack(index){
 				//get master
 				let masterIndex = getMasterIndex();
 
-				if (index != masterIndex && -1 != masterIndex && mydata.trackPlaying[masterIndex]){
+				if (index != masterIndex && -1 != masterIndex && 99 != masterIndex && mydata.trackPlaying[masterIndex]){
 					let rm  = mydata.trackRatio[masterIndex];
 					let cfm = mydata.trackCurrentFrame[masterIndex];
 					let lenm = mydata.trackLength[masterIndex];
@@ -1989,7 +2025,18 @@ document.onkeydown = function (e){
 		}
 		break;	
 
+	case 9: /*TAB*/
+		e.stopPropagation();
+		e.preventDefault();
+		{
+			let tapButton = document.querySelector("#tapButton");
+			tapButton.click();
+		}
+		break;
+
 	}
+
+
 }
 
 document.onkeyup = function (e){
@@ -2395,4 +2442,31 @@ function onSoundListDblClick(){
 	}
 
 	xhr.send();
+}
+
+
+function onTapClicked(e){
+	console.log("TAP");
+	mydata.tapTimes[0] = mydata.tapTimes[1];
+	mydata.tapTimes[1] = mydata.tapTimes[2];
+	mydata.tapTimes[2] = mydata.tapTimes[3];
+	mydata.tapTimes[3] = mydata.tapTimes[4];
+	mydata.tapTimes[4] = mydata.tapTimes[5];
+	mydata.tapTimes[5] = mydata.tapTimes[6];
+	mydata.tapTimes[6] = mydata.tapTimes[7];
+	mydata.tapTimes[7] = Date.now();
+	if (mydata.tapTimes[0] == null){
+		// no enough counts
+		return;
+	}
+
+	//tantative calculation
+	let duration = (mydata.tapTimes[7] - mydata.tapTimes[0])/1000/7;
+	let bpm = 60 / duration;
+
+	if ((60 < bpm) && (bpm < 240)){
+		mydata.bpm = bpm;
+		let bpmLabel = document.querySelector("#bpmLabel");
+		bpmLabel.innerText = bpm.toFixed(1);
+	}
 }

@@ -15,6 +15,15 @@ body{
 
 }
 
+#tapButton{
+	margin-left:10px;
+}
+
+#bpmLabel{
+	border : 1px solid black;
+	font-size:0.8em;
+}
+
 #soundList{
 
 	width:175px;
@@ -136,6 +145,9 @@ body{
 <body>
 
 <div id="sidebar">
+	<input id="tapButton" type="button" value="TAP"/>
+	<span id="bpmLabel">120.0</span>
+	<input id="tapMasterChk" type="checkbox">master</input>
 	<div id="soundList" dropzone="copy" tabindex="-1">
 		<% @files.each do |filename| %>
 			<div class="soundItem" draggable="true"><%=filename%></div>
