@@ -305,6 +305,11 @@ window.addEventListener("load", function(){
 
 	const tapMasterChk = document.querySelector("#tapMasterChk");
 	tapMasterChk.addEventListener("change", onMasterChanged, false);
+
+	const songSaveButton = document.querySelector("#songSaveButton");
+	songSaveButton.addEventListener("click", saveSong, false);
+
+	$("#songLoadButton").on("click", loadSong);
 });
 
 function onSpeedSliderChanged(e){
@@ -744,7 +749,7 @@ function onOffsetChanged(index){
 	const offsetSlider = document.querySelectorAll(".offsetSlider")[index];
 	const offsetLabel = document.querySelectorAll(".offsetLabel")[index];
 
-	let val = offsetSlider.value;
+	let val = offsetSlider.valueAsNumber;
 	mydata.trackOffset[index] = val;
 	offsetLabel.innerText = val.toString();
 }
@@ -824,7 +829,6 @@ function loadSample(index, soundName){
 		});
 	}
 	xhr.send();
-
 }
 
 function trackLoadedFromFile(index, length, name){
@@ -836,6 +840,8 @@ function trackLoadedFromFile(index, length, name){
 	let titles = document.querySelectorAll(".title");
 	titles[index].innerText = name
 }
+
+
 
 function tryLoadSampleFromFileStandard(index, blob){
 	return new Promise(function(resolve, reject){
@@ -860,6 +866,16 @@ function tryLoadSampleFromFileStandard(index, blob){
 		};
 		fileReader.readAsArrayBuffer(blob);
 	});
+}
+
+function clearTrack(index){
+	mydata.trackLength[index] = 0;
+	mydata.trackCurrentFrame[index] = 0;
+	mydata.trackPlaying[index] = false;
+	mydata.trackLoaded[index] = false;
+
+	let titles = document.querySelectorAll(".title");
+	titles[index].innerText = "----";
 }
 
 
@@ -2468,5 +2484,89 @@ function onTapClicked(e){
 		mydata.bpm = bpm;
 		let bpmLabel = document.querySelector("#bpmLabel");
 		bpmLabel.innerText = bpm.toFixed(1);
+	}
+}
+
+function saveSong(){
+	console.log($("#songTitle").val());
+	let song = {};
+	song.title = $("#songTitle").val();
+	song.tracks = new Array(5);
+	for (let i = 0; i < song.tracks.length; i++){
+		song.tracks[i] = {};
+		song.tracks[i].name = $(".title").eq(i).text();
+		song.tracks[i].speed = mydata.trackRatio[i];
+		song.tracks[i].master = mydata.trackMaster[i];
+		song.tracks[i].volume = mydata.trackVolume[i];
+		song.tracks[i].pan = mydata.trackPan[i];
+		song.tracks[i].quantize = mydata.trackQuantize[i];
+		song.tracks[i].offset = mydata.trackOffset[i];
+	}
+	let json = JSON.stringify(song, undefined, 2);
+	// console.log(json);
+
+	$.ajax("./uploadsong", {
+		method:"POST",
+		data:json,
+		contentType : "application/json",
+		dataType : "json",
+		complete : function(data){
+			console.log("song update done");
+			console.log(data.responseText);
+		}
+	});
+}
+
+function loadSong(){
+	let songTitle = $("#songTitle").val();
+	console.log("load song : " +  songTitle);
+	$.ajax("./songs/" + songTitle + ".json",{
+		method:"GET",
+		dataType : "json",
+		complete : function(data){
+			console.log("song download done");
+			console.log(data.responseJSON);
+			loadSongByJSON(data.responseJSON);
+		}
+	});
+}
+
+function loadSongByJSON(songJSON){
+	let tracks = songJSON.tracks;
+	for (let i = 0; i < tracks.length ; i++){
+		if (tracks[i].name != "----"){ 
+			loadSample(i, tracks[i].name);
+		}else{
+			clearTrack(i);
+		}
+		if(tracks[i].speed != null){
+			mydata.trackRatio[i] = tracks[i].speed;
+			updateSpeedLabel(i);
+		}
+
+		if(tracks[i].master != null){
+			$(".masterChk").get(i).checked = tracks[i].master;
+			mydata.trackMaster[i] = tracks[i].master;
+		}
+
+		if(tracks[i].volume != null){
+			$(".volumeSlider").get(i).value = tracks[i].volume * 100;
+			onVolumeChanged(i);
+		}
+
+		if(tracks[i].pan != null){
+			$(".panSlider").get(i).value = tracks[i].pan * 100;
+			onPanChanged(i);
+		}
+
+		if(tracks[i].quantize != null){
+			$(".quantizeChk").get(i).checked = mydata.trackQuantize[i];
+			mydata.trackQuantize[i] = mydata.trackQuantize[i];
+		}
+
+		if(tracks[i].offset != null){
+			$(".offsetSlider").get(i).value = tracks[i].offset;
+			onOffsetChanged(i);
+		}
 	}
 }

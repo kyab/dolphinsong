@@ -71,6 +71,17 @@ class DolphinSong < Sinatra::Base
 		filelist
 	end
 
+	post "/uploadsong" do
+		songJSON = request.body.read
+		songObj = JSON.parse(songJSON)
+		title = songObj["title"] + ".json"
+		File.open("./public/songs/#{title}", "w") do |f|
+			f.write songJSON
+		end
+		p songObj
+		"ok, title=#{title}"
+	end
+
 	get "/soundlist" do
 		content_type :json
 		filelist
