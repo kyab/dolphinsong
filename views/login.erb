@@ -1,0 +1,25 @@
+<html>
+<header>
+<style type="text/css">
+#error{
+    color:red;
+}
+
+</style>
+<title>login</title>
+</header>
+<body>
+    <% if @wrong %>
+        <p id="error"> user name or password invalid</p>
+    <% end %>
+    <form action="./do_login" method="post">
+        user name:<input type="text" name="name"></input>
+        password :<input type="password" name="password"></input>
+        <input type="submit"/>
+    </form>
+
+    or
+
+    <a href="./auth/twitter">Login with Twitter</a>
+</body>
+</html>

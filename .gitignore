@@ -3,5 +3,7 @@
 vender/bundle/
 Gemfile.lock
 vendor/
+dolphinsong.db
+.env
 
 

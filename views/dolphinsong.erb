@@ -20,15 +20,27 @@ body{
 }
 
 #bpmLabel{
-	border : 1px solid black;
+	/* border : 1px solid black; */
 	font-size:0.8em;
 }
+
+#soundUploadButtonLabel{
+	display:inline-block;
+	margin-left : 5px;
+	margin-top : 10px;
+	background-color: antiquewhite;
+}
+
+#soundDeleteButton {
+	margin-left : 5px;
+}
+
 
 #soundList{
 
 	width:175px;
 	height:400px;
-	margin:5px 5px;
+	margin-left:5px;
 	background-color: rgb(71, 194, 194);
 	font-size:0.8em;
 	overflow:scroll;
@@ -45,8 +57,33 @@ body{
 
 
 .soundItem.selected{
-	background-color: rgb(126, 119, 119);
+	background-color: rgb(92, 92, 143);
 }
+
+#songList{
+
+	width:175px;
+	height:400px;
+	margin-left:5px;
+	background-color: rgb(196, 138, 131);
+	font-size:0.8em;
+	overflow:scroll;
+	
+}
+
+.songItem{
+	display:inline-block;
+	width:175px;
+	padding: 0px 0px;
+	margin: 0px 0px;
+	white-space:nowrap;
+}
+
+
+.songItem.selected{
+	background-color: rgb(155, 41, 41);
+}
+
 
 #main{
 	padding-left:180px;
@@ -83,10 +120,10 @@ body{
 	margin-top:10px;
 	text-align: center;
 	position: relative;
-	height: 13em;
+	height: 14.5em;
 }
 
-#editor canvas {
+#editor #canvas, #editor #canvas2 {
 	position :absolute;
 	top: 0.5em;
 	left: 5%;
@@ -94,8 +131,20 @@ body{
 	height:12em;
 }
 
+#editor #rulerCanvas {
+	position :absolute;
+	top :12.5em;
+	left : 5%;
+	width : 90%;
+	height : 1em;
+}
+
+#songControl{
+	margin-top : 0px;
+}
+
 #player {
-	margin-top:10px;
+	margin-top:5px;
 	text-align: center;
 	position:relative;
 }
@@ -137,21 +186,82 @@ body{
 	margin : 0px;
 }
 
+#header {
+	margin-top:5px;
+	margin-bottom:5px;
+	display :flex;
+	flex-direction: row;
+}
+
+#header > li{
+	list-style-type: none;
+}
+
+#header > li:first-of-type{
+	margin-right:auto;
+	padding-left : 1em;
+}
+
+#header > li:not(:first-of-type){
+	padding-right:10px;
+}
+
+#sidebar > #tab{
+	margin-top:10px;
+    display:flex;
+    flex-direction:row;
+    justify-content: center;
+    width:175px;
+}
+#sidebar > #tab > li {
+	
+    list-style-type:none;
+    padding-left:20px;
+    padding-right:20px;
+    border : 0.01em solid black; 
+	cursor: default;
+}
 
 </style>
 
 <title>Dolphin Song</title>
 </head>
 <body>
-
+<div id="header">
+	<li><a href="./">Dolphin Song</a></li>
+	<% if @user %>
+		<li><%=@user%></li>
+		<% if @icon %>
+			<li><img src="<%=@icon%>" width="25" height="25" /></li>
+		<% end %>
+		<li><a href="./do_logout">logout</a></li>
+	<% else %>
+		<li><a href="./login">login</a></li>
+	<% end %>
+</div>
 <div id="sidebar">
 	<input id="tapButton" type="button" value="TAP"/>
 	<span id="bpmLabel">120.0</span>
 	<input id="tapMasterChk" type="checkbox">master</input>
-	<div id="soundList" dropzone="copy" tabindex="-1">
-		<% @files.each do |filename| %>
-			<div class="soundItem" draggable="true"><%=filename%></div>
-		<% end %>
+
+	<div id="tab">
+		<li id="tabButtonSounds">sound</li>
+		<li id="tabButtonSongs">song</li>
+	</div>
+	<div id="soundListContainer">
+		<div id="soundList" dropzone="copy" tabindex="-1">
+			<% @files.each do |filename| %>
+				<div class="soundItem" draggable="true"><%=filename%></div>
+			<% end %>
+		</div>
+		<!-- <label id="soundUploadButtonLabel" for="soundUploadButton">
+			upload
+			<input id="soundUploadButton" type="file" value="upload" style="display:none"/>
+		</label> -->
+		<input id="soundDeleteButton" type="button" disabled value="delete"/>
+	</div>
+	<div id="songListContainer">
+		<div id="songList" dropzone="copy" tabindex="-1"></div>
 	</div>
 </div>
 
@@ -175,6 +285,7 @@ body{
 <div id="editor">
 	<canvas id="canvas"></canvas>
 	<canvas id="canvas2" dropzone="copy"></canvas>
+	<canvas id="rulerCanvas"></canvas>
 </div>
 <div id="songControl">
 	<input id="songTitle" type="text" value="song1" />

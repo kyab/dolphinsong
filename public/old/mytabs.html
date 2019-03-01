@@ -1,0 +1,94 @@
+<html>
+<style>
+    
+#soundList{
+
+	width:175px;
+	height:200px;
+	margin:5px 5px;
+	background-color: rgb(71, 194, 194);
+	font-size:0.8em;
+	overflow:scroll;
+	
+}
+
+.soundItem{
+	display:inline-block;
+	width:175px;
+	padding: 0px 0px;
+	margin: 0px 0px;
+	white-space:nowrap;
+}
+
+
+.soundItem.selected{
+	background-color: rgb(126, 119, 119);
+}
+
+#tab{
+    display:flex;
+    flex-direction:row;
+    justify-content: center;
+    width:175px;
+}
+#tab > li {
+    list-style-type:none;
+    padding-left:20px;
+    padding-right:20px;
+    border : 0.1em solid black; 
+}
+</style>
+
+<head>
+    <title>Tab-Test</title>
+</head>
+
+<body>
+
+</body>
+    <div id="sidebar">
+        <div id="tab">
+            <li id="foo" onclick="foo();">foo</li>
+            <li id="bar" onclick="bar();">bar</li>
+        </div>
+        <div id="soundList" dropzone="copy" tabindex="-1"></div>
+        <div id="here"><p>here</p></div>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+    <script src = "./sidebar.js"></script>
+    <script>
+        var mydata = {};
+        window.addEventListener("load", function () {
+            let soundList = document.querySelector("#soundList");
+            mydata.soundList = new MyListBox(soundList);
+            mydata.soundList.reload();
+
+            foo();
+        });
+
+        function foo(){
+            let soundList = document.querySelector("#soundList");
+            let here = document.querySelector("#here");
+            soundList.style.display = "";
+            here.style.display = "none";
+
+            let foo = document.querySelector("#foo");
+            let bar = document.querySelector("#bar");
+            foo.style.backgroundColor = "cyan";
+            bar.style.backgroundColor = "";
+        }
+        function bar(){
+            let soundList = document.querySelector("#soundList");
+            let here = document.querySelector("#here");
+            soundList.style.display = "none";
+            here.style.display = "";
+
+            let foo = document.querySelector("#foo");
+            let bar = document.querySelector("#bar");
+            foo.style.backgroundColor = "";
+            bar.style.backgroundColor = "cyan";
+        }
+
+    </script>
+</html>

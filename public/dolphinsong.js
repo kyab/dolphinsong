@@ -109,12 +109,20 @@ window.addEventListener("resize", function(e){
 function onResize(){
 	let canvas = document.querySelector("#canvas");
 	let canvas2 = document.querySelector("#canvas2");
+	let rulerCanvas = document.querySelector("#rulerCanvas");
 	let w = canvas.clientWidth;
 	let h = canvas.clientHeight;
 	canvas.width = w;
 	canvas2.width = w;
 	canvas.height = h;
 	canvas2.height = h;
+
+	w = rulerCanvas.clientWidth;
+	h = rulerCanvas.clientHeight;
+	rulerCanvas.width = w;
+	rulerCanvas.height = h;
+
+
 
 	mydata.needsRedrawWave = true;
 	redrawCanvas();
@@ -294,9 +302,14 @@ window.addEventListener("load", function(){
 	soundList.addEventListener("dragleave", onSoundListDragleave, false);
 	soundList.addEventListener("drop", onSoundListDrop, false);
 
-	mydata.soundList = new MyListBox(soundList);
+	mydata.soundList = new MyListBox(soundList, "soundItem", "./soundlist");
 	mydata.soundList.onClick = onSoundListClick;
 	mydata.soundList.onDblClick = onSoundListDblClick;
+	mydata.soundList.reload();
+
+	const songList = document.querySelector("#songList");
+	mydata.songList = new MyListBox(songList, "songItem", "./songlist");
+	mydata.songList.reload();
 
 	mydata.vTrack.onStateChanged = playStateChanged;
 
@@ -310,6 +323,14 @@ window.addEventListener("load", function(){
 	songSaveButton.addEventListener("click", saveSong, false);
 
 	$("#songLoadButton").on("click", loadSong);
+
+	$("#tabButtonSounds").on("click", tabSoundsClicked);
+	$("#tabButtonSongs").on("click", tabSongsClicked);
+	tabSoundsClicked();
+
+
+	$("#soundDeleteButton").on("click", soundDeleteClicked);
+
 });
 
 function onSpeedSliderChanged(e){
@@ -425,6 +446,7 @@ function onTrackDrop(e){
 
 function setDragHighlight(index){
 	const loadButton = document.querySelectorAll(".loadButton")[index];
+	const loadButton2 = document.querySelectorAll(".loadButton2")[index];
 	const title = document.querySelectorAll(".title")[index];
 	const playButton = document.querySelectorAll(".playButton")[index];
 	const speed = document.querySelectorAll(".speed")[index];
@@ -436,6 +458,7 @@ function setDragHighlight(index){
 	const offset = document.querySelectorAll(".offset")[index];
 
 	loadButton.classList.add("dropping");
+	loadButton2.classList.add("dropping");
 	title.classList.add("dropping");
 	playButton.classList.add("dropping");
 	speed.classList.add("dropping");
@@ -449,6 +472,7 @@ function setDragHighlight(index){
 
 function unsetDragHighlight(index){
 	const loadButton = document.querySelectorAll(".loadButton")[index];
+	const loadButton2 = document.querySelectorAll(".loadButton2")[index];
 	const title = document.querySelectorAll(".title")[index];
 	const playButton = document.querySelectorAll(".playButton")[index];
 	const speed = document.querySelectorAll(".speed")[index];
@@ -460,6 +484,7 @@ function unsetDragHighlight(index){
 	const offset = document.querySelectorAll(".offset")[index];
 
 	loadButton.classList.remove("dropping");
+	loadButton2.classList.remove("dropping");
 	title.classList.remove("dropping");
 	playButton.classList.remove("dropping");
 	speed.classList.remove("dropping");
@@ -492,7 +517,7 @@ function getIndexFromEvent(e, selector){
 function getIndexForElem(elem){
 	let index = -1;
 	const loadButtons = document.querySelectorAll(".loadButton");
-	const load2Buttons = document.querySelectorAll(".loadButon2");
+	const load2Buttons = document.querySelectorAll(".loadButton2");
 	const titles = document.querySelectorAll(".title");
 	const playButtons = document.querySelectorAll(".playButton");
 	const speeds = document.querySelectorAll(".speed");
@@ -546,14 +571,17 @@ function onSoundListDrop(e){
 		data: formData,
 		contentType : false,
 		processData : false,
-		complete : function(){
-			console.log("upload done");
-			// var list = document.querySelector("#soundList");
-			// var opt = new Option();
-			// opt.value = fileName;
-			// opt.innerText = fileName;
-			// list.add(opt);
-			mydata.soundList.reload();
+		complete : function(e){
+			if (e.status == 401){
+				alert("Oops! You need login to upload sounds.");
+				return;
+			}
+			if (e.status == 200){
+				console.log("upload succeeded");
+				mydata.soundList.reload();
+				$("#soundDeleteButton").get(0).disabled = true;
+				alert(fileName + " Uploaded!")
+			}
 		}
 	});
 	
@@ -802,7 +830,7 @@ function onLoadSampleFromList(index){
 function loadSample(index, soundName){
 	//get blob by ajax
 	var xhr = new XMLHttpRequest();	
-	xhr.open("GET", "/sounds/" + soundName);
+	xhr.open("GET", "/sound/" + soundName);
 	xhr.responseType = "blob";
 	xhr.onreadystatechange = function(){
 		if (this.readyState == 4 && this.status == 200){
@@ -1944,6 +1972,24 @@ function redrawCanvas(){
 	c.moveTo(x ,0);
 	c.lineTo(x, h);
 	c.stroke();
+
+	{
+		let rulerCanvas = document.querySelector("#rulerCanvas");
+		let w = rulerCanvas.width;
+		let h = rulerCanvas.height;
+		c = rulerCanvas.getContext("2d");
+		c.clearRect(0,0,w,h);
+
+		c.beginPath();
+		c.fillStyle = "lightgray";
+		c.rect(0, 0, w, h);
+		c.fill();
+
+		c.font = "1em 'ＭＳ Ｐゴシック'"
+		c.fillStyle = "black";
+		// c.fillText("123456789", w/2,h);
+	}
+	
 }
 
 function onMonitorChanged(){
@@ -2428,10 +2474,13 @@ function uploadWAV(){
 
 function onSoundListClick(){
 	console.log("single click");
+	$("#soundDeleteButton").get(0).disabled = false;
 	mydata.vTrack.pause();
 }
 
 function onSoundListDblClick(){
+
+	$("#soundDeleteButton").get(0).disabled = false;
 	mydata.vTrack.pause();
 
 	let soundName = mydata.soundList.selectedText();
@@ -2441,7 +2490,7 @@ function onSoundListDblClick(){
 
 	//get blob by ajax
 	let xhr = new XMLHttpRequest();
-	xhr.open("GET", "/sounds/" + soundName);
+	xhr.open("GET", "/sound/" + soundName);
 	xhr.responseType = "blob";
 	xhr.onreadystatechange = function () {
 		if (this.readyState == 4 && this.status == 200) {
@@ -2520,7 +2569,7 @@ function saveSong(){
 function loadSong(){
 	let songTitle = $("#songTitle").val();
 	console.log("load song : " +  songTitle);
-	$.ajax("./songs/" + songTitle + ".json",{
+	$.ajax("./song/" + songTitle + ".json",{
 		method:"GET",
 		dataType : "json",
 		complete : function(data){
@@ -2569,4 +2618,63 @@ function loadSongByJSON(songJSON){
 			onOffsetChanged(i);
 		}
 	}
+
+}
+
+function tabSoundsClicked(){
+	let soundList = $("#soundListContainer").get(0);
+	let songList = $("#songListContainer").get(0);
+
+	soundList.style.display = "";
+	songList.style.display = "none";
+
+	$("#tabButtonSounds").get(0).style.backgroundColor = "cyan";
+	$("#tabButtonSongs").get(0).style.backgroundColor = "";
+
+}
+
+function tabSongsClicked(){
+	let soundList = $("#soundListContainer").get(0);
+	let songList = $("#songListContainer").get(0);
+
+	soundList.style.display = "none";
+	songList.style.display = "";
+
+	$("#tabButtonSounds").get(0).style.backgroundColor = "";
+	$("#tabButtonSongs").get(0).style.backgroundColor = "cyan";
+
+}
+
+
+function soundDeleteClicked(){
+	let soundName = mydata.soundList.selectedText();
+	if (soundName){
+		console.log("deleting sound : " + soundName);
+	}else{
+		return;
+	}
+
+
+	$.ajax("./delete/sound", {
+		method: "POST",
+		data : {
+			"name" : soundName
+		},
+		complete: function (e) {
+			if (e.status == 403){
+				alert("you should log in, and you can delete you have uploaded");
+				console.log(e.responseText);
+				return;
+			}
+			if (e.status == 200){
+				alert("sound : " + soundName +" deleted.");
+				mydata.soundList.reload();
+				$("#soundDeleteButton").get(0).disabled = true;
+			}
+			console.log("sound delete done");
+			console.log(e.responseText);
+
+		}
+	});
+
 }

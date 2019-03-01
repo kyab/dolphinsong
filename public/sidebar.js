@@ -1,14 +1,16 @@
 
 'use strict';
-function MyListBox(element) {
+function MyListBox(element, itemClass, ajaxUrl) {
     this._target = element;
+    this._itemClass = itemClass;
+    this._ajaxUrl = ajaxUrl
     this._selectedIndex = -1;
     this.onDblClick = null;
     this.onClick = null;
 
     this._target.addEventListener("keydown", onKeyDown);
 
-    var items = this._target.querySelectorAll(".soundItem");
+    var items = this._target.querySelectorAll("." + this._itemClass);
     items.forEach(function (item) {
         item.addEventListener("click", itemClicked);
 
@@ -24,7 +26,7 @@ function MyListBox(element) {
     }
 
     this.selectedText = function () {
-        let items = this._target.querySelectorAll(".soundItem");
+        let items = this._target.querySelectorAll("." + this._itemClass);
         return items[this._selectedIndex].innerText;
 
     }
@@ -34,21 +36,21 @@ function MyListBox(element) {
     
         var that = this;
         //ajax get soundlist
-        $.ajax("./soundlist", {
+        $.ajax(this._ajaxUrl, {
             method: "GET",
             complete: function (response) {
                 console.log(response.responseJSON);
                 let sounds = response.responseJSON;
                 that._target.innerHTML="";
                 sounds.forEach(function(sound){
-                   let elem = "<div class=\"soundItem\" draggable=\"true\">";
+                   let elem = "<div class=\"" + that._itemClass + "\" draggable=\"true\">";
                    elem +=  escapeHTML(sound);
                    elem += "</div>\n"
                    that._target.innerHTML += elem;
                 }); 
 
                 //re-register handlers
-                var items = that._target.querySelectorAll(".soundItem");
+                var items = that._target.querySelectorAll("." + that._itemClass);
                 items.forEach(function (item) {
                     item.addEventListener("click", itemClicked);
                     item.addEventListener("dragstart", function (e) {
@@ -81,7 +83,7 @@ function MyListBox(element) {
                     e.preventDefault();
 
                     console.log("up");
-                    let items = that._target.querySelectorAll(".soundItem");
+                    let items = that._target.querySelectorAll("." + that._itemClass);
                     if (that._selectedIndex == 0) break;
                     that._selectedIndex--;
 
@@ -95,7 +97,7 @@ function MyListBox(element) {
                     e.preventDefault();
                     console.log("down");
 
-                    let items = that._target.querySelectorAll(".soundItem");
+                    let items = that._target.querySelectorAll("." + that._itemClass);
                     if (that._selectedIndex == items.length - 1) break;
                     that._selectedIndex++;
 
@@ -107,7 +109,7 @@ function MyListBox(element) {
     }
 
     function selectChanged() {
-        let items = that._target.querySelectorAll(".soundItem");
+        let items = that._target.querySelectorAll("." + that._itemClass);
         for (let i = 0; i < items.length; i++) {
             items[i].classList.remove("selected");
             if (i == that._selectedIndex) {
@@ -132,7 +134,7 @@ function MyListBox(element) {
             //double click
             clicked = false;
 
-            let items = that._target.querySelectorAll(".soundItem");
+            let items = that._target.querySelectorAll("." + that._itemClass);
             let item = e.target;
             for (let i = 0; i < items.length; i++) {
                 if (item == items[i]) {
@@ -151,7 +153,7 @@ function MyListBox(element) {
         setTimeout(function(){
             if (clicked){
                 //single click
-                let items = that._target.querySelectorAll(".soundItem");
+                let items = that._target.querySelectorAll("." + that._itemClass);
                 let item = e.target;
                 for (let i = 0; i < items.length; i++) {
                     if (item == items[i]) {
