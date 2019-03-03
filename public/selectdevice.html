@@ -1,0 +1,104 @@
+<html>
+
+<head>
+    <script type="text/javascript">
+
+    var mydata = {};
+    mydata.inDeviceId = 0;
+
+    window.addEventListener("load", function(){
+        let list = document.querySelector("#inputDevices");
+        list.addEventListener("change", selectChanged, false);
+
+        reload()
+        .then(function(){
+            console.log("done");
+        });
+    });
+    
+    function reload(){
+        return new Promise(function(resolve, reject){
+            let list = document.querySelector("#inputDevices");
+            let inDevices = null;
+            list.innerHTML = "";
+            navigator.mediaDevices.getUserMedia(
+                { audio: true, video: false })
+            .then(function(){
+                navigator.mediaDevices.enumerateDevices()
+                .then(function(devices){
+                    inDevices = new Array(0);
+                    devices.forEach(function(d){
+                        let i = 0;
+                        if(d.kind == "audioinput"){
+                            console.log("input[" + i + "] = " + d.label + " : " + d.deviceId);
+                            inDevices.push({
+                                id : d.deviceId,
+                                label : d.label
+                            });
+                        }
+                    });
+                }).then(function(){
+                    inDevices.forEach(function(d){
+                        let option = new Option();
+                        option.value = d.id;
+                        option.text = d.label;
+                        list.add(option);
+                    });
+                }).then(function (){
+                    let selectedFromCookie = false;
+                    if ($.cookie("inDevice")){
+                        for (let i = 0; i < inDevices.length; i++){
+                            if (inDevices[i].label == $.cookie("inDevice")){
+                                mydata.inDeviceId = inDevices[i].id;
+                                list.selectedIndex = i;
+                                selectedFromCookie = true;                           
+                                break;
+                            }
+                        }
+                    }
+
+                    if(!selectedFromCookie){
+                        mydata.inDeviceId = list.options[list.selectedIndex].value;
+                        list.selectedIndex = 0;
+                    }
+                    resolve();
+
+                });    
+            });
+        });
+    }
+    
+    function selectChanged(){
+        let list = document.querySelector("#inputDevices");
+
+        mydata.inDeviceId = list.selectedOptions[0].value;
+        console.log("selected : " + list.selectedOptions[0].text);
+        console.log("now id = " + mydata.inDeviceId);
+
+        if (mydata.inDeviceId == "default"){
+            //use wants default
+            $.removeCookie("inDevice");
+        }else{
+            $.cookie("inDevice", list.selectedOptions[0].text,
+                    {expires:365*10});
+        }
+    }
+
+
+    </script>
+    <title>Select Device</title>
+</head>
+
+<body>
+    <select id="inputDevices">
+    </select>
+    <select id="outputDevices">
+        <option value="ffoo">foo</option>
+    </select>
+    <input type="button" value="reload" onclick="reload();" />
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js"></script>
+</body>
+
+</html>
