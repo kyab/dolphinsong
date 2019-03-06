@@ -268,18 +268,26 @@ body{
 <div id="main">
 <div id="control">
 	<div id="control-inner">
-		<input id="chkMonitor" type="checkbox" value="true" onclick="onMonitorChanged();">monitor[m]</input>
-		<input type="button" value="startRecord" onclick="startRecord();"/>
-		<input type="button" value="stopRecord" onclick="stopRecord();"/>
-		<input type="button" value="startPlay" onclick="startPlay();"/>
-		<input type="button" value="stopPlay" onclick="stopPlay();"/>
-		<input type="button" value="download" onclick="exportWAV();"/>
-		<input type="button" value="upload" onclick="uploadWAV()";/>
-		<div id="inputLevel">
-			<canvas width=60 height=10;  id="inputLevelCanvas"></canvas>
+		<div>
+			In:
+			<select id="selectInputDevices"></select>
+			<div id="inputLevel">
+				<canvas width=60 height=10; id="inputLevelCanvas"></canvas>
+			</div>
+			<input id="chkLevel" type="checkbox" checked onclick="onLevelChanged();" />
+			<input id="chkMonitor" type="checkbox" value="true" onclick="onMonitorChanged();">monitor[m]</input>
+			Out:
+			<select id="selectOutputDevices"></select>
 		</div>
-		<input id="chkLevel" type="checkbox" checked onclick="onLevelChanged();" />
-		
+		<div>
+			<input type="button" value="startRecord" onclick="startRecord();"/>
+			<input type="button" value="stopRecord" onclick="stopRecord();"/>
+			<input type="button" value="startPlay" onclick="startPlay();"/>
+			<input type="button" value="stopPlay" onclick="stopPlay();"/>
+			<input type="button" value="download" onclick="exportWAV();"/>
+			<input type="button" value="upload" onclick="uploadWAV()";/>
+		</div>
+
 	</div>
 </div>
 <div id="editor">
@@ -377,6 +385,7 @@ body{
 	</table>
 	</div>
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js"></script>
 	<script src="aurora.js"></script>
 	<script src="aac.js"></script>
 	<script src="track.js"></script>

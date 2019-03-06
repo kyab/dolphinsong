@@ -129,7 +129,7 @@ function onResize(){
 }
 
 window.addEventListener("load", function(){
-	initMedia();
+
 
 	let canvas2 = document.querySelector("#canvas2");
 	canvas2.addEventListener("mousedown", onCanvasMousedown, false);
@@ -330,6 +330,13 @@ window.addEventListener("load", function(){
 
 
 	$("#soundDeleteButton").on("click", soundDeleteClicked);
+
+	$("#selectInputDevices").on("change", inputDeviceChanged);
+	$("#selectOutputDevices").on("change", outputDeviceChanged);
+
+
+
+	initMedia();
 
 });
 
@@ -1509,13 +1516,15 @@ function playStateChanged(){
 	}
 
 	if (shouldStop && audioContext2){
-		audioContext2.suspend();
-		audioContext2.close();
-		audioContext2 = null;
-		audioElem2.pause();
-		audioElem2 = null;
+		if (audioContext2){
+			audioContext2.suspend();
+			audioContext2.close();
+			audioContext2 = null;
+			audioElem2.pause();
+			audioElem2 = null;
+			console.log("audioEngine stopped");
+		}
 		mydata.isPlayerActive = false;
-		console.log("audioEngine stopped");
 		return;
 	}
 
@@ -1541,17 +1550,19 @@ function editorStateChanged(){
 	}
 
 	if(shouldStop && mydata.isEditorActive){
-		console.log("EditoEngine stopped");
-		audioContext.close();
-		audioContext = null;
-		audioElem.pause();
-		audioElem = null;
+		if (audioContext){
+			audioContext.close();
+			audioContext = null;
+			audioElem.pause();
+			audioElem = null;
+		}
+		console.log("EditorEngine stopped");
 		mydata.isEditorActive = false;
 		return;
 	}
 
 	if(!shouldStop && !mydata.isEditorActive){
-		startEditorEngine(mydata.stream);
+		startEditorEngine();
 	}
 
 }
@@ -1586,12 +1597,12 @@ function initMedia(){
 	navigator.mediaDevices.getUserMedia(
 					{audio:true, video:false})
 	.then( function(stream){
-		console.log("calling getOutputBuiltIn()");
-		return getOutputBuiltIn();
+		console.log("calling getOutputDevice()");
+		return getOutputDevice();
 
 	}).then(function(){
-		console.log("calling readyInput()");
-		return readyInput();
+		console.log("calling getInputDevice()");
+		return getInputDevice();
 	
 	}).then(function(){
 		// console.log("calling startOutEngine()");
@@ -1601,107 +1612,230 @@ function initMedia(){
 
 }
 
-function getOutputBuiltIn(){
+function getOutputDevice(){
+	return getDevice("output");
+}
+function getInputDevice(){
+	return getDevice("input");
+}
 
-	return new Promise(function(resolve, reject) {
+function getDevice(kind){
+	return new Promise(function (resolve, reject) {
+		let list = null;
+		if (kind == "output"){
+			list = document.querySelector("#selectOutputDevices");
+		}else{
+			list = document.querySelector("#selectInputDevices");
+		}
+		let devices = null;
+		list.innerHTML = "";
+
 		navigator.mediaDevices.enumerateDevices()
-		.then(function(devices){
-			var devId = "";
-			
-			devices.forEach(function(device){
-				if (device.kind == "audiooutput"){
-					console.log(device.label + " id = " + device.deviceId);
-					if (device.label.startsWith("内蔵スピーカー") || 
-						device.label.startsWith("ヘッドフォン") || 
-						device.label.startsWith("スピーカー")){
-						console.log("found!!!(内蔵スピーカー/ヘッドフォン)");
-						if (devId == ""){
-							devId = device.deviceId;
-							mydata.outDevId = devId;
+		.then(function (devices) {
+			let i = 0;
+			devices.forEach(function (d) {
+				if (d.kind == "audio" + kind) {
+					console.log(kind + "[" + i + "] = " + d.label + " : " + d.deviceId);
+					let option = new Option();
+					option.value = d.deviceId;
+					option.text = d.label;
+					list.add(option);
+					i++;
+				}
+
+			});
+
+			let selectedFromCookie = false;
+			let cookieKey = null;
+			if (kind == "output"){
+				cookieKey = "outDevice";
+			}else{
+				cookieKey = "inDevice";
+			}
+			if ($.cookie(cookieKey)) {
+				for (let i = 0; i < list.options.length; i++) {
+					if (list.options[i].label == $.cookie(cookieKey)) {
+						if (kind == "output"){
+							mydata.outDevId = list.options[i].value;
+						}else{
+							mydata.inDevId = list.options[i].value;
 						}
+						list.selectedIndex = i;
+						selectedFromCookie = true;
+						break;
 					}
 				}
-			});
-			if (devId == ""){
-				console.log("built-in output not found!");
+			}
+
+			if (!selectedFromCookie) {
+				list.selectedIndex = 0;
+				if (kind == "output") {
+					mydata.outDevId = list.options[0].value;
+				} else {
+					mydata.inDevId = list.options[0].value;
+				}
 			}
 			resolve();
 		});
 	});
 }
 
+// function getOutputBuiltIn(){
 
-function readyInput(){
-	return new Promise(function(resolve,reject){
-		navigator.mediaDevices.enumerateDevices()
-		.then(function(devices){
-			var devId = "";
+// 	return new Promise(function(resolve, reject) {
+// 		navigator.mediaDevices.enumerateDevices()
+// 		.then(function(devices){
+// 			var devId = "";
 			
-			devices.forEach(function(device){
-				if (device.kind == "audioinput"){
-					console.log(device.label + " id = " + device.deviceId);
-					if (device.label.startsWith("Background Music") ||
-						device.label.startsWith("ステレオ ミキサー") || 
-						device.label.startsWith("CABLE Output")){
-						console.log("Background Music device found!!!");
-						if (devId == ""){
-							devId = device.deviceId;
-							mydata.inDevId = devId;
-						}
-					}
-				}
-			});
+// 			devices.forEach(function(device){
+// 				if (device.kind == "audiooutput"){
+// 					console.log(device.label + " id = " + device.deviceId);
+// 					if (device.label.startsWith("内蔵スピーカー") || 
+// 						device.label.startsWith("ヘッドフォン") || 
+// 						device.label.startsWith("スピーカー")){
+// 						console.log("found!!!(内蔵スピーカー/ヘッドフォン)");
+// 						if (devId == ""){
+// 							devId = device.deviceId;
+// 							mydata.outDevId = devId;
+// 						}
+// 					}
+// 				}
+// 			});
+// 			if (devId == ""){
+// 				console.log("built-in output not found!");
+// 			}
+// 			resolve();
+// 		});
+// 	});
+// }
 
-			if (devId == ""){
-				console.log("Background Music device not found");
-				return;
-			}
 
-			var constrains = {
-				audio:{
-					deviceId : devId,
-					sampleSize : 16,
-					sampleRate : 44100,
-					channelCount : 2,
-					echoCancellation: false, /*this is the point*/
-      				autoGainControl: false,/*this is the point*/
-      				noiseSuppression: false/*this is the point*/
-				},
-				video:false
-			};
-			var p = navigator.mediaDevices.getUserMedia(constrains)
-			p.then(function(stream){
-				mydata.stream = stream;
-				// startEditorEngine(stream);
-				resolve();
-			});
-		});
-	});
+// function readyInput(){
+// 	return new Promise(function(resolve,reject){
+// 		navigator.mediaDevices.enumerateDevices()
+// 		.then(function(devices){
+// 			var devId = "";
+			
+// 			devices.forEach(function(device){
+// 				if (device.kind == "audioinput"){
+// 					console.log(device.label + " id = " + device.deviceId);
+// 					if (device.label.startsWith("Background Music") ||
+// 						device.label.startsWith("ステレオ ミキサー") || 
+// 						device.label.startsWith("CABLE Output")){
+// 						console.log("Background Music device found!!!");
+// 						if (devId == ""){
+// 							devId = device.deviceId;
+// 							mydata.inDevId = devId;
+// 						}
+// 					}
+// 				}
+// 			});
+
+// 			if (devId == ""){
+// 				console.log("Background Music device not found");
+// 				return;
+// 			}
+
+// 			var constrains = {
+// 				audio:{
+// 					deviceId : devId,
+// 					sampleSize : 16,
+// 					sampleRate : 44100,
+// 					channelCount : 2,
+// 					echoCancellation: false, /*this is the point*/
+//       				autoGainControl: false,/*this is the point*/
+//       				noiseSuppression: false/*this is the point*/
+// 				},
+// 				video:false
+// 			};
+// 			var p = navigator.mediaDevices.getUserMedia(constrains)
+// 			p.then(function(stream){
+// 				// mydata.stream = stream;
+// 				// startEditorEngine(stream);
+// 				resolve();
+// 			});
+// 		});
+// 	});
+// }
+
+function inputDeviceChanged(){
+	if (audioContext){
+		audioContext.close();
+		audioContext = null;
+		audioElem.pause();
+		audioElem = null;
+		console.log("EditorEngine stopped");
+	}
+	mydata.isEditorActive = false;
+
+	let list = document.querySelector("#selectInputDevices");
+	mydata.inDevId = list.options[list.selectedIndex].value;
+
+	editorStateChanged();
 }
 
+function outputDeviceChanged(){
+	if (audioContext2){
+		audioContext2.suspend();
+		audioContext2.close();
+		audioContext2 = null;
+		audioElem2.pause();
+		audioElem2 = null;
+		console.log("PlayerEngine stopped");
+	}
+	mydata.isPlayerActive = false;
 
-function startEditorEngine(stream) {
-    
-	audioContext = new AudioContext();		
+	let list = document.querySelector("#selectOutputDevices");
+	mydata.outDevId = list.options[list.selectedIndex].value;
 
-	var mediastreamsource = audioContext.createMediaStreamSource(stream);
+	playStateChanged();
+
+
+	//also input engine should be restarted
+	inputDeviceChanged();
 	
-	var scriptProcessor = audioContext.createScriptProcessor(0, 2, 2);
-	    scriptProcessor.onaudioprocess = onAudioProcess;
+}
 
-	    var dest = audioContext.createMediaStreamDestination();
+function startEditorEngine() {
 
-    mediastreamsource.connect(scriptProcessor);
-    scriptProcessor.connect(dest);
+	let constrains = {
+		audio: {
+			deviceId : {exact : mydata.inDevId},		//somehow simple "default" fall into Microphone.
+			sampleSize: 16,
+			sampleRate: 44100,
+			channelCount: 2,
+			echoCancellation: false, /*this is the point*/
+			autoGainControl: false,/*this is the point*/
+			noiseSuppression: false/*this is the point*/
+		},
+		video: false
+	};
+	
+	// navigator.mediaDevices.getUserMedia({audio:true, video:false})
+	navigator.mediaDevices.getUserMedia(constrains)
+	.then(function (stream) {
+		audioContext = new AudioContext();
 
-	audioElem = new Audio();
-	audioElem.srcObject = dest.stream;
-	audioElem.setSinkId(mydata.outDevId);
-	audioElem.play();
-	mydata.isEditorActive = true;
+		var mediastreamsource = audioContext.createMediaStreamSource(stream);
+		var scriptProcessor = audioContext.createScriptProcessor(0, 2, 2);
+		scriptProcessor.onaudioprocess = onAudioProcess;
 
-	console.log("EditoEngine started");
+		var dest = audioContext.createMediaStreamDestination();
 
+		mediastreamsource.connect(scriptProcessor);
+		scriptProcessor.connect(dest);
+
+		audioElem = new Audio();
+		audioElem.srcObject = dest.stream;
+		audioElem.setSinkId(mydata.outDevId)
+		.then(function(){
+			audioElem.play();
+		})
+		.then(function(){
+			mydata.isEditorActive = true;
+			console.log("EditoEngine started");
+		});
+	});
 }
 
 function startOutEngine(){
@@ -1717,7 +1851,7 @@ function startOutEngine(){
 	audioElem2.play();
 	mydata.isPlayerActive = true;
 
-	console.log("startOutEngine() completed.")
+	console.log("OutEngine started.")
 }
 
 function onAudioProcess(e) {

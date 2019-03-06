@@ -27,14 +27,15 @@
                 navigator.mediaDevices.enumerateDevices()
                 .then(function(devices){
                     inDevices = new Array(0);
+                    let i = 0;
                     devices.forEach(function(d){
-                        let i = 0;
                         if(d.kind == "audioinput"){
                             console.log("input[" + i + "] = " + d.label + " : " + d.deviceId);
                             inDevices.push({
                                 id : d.deviceId,
                                 label : d.label
                             });
+                            i++;
                         }
                     });
                 }).then(function(){
