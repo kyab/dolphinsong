@@ -1654,7 +1654,7 @@ function getDevice(kind){
 			}
 			if ($.cookie(cookieKey)) {
 				for (let i = 0; i < list.options.length; i++) {
-					if (list.options[i].label == $.cookie(cookieKey)) {
+					if (list.options[i].value == $.cookie(cookieKey)) {
 						if (kind == "output"){
 							mydata.outDevId = list.options[i].value;
 						}else{
@@ -1771,6 +1771,14 @@ function inputDeviceChanged(){
 	let list = document.querySelector("#selectInputDevices");
 	mydata.inDevId = list.options[list.selectedIndex].value;
 
+	if (mydata.inDevId == "default") {
+		//user wants default
+		$.removeCookie("inDevice");
+	} else {
+		$.cookie("inDevice", mydata.inDevId,
+			{ expires: 365 * 10 });
+	}
+
 	editorStateChanged();
 }
 
@@ -1788,9 +1796,16 @@ function outputDeviceChanged(){
 	let list = document.querySelector("#selectOutputDevices");
 	mydata.outDevId = list.options[list.selectedIndex].value;
 
+	if (mydata.outDevId == "default") {
+		//user wants default
+		$.removeCookie("outDevice");
+	} else {
+		$.cookie("outDevice", mydata.outDevId,
+			{ expires: 365 * 10 });
+	}
+
+
 	playStateChanged();
-
-
 	//also input engine should be restarted
 	inputDeviceChanged();
 	
@@ -1849,6 +1864,7 @@ function startOutEngine(){
 	audioElem2.srcObject = dest.stream;
 	audioElem2.setSinkId(mydata.outDevId);
 	audioElem2.play();
+	audioElem2.playbackRate = 0.5;
 	mydata.isPlayerActive = true;
 
 	console.log("OutEngine started.")
