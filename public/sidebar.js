@@ -26,6 +26,7 @@ function MyListBox(element, itemClass, ajaxUrl) {
     }
 
     this.selectedText = function () {
+        if (this._selectedIndex < 0) return null;
         let items = this._target.querySelectorAll("." + this._itemClass);
         return items[this._selectedIndex].innerText;
 
@@ -35,7 +36,7 @@ function MyListBox(element, itemClass, ajaxUrl) {
         console.log("MyListBox.reload()");
     
         var that = this;
-        //ajax get soundlist
+        //ajax get xxxlist
         $.ajax(this._ajaxUrl, {
             method: "GET",
             complete: function (response) {

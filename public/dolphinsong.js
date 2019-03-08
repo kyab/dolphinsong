@@ -319,10 +319,9 @@ window.addEventListener("load", function(){
 	const tapMasterChk = document.querySelector("#tapMasterChk");
 	tapMasterChk.addEventListener("change", onMasterChanged, false);
 
-	const songSaveButton = document.querySelector("#songSaveButton");
-	songSaveButton.addEventListener("click", saveSong, false);
-
 	$("#songLoadButton").on("click", loadSong);
+	$("#songSaveButton").on("click", saveSong);
+
 
 	$("#tabButtonSounds").on("click", tabSoundsClicked);
 	$("#tabButtonSongs").on("click", tabSongsClicked);
@@ -2711,14 +2710,23 @@ function saveSong(){
 		complete : function(data){
 			console.log("song update done");
 			console.log(data.responseText);
+			mydata.songList.reload();
 		}
 	});
 }
 
 function loadSong(){
-	let songTitle = $("#songTitle").val();
-	console.log("load song : " +  songTitle);
-	$.ajax("./song/" + songTitle + ".json",{
+	let songPath = mydata.songList.selectedText();
+	if (!songPath) return;
+
+	console.log("load song : " + songPath);
+
+	//remove .json
+	let songTitle = songPath.substr(0, songPath.lastIndexOf(".json"));
+
+	$("#songTitle").get(0).value = songTitle;
+
+	$.ajax("./song/" + songPath,{
 		method:"GET",
 		dataType : "json",
 		complete : function(data){
