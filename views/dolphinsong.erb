@@ -319,7 +319,9 @@ body{
 		</tr>
 		<tr>
 			<% @track_num.times do |n| %>
-			<td class="playButton" dropzone="copy">play</td>
+			<td class="playButton" dropzone="copy">
+				play[<%= @keymap[n] %>]
+			</td>
 			<% end %>
 		</tr>	
 		<tr>

@@ -130,6 +130,9 @@ class DolphinSong < Sinatra::Base
 		if (session[:icon])
 			@icon = session[:icon]
 		end
+
+		@keymap = ["Z","X","C","V","B"]
+
 		erb :dolphinsong
 	end
 

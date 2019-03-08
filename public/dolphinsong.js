@@ -1864,7 +1864,6 @@ function startOutEngine(){
 	audioElem2.srcObject = dest.stream;
 	audioElem2.setSinkId(mydata.outDevId);
 	audioElem2.play();
-	audioElem2.playbackRate = 0.5;
 	mydata.isPlayerActive = true;
 
 	console.log("OutEngine started.")
