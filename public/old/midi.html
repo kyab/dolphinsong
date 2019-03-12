@@ -1,0 +1,60 @@
+<html>
+
+<head>
+    <title>MIDI Test</title>
+    <script>
+        window.addEventListener("load", function(){
+            initMidi();
+        },false);
+
+        function initMidi(){
+            navigator.requestMIDIAccess()
+            .then(function(midiAccess){
+                console.log(midiAccess);
+                midiAccess.inputs.forEach(function(input){
+                    input.addEventListener("midimessage" , onMIDIMessage, false);
+                    console.log("[MIDI input]" + input.name );
+                });
+            }, function(e){
+                console.log("requestMIDIAccess error");
+                console.log(e);
+            });
+        }
+
+        function onMIDIMessage(e){
+            let first = e.data[0] >> 4;
+            let second = e.data[1];
+            let third = e.data[2];
+            switch (first){
+            case 8: //note off
+                {
+                    let noteNumber = second;
+                    console.log("note off : " + noteNumber.toString() );
+                }
+                break;
+            case 9: //note off
+                {
+                    let noteNumber = second;
+                    console.log("note on : " + noteNumber.toString());
+                }
+                break;
+            case 0x0b: // CC
+                {
+                    let controlNumber = second;
+                    let value = third;
+                    console.log("CC : " + controlNumber.toString(), "," + value.toString());
+                }
+                break;
+            }
+        }
+
+
+    
+    </script>
+</head>
+
+<body>
+
+</body>
+
+</html>

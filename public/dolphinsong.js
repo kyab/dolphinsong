@@ -69,6 +69,8 @@ mydata.tapTimes = new Array(8);
 mydata.bpm = 120.0;
 mydata.tapMaster = false;
 
+mydata.effectBypass = true;
+
 var audioContext;
 var audioContext2;
 
@@ -333,9 +335,10 @@ window.addEventListener("load", function(){
 	$("#selectInputDevices").on("change", inputDeviceChanged);
 	$("#selectOutputDevices").on("change", outputDeviceChanged);
 
-
+	$("#effectBypassChk").on("change", onEffectBypassChanged);
 
 	initMedia();
+	initMIDI();
 
 });
 
@@ -1592,6 +1595,20 @@ function startStopTimer(){
 }
 
 
+function initMIDI(){
+	navigator.requestMIDIAccess()
+	.then(function (midiAccess) {
+		// console.log(midiAccess);
+		midiAccess.inputs.forEach(function (input) {
+			input.addEventListener("midimessage", onMIDIMessage, false);
+			console.log("[MIDI input]" + input.name);
+		});
+	}, function (e) {
+		console.log("requestMIDIAccess error");
+		console.log(e);
+	});
+}
+
 function initMedia(){
 	navigator.mediaDevices.getUserMedia(
 					{audio:true, video:false})
@@ -1857,7 +1874,22 @@ function startOutEngine(){
 	var scriptSource = audioContext2.createScriptProcessor(512/*latency*/,2,2);
 	scriptSource.onaudioprocess = onAudioProcessOut;
 	var dest = audioContext2.createMediaStreamDestination();
-	scriptSource.connect(dest);
+	
+	// scriptSource.connect(dest);
+
+	{
+		let tuna = new Tuna(audioContext2);
+		mydata.phaser = new tuna.Phaser({
+			rate: 1.2,                     //0.01 to 8 is a decent range, but higher values are possible
+			depth: 0.3,                    //0 to 1
+			feedback: 0.8,                 //0 to 1+
+			stereoPhase: 30,               //0 to 180
+			baseModulationFrequency: 700,  //500 to 1500
+			bypass: 1
+		});
+		scriptSource.connect(mydata.phaser);
+		mydata.phaser.connect(dest);
+	}
 
 	audioElem2 = new Audio();
 	audioElem2.srcObject = dest.stream;
@@ -2833,5 +2865,136 @@ function soundDeleteClicked(){
 
 		}
 	});
+}
 
+
+function onMIDIMessage(e){
+	let first = e.data[0] >> 4;
+	let second = e.data[1];
+	let third = e.data[2];
+	switch (first) {
+		case 8: //note off
+			{
+				let noteNumber = second;
+				console.log("note off : " + noteNumber.toString());
+				onNoteOff(noteNumber);
+			}
+			break;
+		case 9: //note off
+			{
+				let noteNumber = second;
+				console.log("note on : " + noteNumber.toString());
+				onNoteOff(noteNumber);
+			}
+			break;
+		case 0x0b: // CC
+			{
+				let controlNumber = second;
+				let value = third;
+				console.log("CC : " + controlNumber.toString(), "," + value.toString());
+				onControlChange(controlNumber, value);
+			}
+			break;
+	}
+}
+
+function onNoteOn(noteNumber){
+	switch(noteNumber){
+	case 36:
+		onPlayStopTrack(0);
+		break;
+	case 37:
+		onPlayStopTrack(1);
+		break;
+	case 38:
+		onPlayStopTrack(2);
+		break;
+	case 39:
+		onPlayStopTrack(3);
+		break;
+	case 40:
+		onPlayStopTrack(4);
+		break;
+
+	}
+
+}
+
+function onNoteOff(noteNumber){
+	switch (noteNumber) {
+	case 36:
+		onPlayStopTrack(0);
+		break;
+	case 37:
+		onPlayStopTrack(1);
+		break;
+	case 38:
+		onPlayStopTrack(2);
+		break;
+	case 39:
+		onPlayStopTrack(3);
+		break;
+	case 40:
+		onPlayStopTrack(4);
+		break;
+	}
+}
+
+function onControlChange(number, value){
+	switch(number){
+	case 1:	//rate
+		{
+			let rate = 0.01 + (8-0.01) * value/127.0;
+			console.log("rate = " + rate);
+			if (mydata.phaser){
+				mydata.phaser.rate = rate;
+			}
+		}
+		break;
+	case 2:	//depth
+		{
+			let depth = value/127.0;
+			console.log("depth = " + depth);
+			if (mydata.phaser){
+				mydata.phaser.depth = depth;
+			}
+		}
+		break;
+	case 3: //feedback
+		{
+			let feedback = value/127.0;
+			console.log("feedback = " + feedback);
+			if (mydata.phaser){
+				mydata.phaser.feedback = feedback;
+			}
+		}
+		break;
+	case 4: //stereoPhase
+		{
+			let stereoPhase = 180 * value/127.0;
+			console.log("stereoPhase = ", + stereoPhase);
+			if (mydata.phaser){
+				mydata.phaser.stereoPhase = stereoPhase;
+			}
+		}
+		break;
+	case 5: //baseModulationFrequency
+		{
+			let baseModulationFrequency = 500 + (1500-500) * value/127.0;
+			console.log("baseModulationFrequency = " + baseModulationFrequency);
+			if (mydata.phaser){
+				mydata.phaser.baseModulationFrequency = baseModulationFrequency;
+			}
+		}
+		break;
+	}
+
+}
+
+function onEffectBypassChanged(e){
+	let chk = $("#effectBypassChk").get(0);
+	mydata.effectBypass = chk.checked;
+	if (mydata.phaser){
+		mydata.phaser.bypass = mydata.effectBypass; 
+	}
 }
