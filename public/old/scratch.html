@@ -1,0 +1,196 @@
+<html>
+
+<head>
+<title>Scratch</title>
+<style>
+
+#contents{
+    background-color: aqua;
+    height: 500;
+}
+
+#con{
+    width:100%;
+    height:100%;
+    background-color: gray;
+}
+
+#tt{
+    width:100%;
+    height:100%;
+}
+
+</style>
+<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jspanel3/3.11.0/jquery.jspanel.css"/>
+
+</head>
+
+<body>
+<div id="contents">
+    <button onclick="showTT();">foo</button>
+</div>
+
+
+<!-- <script src="https://riversun.github.io/jsframe/jsframe.js"></script> -->
+
+<script>
+    const RPS = -33.3 / 60 * (Math.PI * 2);
+    let turnTable = {
+        rad : Math.PI / 3,
+        timer : null,
+        speed : 1.0,
+        //internal state
+        _processing : false,
+        _startOffsetRad : 0,
+        _prevSec : 0
+
+    };
+    window.addEventListener("load", function () {
+
+    }, false);
+
+    function showTT() {
+        $.jsPanel({
+            headerTitle: "scratch",
+            content: "<div id=\"con\"></div>",
+            callback: panelLoaded,
+            resizable: {
+                resize: function () { panelResized(); }
+            },
+            onclosed : panelClosed
+        });
+    }
+
+    function panelClosed(){
+        clearInterval(turnTable.timer);
+    }
+
+    function onCanvasMousedown(e){
+        let canvas = document.querySelector("#tt");
+        const rect = e.target.getBoundingClientRect();
+        let x = e.clientX - rect.left;
+        x -= canvas.clientWidth / 2;
+        let y = e.clientY - rect.top;
+        y -= canvas.clientHeight / 2;
+        y *= -1;
+
+        let rad = Math.acos(x / Math.sqrt(x*x+ y*y));
+        // turnTable.rad = rad;
+
+        turnTable._processing = true;
+        turnTable._startOffsetRad = rad;
+        turnTable._prevSec = Date.now() / 1000; 
+
+        // console.log(x,y);
+        drawTT();
+    }
+
+    function onCanvasMousemove(e){
+        if (!turnTable._processing) return;
+
+        let canvas = document.querySelector("#tt");
+        const rect = e.target.getBoundingClientRect();
+        let x = e.clientX - rect.left;
+        x -= canvas.clientWidth / 2;
+        let y = e.clientY - rect.top;
+        y -= canvas.clientHeight / 2;
+        y *= -1;
+
+        let rad = Math.acos(x / Math.sqrt(x * x + y * y));
+        
+        if (y < 0){
+            rad = 2*Math.PI - rad;
+        }
+        // console.log(rad);
+
+        let delta  = rad - turnTable._startOffsetRad;
+        turnTable.rad += delta;
+
+        let nowS = Date.now() / 1000;
+        let radS = delta / (turnTable._prevSec - nowS);
+        turnTable.speed = radS / RPS;
+
+        turnTable._prevSec = nowS;
+        turnTable._startOffsetRad = rad;
+
+        console.log("speed", turnTable.speed);
+
+        drawTT();
+    }
+
+    function onCanvasMouseup(e){
+        if (turnTable._processing){
+            turnTable._processing = false;
+        }
+    }
+    function panelLoaded() {
+
+        let con = document.querySelector("#con");
+        let canvas = document.createElement("canvas");
+        canvas.id = "tt";
+        con.appendChild(canvas);
+
+
+ 	    canvas.addEventListener("mousedown", onCanvasMousedown, false);
+        canvas.addEventListener("mousemove", onCanvasMousemove, false);
+        canvas.addEventListener("mouseup", onCanvasMouseup, false);       
+
+        turnTable.timer = setInterval(function(){
+            if (!turnTable._processing){
+                turnTable.rad -= RPS/100;
+            }
+            drawTT();
+        }, 10);
+    }
+
+    function panelResized() {
+        let canvas = document.querySelector("#tt");
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+
+        console.log("w,h = " + canvas.width + "," + canvas.height);
+        drawTT();
+    }
+
+    function drawTT() {
+        // console.log("drawTT");
+        let canvas = document.querySelector("#tt");
+        let c = canvas.getContext("2d");
+        let w = canvas.width;
+        let h = canvas.height;
+        c.clearRect(0, 0, w, h);
+
+        c.beginPath();
+        c.fillStyle = "black";
+        c.rect(0, 0, w, h);
+        c.fill();
+
+        let r = w;
+        if (h < w) r = h;
+        r /= 2;
+
+        c.beginPath();
+        c.fillStyle = "gray";
+        c.arc(w/2, h/2, r, Math.PI*2, false);
+        c.fill();
+
+        c.beginPath();
+        c.strokeStyle ="orange";
+        c.moveTo(w/2, h/2);
+        c.lineTo(w/2 + r*Math.cos(turnTable.rad), h/2 - r*Math.sin(turnTable.rad));
+        c.stroke();
+
+    }
+
+
+
+</script>
+<script src="../jquery-2.2.4.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+<script type="text/javascript"
+    src="https://cdnjs.cloudflare.com/ajax/libs/jspanel3/3.11.0/jquery.jspanel-compiled.js"></script>
+
+</body>
+
+</html>
