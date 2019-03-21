@@ -34,6 +34,7 @@ mydata.trackBufferLeft = new Array(TRACK_NUM);
 mydata.trackBufferRight = new Array(TRACK_NUM);
 mydata.trackPlaying = new Array(TRACK_NUM);
 mydata.trackCurrentFrame = new Array(TRACK_NUM);
+mydata.trackCurrentFrame_scratch = new Array(TRACK_NUM);
 mydata.trackLength = new Array(TRACK_NUM);
 mydata.trackRatio = new Array(TRACK_NUM);
 mydata.trackMaster = new Array(TRACK_NUM);
@@ -47,6 +48,7 @@ for (let i=0;i<TRACK_NUM;i++){
 	mydata.trackPlaying[i] = false;
 	mydata.trackRatio[i] = 1;
 	mydata.trackCurrentFrame[i] = 0;
+	mydata.trackCurrentFrame_scratch[i] = 0;
 	mydata.trackLength[i] = 0;
 	mydata.trackMaster[i] = false;
 	mydata.trackVolume[i] = 1;
@@ -56,6 +58,10 @@ for (let i=0;i<TRACK_NUM;i++){
 	mydata.trackWaitCount[i] = 0;
 }
 
+mydata.tempBufferL = new Float32Array(44100*60*10);
+mydata.tempBufferR = new Float32Array(44100*60*10);
+mydata.tempRead = 0;
+mydata.tempWrite = 0;
 
 mydata.isEditorActive = false;
 mydata.isPlayerActive = false;
@@ -94,6 +100,10 @@ calcState.current_grain_start = new Array(TRACK_NUM);
 calcState.current_x = new Array(TRACK_NUM);
 calcState.current_grain_start2 = new Array(TRACK_NUM);
 calcState.current_x2 = new Array(TRACK_NUM);
+calcState.current_grain_start_scratch = new Array(TRACK_NUM);
+calcState.current_x_scratch = new Array(TRACK_NUM);
+calcState.current_grain_start2_scratch = new Array(TRACK_NUM);
+calcState.current_x2_scratch = new Array(TRACK_NUM);
 for (let i = 0; i < TRACK_NUM; i++){
 	calcState.stretchedLX[i] = new Float32Array(44100*60);
 	calcState.stretchedRX[i] = new Float32Array(44100*60);
@@ -101,6 +111,17 @@ for (let i = 0; i < TRACK_NUM; i++){
 	calcState.current_x[i] = 0;
 	calcState.current_grain_start2[i] = mydata.grain_size / 2;
 	calcState.current_x2[i] = -1.0 * Math.round(mydata.grain_size/2*mydata.trackRatio[i]);
+}
+
+const RPS = -33.3 / 60 * (Math.PI * 2);
+let turnTable = {
+	rad: Math.PI / 3,
+	timer: null,
+	speed: 1.0,
+	//internal state
+	_processing: false,
+	_startOffsetRad: 0,
+	_prevSec: 0	
 }
 
 
@@ -1208,40 +1229,384 @@ function noFadeWindow(fadeStartRate, x, val){
 }
 
 
-function stretch2(index){
+// function stretch2(index){
 
-	let grain_size = 4000;
-	let ratio = 1.5;
+// 	let grain_size = 4000;
+// 	let ratio = 1.5;
 
-	let start = 0;
-	let end = grain_size;
+// 	let start = 0;
+// 	let end = grain_size;
 
-	let stretchedL = new Float32Array(44100*60*10);
-	let stretchedR = new Float32Array(44100*60*10);
-	while(true){
-		for (let i = start; i < end; i++){
+// 	let stretchedL = new Float32Array(44100*60*10);
+// 	let stretchedR = new Float32Array(44100*60*10);
+// 	while(true){
+// 		for (let i = start; i < end; i++){
 
-			let valL = mydata.trackBufferLeft[index][i];
-			let valR = mydata.trackBufferRight[index][i];
+// 			let valL = mydata.trackBufferLeft[index][i];
+// 			let valR = mydata.trackBufferRight[index][i];
 
-			let fadeStartRate = -1/2*ratio + 1;
-			valL = sinFadeWindow(fadeStartRate, (i-start)/grain_size, valL);
-			valR = sinFadeWindow(fadeStartRate, (i-start)/grain_size, valR);
+// 			let fadeStartRate = -1/2*ratio + 1;
+// 			valL = sinFadeWindow(fadeStartRate, (i-start)/grain_size, valL);
+// 			valR = sinFadeWindow(fadeStartRate, (i-start)/grain_size, valR);
 
-			let iX = Math.round(start * ratio) + (i-start);
-			stretchedL[iX] += valL;
-			stretchedR[iX] += valR;
+// 			let iX = Math.round(start * ratio) + (i-start);
+// 			stretchedL[iX] += valL;
+// 			stretchedR[iX] += valR;
+// 		}
+// 		start = start + grain_size/2;
+// 		end = end + grain_size/2;
+// 		if (start > mydata.trackLength[index]){
+// 			break;
+// 		}
+// 	}
+
+// 	mydata.trackBufferLeft[index] = stretchedL;
+// 	mydata.trackBufferRight[index] = stretchedR;
+// 	mydata.trackLength[index] = Math.round(mydata.trackLength[index] * ratio);
+// }
+
+function consume_backyard(index, offset){
+
+	let grain_size = mydata.grain_size;
+	let ratio = mydata.trackRatio[index];
+
+	if (ratio >=1){
+		for(let c = 0; c < offset; c++){
+			if (calcState.current_x[index] > grain_size * (1 + (ratio - 1) / 2)) {
+				calcState.current_grain_start[index] += grain_size;
+				calcState.current_x[index] = Math.round((grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1))
+			}
+			if (calcState.current_x2[index] > grain_size * (1 + (ratio - 1) / 2)) {
+				calcState.current_grain_start2[index] += grain_size;
+				calcState.current_x2[index] = Math.round((grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1));
+			}
+
+			calcState.current_x[index]++;
+			calcState.current_x2[index]++;
+
+			mydata.trackCurrentFrame[index] += 1 * 1 / ratio;
+			if (mydata.trackCurrentFrame[index] > mydata.trackLength[index]) {
+				mydata.trackCurrentFrame[index] = 0;
+				calcState.current_grain_start[index] = 0;
+				calcState.current_x[index] = 0;
+				calcState.current_grain_start2[index] = mydata.grain_size / 2;
+				calcState.current_x2[index] = -1.0 * Math.round(mydata.grain_size / 2 * mydata.trackRatio[index]);
+			}
 		}
-		start = start + grain_size/2;
-		end = end + grain_size/2;
-		if (start > mydata.trackLength[index]){
-			break;
+	}else{
+		for (let c = 0; c < offset; c++) {
+			if (calcState.current_x[index] > grain_size * (1 + ratio - 1 / 2)) {
+				calcState.current_grain_start[index] += grain_size * 2;
+				calcState.current_x[index] = Math.round(grain_size * (ratio - 1 / 2) * (-1));
+			}
+			if (calcState.current_x2[index] > grain_size * (1 + ratio - 1 / 2)) {
+				calcState.current_grain_start2[index] += grain_size * 2;
+				calcState.current_x2[index] = Math.round(grain_size * (ratio - 1 / 2) * (-1));
+			}
+			calcState.current_x[index]++;
+			calcState.current_x2[index]++;
+
+			mydata.trackCurrentFrame[index] += 1 * 1 / ratio;
+			if (mydata.trackCurrentFrame[index] > mydata.trackLength[index]) {
+				mydata.trackCurrentFrame[index] = 0;
+				calcState.current_grain_start[index] = 0;
+				calcState.current_x[index] = 0;
+				calcState.current_grain_start2[index] = grain_size;
+				calcState.current_x2[index] = Math.round(grain_size * (ratio) * (-1));
+			}
 		}
 	}
+}
 
-	mydata.trackBufferLeft[index] = stretchedL;
-	mydata.trackBufferRight[index] = stretchedR;
-	mydata.trackLength[index] = Math.round(mydata.trackLength[index] * ratio);
+function consume_scratch(index, offset) {
+
+	let grain_size = mydata.grain_size;
+	let ratio = mydata.trackRatio[index];
+
+	if (ratio >= 1) {
+		if (offset >=0){
+			for (let c = 0; c < offset; c++) {
+				if (calcState.current_x_scratch[index] > grain_size * (1 + (ratio - 1) / 2)) {
+					calcState.current_grain_start_scratch[index] += grain_size;
+					calcState.current_x_scratch[index] = Math.round((grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1));
+				}
+				if (calcState.current_x2_scratch[index] > grain_size * (1 + (ratio - 1) / 2)) {
+					calcState.current_grain_start2_scratch[index] += grain_size;
+					calcState.current_x2_scratch[index] = Math.round((grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1));
+				}
+
+				calcState.current_x_scratch[index]++;
+				calcState.current_x2_scratch[index]++;
+
+				mydata.trackCurrentFrame_scratch[index] += 1 * 1 / ratio;
+				if (mydata.trackCurrentFrame_scratch[index] > mydata.trackLength[index]) {
+					mydata.trackCurrentFrame_scratch[index] = 0;
+					calcState.current_grain_start_scratch[index] = 0;
+					calcState.current_x_scratch[index] = 0;
+					calcState.current_grain_start2_scratch[index] = mydata.grain_size / 2;
+					calcState.current_x2_scratch[index] = -1.0 * Math.round(mydata.grain_size / 2 * mydata.trackRatio[index]);
+				}
+			}
+		}else{
+			for (let c = 0 ; c < -offset; c++){
+				if (calcState.current_x_scratch[index] < (grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1)){
+					calcState.current_grain_start_scratch[index] -= grain_size;
+					calcState.current_x_scratch[index] = Math.round(grain_size * (1 + (ratio - 1) / 2));
+				}
+				if (calcState.current_x2_scratch[index] < (grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1)){
+					calcState.current_grain_start2_scratch[index] -= grain_size;
+					calcState.current_x2_scratch[index] = Math.round(grain_size * (1 + (ratio - 1) / 2));
+				}
+
+				calcState.current_x_scratch[index]--;
+				calcState.current_x2_scratch[index]--;
+
+				mydata.trackCurrentFrame_scratch[index] -= 1 * 1 / ratio;
+				if (mydata.trackCurrentFrame_scratch[index] < 0) {
+					mydata.trackCurrentFrame_scratch[index] = mydata.trackLength[index];
+					calcState.current_grain_start_scratch[index] = mydata.trackLength[index];
+					calcState.current_x_scratch[index] = mydata.trackLength[index];
+					calcState.current_grain_start2_scratch[index] = mydata.trackLength[index] - grain_size/2;
+					calcState.current_x2_scratch[index] = grain_size + Math.round(grain_size*ratio/2);
+				}		
+			}
+		}
+	}else{
+		if (offset >= 0) {
+			for (let c = 0; c < offset; c++) {
+				if (calcState.current_x_scratch[index] > grain_size * (1 + ratio - 1 / 2)) {
+					calcState.current_grain_start_scratch[index] += grain_size * 2;
+					calcState.current_x_scratch[index] = Math.round(grain_size * (ratio - 1 / 2) * (-1));
+				}
+				if (calcState.current_x2_scratch[index] > grain_size * (1 + ratio - 1 / 2)) {
+					calcState.current_grain_start2_scratch[index] += grain_size * 2;
+					calcState.current_x2_scratch[index] = Math.round(grain_size * (ratio - 1 / 2) * (-1));
+				}
+				calcState.current_x_scratch[index]++;
+				calcState.current_x2_scratch[index]++;
+
+				mydata.trackCurrentFrame_scratch[index] += 1 * 1 / ratio;
+				if (mydata.trackCurrentFrame_scratch[index] > mydata.trackLength[index]) {
+					mydata.trackCurrentFrame_scratch[index] = 0;
+					calcState.current_grain_start_scratch[index] = 0;
+					calcState.current_x_scratch[index] = 0;
+					calcState.current_grain_start2_scratch[index] = grain_size;
+					calcState.current_x2_scratch[index] = Math.round(grain_size * (ratio) * (-1));
+				}
+			}
+		} else {	//reverse
+
+			for (let c = 0; c < -offset; c++) {
+
+				if (calcState.current_x_scratch[index] < grain_size * (ratio - 1 / 2) * (-1)) {
+					calcState.current_grain_start_scratch[index]  -= grain_size * 2;
+					calcState.current_x_scratch[index] = Math.round(grain_size * (1 + ratio - 1 / 2));
+				}
+				if (calcState.current_x2_scratch[index] < grain_size * (ratio - 1 / 2) * (-1)) {
+					calcState.current_grain_start2_scratch[index] -= grain_size * 2;
+					calcState.current_x2_scratch[index] = Math.round(grain_size * (1 + ratio - 1 / 2));
+				}
+
+				calcState.current_x_scratch[index]--;
+				calcState.current_x2_scratch[index]--;				
+
+				mydata.trackCurrentFrame_scratch[index]  -= 1 * 1 / ratio;
+				if (mydata.trackCurrentFrame_scratch[index] < 0) {
+					mydata.trackCurrentFrame_scratch[index] = mydata.trackLength[index];
+					calcState.current_grain_start_scratch[index]  = mydata.trackLength[index];
+					calcState.current_x_scratch[index] = mydata.trackLength[index];
+					calcState.current_grain_start2_scratch[index] = mydata.trackLength[index] - grain_size;
+					calcState.current_x_scratch[index] = grain_size + Math.round(grain_size * ratio);
+				}
+			}
+		}
+	}
+}
+
+
+function follow(){
+	for (let i = 0; i < TRACK_NUM; i++){
+		calcState.current_x_scratch[i] = calcState.current_x[i];
+		calcState.current_grain_start_scratch[i] = calcState.current_grain_start[i];
+		calcState.current_x2_scratch[i] = calcState.current_x2[i];
+		calcState.current_grain_start2_scratch[i] = calcState.current_grain_start2[i];
+
+		mydata.trackCurrentFrame_scratch[i] = mydata.trackCurrentFrame[i];
+	}		
+}
+
+function getAt(index, offset){
+	let grain_size = mydata.grain_size;
+	let ratio = mydata.trackRatio[index];
+
+	let ret = new Array();
+	let retL = 0;
+	let retR = 0;
+
+	let current_x = calcState.current_x_scratch[index];
+	let current_grain_start = calcState.current_grain_start_scratch[index];
+	let current_x2 = calcState.current_x2_scratch[index];
+	let current_grain_start2 = calcState.current_grain_start2_scratch[index];
+	let current_scratch = mydata.trackCurrentFrame_scratch[index];
+
+
+	if (ratio >= 1){
+		const fadeStartRate = -1/2*ratio + 1;
+
+		if (offset >= 0){
+
+			for (let c = 0; c < offset; c++){
+				current_x++;
+				current_x2++;
+				if (current_x > grain_size * (1 + (ratio - 1) / 2)) {
+					current_grain_start += grain_size;
+					current_x = Math.round((grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1))
+				}
+				if (current_x2 > grain_size * (1 + (ratio - 1) / 2)) {
+					current_grain_start2 += grain_size;
+					current_x2 = Math.round((grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1));
+				}	
+				current_scratch += 1 * 1 / ratio;
+				if (current_scratch  > mydata.trackLength[index]){
+					current_scratch = 0;
+					current_grain_start = 0;
+					current_x = 0;
+					current_grain_start2 = grain_size / 2;
+					current_x2 = -1.0*Math.round(grain_size/2*ratio);
+				}
+			}
+		}else{	//reverse
+			
+			for (let c = 0; c < -offset; c++){
+				current_x--;
+				current_x2--;
+				if (current_x < (grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1)){
+					current_grain_start -= grain_size;
+					current_x = Math.round(grain_size* (1+(ratio-1)/2));
+				}
+				if (current_x2 < (grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1)){
+					current_grain_start2 -= grain_size;
+					current_x2 = Math.round(grain_size * (1 + (ratio - 1) / 2));
+				}
+				current_scratch -= 1*1/ratio;
+				if (current_scratch < 0){
+					
+					current_scratch = mydata.trackLength[index];
+					current_grain_start= mydata.trackLength[index];
+					current_x= mydata.trackLength[index];
+					current_grain_start2  = mydata.trackLength[index] - grain_size / 2;
+					current_x2 = grain_size + Math.round(grain_size * ratio / 2);
+				}
+			}
+
+		}
+		{
+			let x = current_grain_start + current_x;
+
+			let valL = mydata.trackBufferLeft[index][x];
+			let valR = mydata.trackBufferRight[index][x];
+			if (current_x2 < 0) {
+				//no windowing for some beggining frames
+			} else {
+				valL = sinFadeWindow(fadeStartRate, current_x / grain_size, valL);
+				valR = sinFadeWindow(fadeStartRate, current_x / grain_size, valR);
+			}
+			retL = valL;
+			retR = valR;
+		}
+
+		{
+			let x2 = current_grain_start2 + current_x2;
+			let valL2 = mydata.trackBufferLeft[index][x2];
+			let valR2 = mydata.trackBufferRight[index][x2];
+
+			valL2 = sinFadeWindow(fadeStartRate, current_x2 / grain_size, valL2);
+			valR2 = sinFadeWindow(fadeStartRate, current_x2/ grain_size, valR2);
+			retL += valL2;
+			retR += valR2;
+		}	
+
+	}else{
+		const fadeStartRate = 1 - ratio;
+
+		if (offset >= 0) {
+			for (let c = 0; c < offset; c++) {
+				current_x++;
+				current_x2++;
+				if (current_x > grain_size * (1 + ratio - 1 / 2)) {
+					current_grain_start += grain_size*2;
+					current_x = Math.round(grain_size * (ratio - 1 / 2) * (-1));
+				}
+				if (current_x2 > grain_size * (1 + ratio - 1 / 2)) {
+					current_grain_start2 += grain_size*2;
+					current_x2 = Math.round(grain_size * (ratio - 1 / 2) * (-1));
+				}
+				current_scratch += 1 * 1 / ratio;
+				if (current_scratch > mydata.trackLength[index]) {
+					current_scratch = 0;
+					current_grain_start = 0;
+					current_x = 0;
+					current_grain_start2 = grain_size;
+					current_x2 = Math.round(grain_size * (ratio) * (-1));
+				}
+			}
+		} else {	//reverse
+
+			for (let c = 0; c < -offset; c++) {
+				current_x--;
+				current_x2--;
+				if (current_x < grain_size * (ratio - 1 / 2) * (-1)) {
+					current_grain_start -= grain_size*2;
+					current_x = Math.round(grain_size * (1 + ratio - 1 / 2));
+				}
+				if (current_x2 < grain_size * (ratio - 1 / 2) * (-1)) {
+					current_grain_start2 -= grain_size*2;
+					current_x2 = Math.round(grain_size * (1 + ratio - 1 / 2));
+				}
+				current_scratch -= 1 * 1 / ratio;
+				if (current_scratch < 0) {
+					current_scratch = mydata.trackLength[index];
+					current_grain_start = mydata.trackLength[index];
+					current_x = mydata.trackLength[index];
+					current_grain_start2 = mydata.trackLength[index] - grain_size;
+					current_x2 = grain_size + Math.round(grain_size * ratio);
+				}
+			}
+
+		}
+		{
+			let x = current_grain_start + current_x;
+
+			let valL = mydata.trackBufferLeft[index][x];
+			let valR = mydata.trackBufferRight[index][x];
+			if (current_x2 < 0) {
+				//no windowing for some beggining frames
+			} else {
+				valL = sinFadeWindow(fadeStartRate, current_x / grain_size, valL);
+				valR = sinFadeWindow(fadeStartRate, current_x / grain_size, valR);
+			}
+			retL = valL;
+			retR = valR;
+		}
+
+		{
+			let x2 = current_grain_start2 + current_x2;
+			let valL2 = mydata.trackBufferLeft[index][x2];
+			let valR2 = mydata.trackBufferRight[index][x2];
+
+			valL2 = sinFadeWindow(fadeStartRate, current_x2 / grain_size, valL2);
+			valR2 = sinFadeWindow(fadeStartRate, current_x2 / grain_size, valR2);
+			retL += valL2;
+			retR += valR2;
+		}
+
+	}
+
+
+	ret[0] = retL;
+	ret[1] = retR;
+	return ret;
+
 }
 
 function stretch_continue3(index, inBufL, inBufR, len){
@@ -1250,7 +1615,7 @@ function stretch_continue3(index, inBufL, inBufR, len){
 	let ratio = mydata.trackRatio[index];
 
 	if(ratio >= 1){
-	for (let iX = 0; iX < len; iX++){
+		for (let iX = 0; iX < len; iX++){
 
 			//wait for time to come.
 			if(mydata.trackWaitCount[index] > 0){
@@ -1489,6 +1854,7 @@ function onPlayStopTrack(index){
 					mydata.trackWaitCount[index] = Math.round(-1*mydata.trackOffset[index] * mydata.trackRatio[index]);
 				}
 			}
+			follow();
 			mydata.trackPlaying[index] = true;
 
 		}else{
@@ -1981,18 +2347,30 @@ function onAudioProcessOut(e){
 	}
 
 	//mix track data
+	// for (let i = 0; i < TRACK_NUM; i++){
+	// 	if (mydata.trackPlaying[i]){
+	// 		stretch_continue3(i, outLeft, outRight, outLeft.length);
+	// 	}
+	// }
+	// pushTo(outLeft, outRight);
+	// if (turnTable._processing){
+	// 	writeWithRatio(outLeft, outRight, turnTable.speed);
+	// }else{
+	// 	//follow
+	// 	mydata.tempRead = mydata.tempWrite -4410;
+	// }
+
 	for (let i = 0; i < TRACK_NUM; i++){
 		if (mydata.trackPlaying[i]){
-			// for(let j = 0; j < outLeft.length;j++){
-			// 	outLeft[j] += mydata.trackBufferLeft[i][mydata.trackCurrentFrame[i]];
-			// 	outRight[j] += mydata.trackBufferRight[i][mydata.trackCurrentFrame[i]];
-			// 	mydata.trackCurrentFrame[i]++;
-			// 	if (mydata.trackCurrentFrame[i] > mydata.trackLength[i]){
-			// 		mydata.trackCurrentFrame[i] = 0;
-				
-			// 	}
-			// }
-			stretch_continue3(i, outLeft, outRight, outLeft.length);
+			for (let j = 0; j < outLeft.length; j++){
+				let v = getAt(i,Math.round(j*turnTable.speed));
+				let l = v[0];
+				let r = v[1];
+				outLeft[j] += l;
+				outRight[j] += r;
+			}
+			consume_scratch(i, Math.round(outLeft.length*turnTable.speed));
+			consume_backyard(i, outLeft.length);
 		}
 	}
 
@@ -2000,7 +2378,34 @@ function onAudioProcessOut(e){
 		mydata.vTrack.process(outLeft, outRight, outLeft.length);
 	}
 
+}
 
+function writeWithRatio(outLeft, outRight, ratio){
+
+	let toSamples = outLeft.length;
+	let count = 0;
+	let startPoint = mydata.tempRead;
+	for (let targetSample = 0; targetSample < toSamples; targetSample++){
+		let x0 = Math.floor(targetSample*ratio);
+		let x1 = Math.ceil(targetSample*ratio);
+		
+		let y0 = mydata.tempBufferL[startPoint + x0];
+		let y1 = mydata.tempBufferL[startPoint + x1];
+
+		let val = (y0 + y1)/2;
+
+		outLeft[targetSample] = val;
+		outRight[targetSample] = val;
+	}
+	mydata.tempRead += Math.round(toSamples * ratio);
+}
+
+function pushTo(left, right){
+	for (let i = 0 ; i < left.length; i++){
+		mydata.tempBufferL[mydata.tempWrite + i] = left[i];
+		mydata.tempBufferR[mydata.tempWrite + i] = right[i];
+	}
+	mydata.tempWrite += left.length;
 }
 
 function startRecord(){
@@ -2998,3 +3403,152 @@ function onEffectBypassChanged(e){
 		mydata.phaser.bypass = mydata.effectBypass; 
 	}
 }
+
+
+function showTT(){
+	$.jsPanel({
+		headerTitle: "scratch",
+		content: "<div id=\"con\"></div>",
+		callback: panelLoaded,
+		contentSize: { width: 400, height: 400 },
+		resizable: {
+			resize: function () { panelResized(); }
+		},
+		onclosed: panelClosed
+	});
+
+}
+
+function panelClosed() {
+	clearInterval(turnTable.timer);
+}
+
+function onTTMousedown(e) {
+	let canvas = document.querySelector("#tt");
+	const rect = e.target.getBoundingClientRect();
+	let x = e.clientX - rect.left;
+	x -= canvas.clientWidth / 2;
+	let y = e.clientY - rect.top;
+	y -= canvas.clientHeight / 2;
+	y *= -1;
+
+	let rad = Math.acos(x / Math.sqrt(x * x + y * y));
+	// turnTable.rad = rad;
+
+	turnTable._processing = true;
+	turnTable._startOffsetRad = rad;
+	turnTable._prevSec = Date.now() / 1000;
+	turnTable.speed = 0;
+	console.log("speed", turnTable.speed);
+	// console.log(x,y);
+	follow();
+	drawTT();
+}
+
+function onTTMousemove(e) {
+	if (!turnTable._processing) return;
+
+	let canvas = document.querySelector("#tt");
+	const rect = e.target.getBoundingClientRect();
+	let x = e.clientX - rect.left;
+	x -= canvas.clientWidth / 2;
+	let y = e.clientY - rect.top;
+	y -= canvas.clientHeight / 2;
+	y *= -1;
+
+	let rad = Math.acos(x / Math.sqrt(x * x + y * y));
+
+	if (y < 0) {
+		rad = 2 * Math.PI - rad;
+	}
+	// console.log(rad);
+
+	let delta = rad - turnTable._startOffsetRad;
+	turnTable.rad -= delta;
+
+	let nowS = Date.now() / 1000;
+	let radS = -delta / (turnTable._prevSec - nowS);
+	turnTable.speed = radS / RPS;
+	if (turnTable.speed < -100) turnTable.speed = -100;
+	if (turnTable.speed > 100) turnTable.speed = 100;
+
+	turnTable._prevSec = nowS;
+	turnTable._startOffsetRad = rad;
+
+	// console.log("speed", turnTable.speed);
+
+	drawTT();
+}
+
+
+function onTTMouseup(e) {
+	if (turnTable._processing) {
+		turnTable._processing = false;
+	}
+	turnTable.speed = 1;
+	follow();
+}
+
+function panelLoaded() {
+
+	let con = document.querySelector("#con");
+	let canvas = document.createElement("canvas");
+	canvas.id = "tt";
+	con.appendChild(canvas);
+
+
+	canvas.addEventListener("mousedown", onTTMousedown, false);
+	canvas.addEventListener("mousemove", onTTMousemove, false);
+	canvas.addEventListener("mouseup", onTTMouseup, false);
+
+	panelResized();
+
+	turnTable.timer = setInterval(function () {
+		if (!turnTable._processing) {
+			turnTable.rad -= RPS / 100;
+		}
+		drawTT();
+	}, 10);
+}
+
+function panelResized() {
+	let canvas = document.querySelector("#tt");
+	canvas.width = canvas.clientWidth;
+	canvas.height = canvas.clientHeight;
+
+	console.log("w,h = " + canvas.width + "," + canvas.height);
+	drawTT();
+}
+
+function drawTT() {
+	// console.log("drawTT");
+	let canvas = document.querySelector("#tt");
+	let c = canvas.getContext("2d");
+	let w = canvas.width;
+	let h = canvas.height;
+	c.clearRect(0, 0, w, h);
+
+	c.beginPath();
+	c.fillStyle = "black";
+	c.rect(0, 0, w, h);
+	c.fill();
+
+	let r = w;
+	if (h < w) r = h;
+	r /= 2;
+
+	c.beginPath();
+	c.fillStyle = "gray";
+	c.arc(w / 2, h / 2, r, Math.PI * 2, false);
+	c.fill();
+
+	c.beginPath();
+	c.strokeStyle = "orange";
+	c.lineWidth = 5;
+	c.moveTo(w / 2, h / 2);
+	c.lineTo(w / 2 + r * Math.cos(turnTable.rad), h / 2 + r * Math.sin(turnTable.rad));
+	c.stroke();
+
+}
+
+

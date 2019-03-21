@@ -99,12 +99,6 @@ body{
 	width:100% 
 }
 
-#control-inner{
-	/* display : inline-block; */
-	/* border : 0.1em solid black; */
-	/* padding-bottom: 200px; */
-	/* vertical-align: center; */
-}
 
 #inputLevel{
 	/* border : 0.1em solid white; */
@@ -222,8 +216,22 @@ body{
 	cursor: default;
 }
 
-</style>
+#con{
+    width:100%;
+    height:100%;
+    background-color: gray;
+}
 
+#tt{
+    width:100%;
+    height:100%;
+	cursor : grab;
+}
+
+
+</style>
+<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jspanel3/3.11.0/jquery.jspanel.css" />
 <title>Dolphin Song</title>
 </head>
 <body>
@@ -300,6 +308,7 @@ body{
 	<input id="songTitle" type="text" value="song1" />
 	<input id="songSaveButton" type="button" value="save"/>
 </div>
+	<button onclick="showTT();">TT</button>
 <div id="player">
 	<table>
 		<tr>
@@ -391,6 +400,12 @@ body{
 	</div>
 	<script src="jquery-2.2.4.min.js"></script>
 	<script src="jquery.cookie-1.4.1.min.js"></script>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+<script type="text/javascript"
+	src="https://cdnjs.cloudflare.com/ajax/libs/jspanel3/3.11.0/jquery.jspanel-compiled.js"></script>
+
+
 	<script src="aurora.js"></script>
 	<script src="aac.js"></script>
 	<!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/xsound@latest/build/xsound.min.js"></script> -->
