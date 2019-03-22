@@ -2237,7 +2237,7 @@ function startEditorEngine() {
 
 function startOutEngine(){
 	audioContext2 = new AudioContext();
-	var scriptSource = audioContext2.createScriptProcessor(512/*latency*/,2,2);
+	var scriptSource = audioContext2.createScriptProcessor(256/*latency*/,2,2);
 	scriptSource.onaudioprocess = onAudioProcessOut;
 	var dest = audioContext2.createMediaStreamDestination();
 	
@@ -2380,33 +2380,33 @@ function onAudioProcessOut(e){
 
 }
 
-function writeWithRatio(outLeft, outRight, ratio){
+// function writeWithRatio(outLeft, outRight, ratio){
 
-	let toSamples = outLeft.length;
-	let count = 0;
-	let startPoint = mydata.tempRead;
-	for (let targetSample = 0; targetSample < toSamples; targetSample++){
-		let x0 = Math.floor(targetSample*ratio);
-		let x1 = Math.ceil(targetSample*ratio);
+// 	let toSamples = outLeft.length;
+// 	let count = 0;
+// 	let startPoint = mydata.tempRead;
+// 	for (let targetSample = 0; targetSample < toSamples; targetSample++){
+// 		let x0 = Math.floor(targetSample*ratio);
+// 		let x1 = Math.ceil(targetSample*ratio);
 		
-		let y0 = mydata.tempBufferL[startPoint + x0];
-		let y1 = mydata.tempBufferL[startPoint + x1];
+// 		let y0 = mydata.tempBufferL[startPoint + x0];
+// 		let y1 = mydata.tempBufferL[startPoint + x1];
 
-		let val = (y0 + y1)/2;
+// 		let val = (y0 + y1)/2;
 
-		outLeft[targetSample] = val;
-		outRight[targetSample] = val;
-	}
-	mydata.tempRead += Math.round(toSamples * ratio);
-}
+// 		outLeft[targetSample] = val;
+// 		outRight[targetSample] = val;
+// 	}
+// 	mydata.tempRead += Math.round(toSamples * ratio);
+// }
 
-function pushTo(left, right){
-	for (let i = 0 ; i < left.length; i++){
-		mydata.tempBufferL[mydata.tempWrite + i] = left[i];
-		mydata.tempBufferR[mydata.tempWrite + i] = right[i];
-	}
-	mydata.tempWrite += left.length;
-}
+// function pushTo(left, right){
+// 	for (let i = 0 ; i < left.length; i++){
+// 		mydata.tempBufferL[mydata.tempWrite + i] = left[i];
+// 		mydata.tempBufferR[mydata.tempWrite + i] = right[i];
+// 	}
+// 	mydata.tempWrite += left.length;
+// }
 
 function startRecord(){
 	mydata.currentFrame = 0;
@@ -3461,25 +3461,29 @@ function onTTMousemove(e) {
 	if (y < 0) {
 		rad = 2 * Math.PI - rad;
 	}
-	// console.log(rad);
 
 	let delta = rad - turnTable._startOffsetRad;
+	if (rad2deg(delta) > 340){
+		delta = -1 * (2*Math.PI - delta);
+	}
+	if (rad2deg(delta) < -340){
+		delta = 2*Math.PI - (-1*delta);
+	}
+
 	turnTable.rad -= delta;
 
 	let nowS = Date.now() / 1000;
 	let radS = -delta / (turnTable._prevSec - nowS);
 	turnTable.speed = radS / RPS;
-	if (turnTable.speed < -100) turnTable.speed = -100;
-	if (turnTable.speed > 100) turnTable.speed = 100;
 
 	turnTable._prevSec = nowS;
 	turnTable._startOffsetRad = rad;
 
-	// console.log("speed", turnTable.speed);
-
 	drawTT();
 }
-
+function rad2deg(rad){
+	return rad / Math.PI * 180;
+}
 
 function onTTMouseup(e) {
 	if (turnTable._processing) {
