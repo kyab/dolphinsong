@@ -228,6 +228,18 @@ body{
 	cursor : grab;
 }
 
+.ttCon{
+	width : 100%;
+	height : 100%;
+	background-color: gray;
+}
+
+.tt{
+	width : 100%;
+	height : 100%;
+	cursor : grab;
+}
+
 
 </style>
 <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css" />
@@ -308,7 +320,7 @@ body{
 	<input id="songTitle" type="text" value="song1" />
 	<input id="songSaveButton" type="button" value="save"/>
 </div>
-	<button onclick="showTT();">TT</button>
+	<!-- <button onclick="showTT();">TT</button> -->
 <div id="player">
 	<table>
 		<tr>
@@ -333,6 +345,13 @@ body{
 			</td>
 			<% end %>
 		</tr>	
+		<tr>
+			<% @track_num.times do |n| %>
+			<td class="ttButton" dropzone="copy">
+				TT
+			</td>
+			<% end %>
+		</tr>
 		<tr>
 			<% @track_num.times do |n| %>
 			<td class="speed" dropzone="copy" title="speed">

@@ -69,6 +69,10 @@ mydata.timer = null;
 
 mydata.grain_size = 6000;
 
+mydata.tracks = new Array(TRACK_NUM);
+for (let i=0;i<TRACK_NUM;i++){
+	mydata.tracks[i] = new MyTrack();
+}
 mydata.vTrack = new MyTrack();
 
 mydata.tapTimes = new Array(8);
@@ -124,6 +128,20 @@ let turnTable = {
 	_prevSec: 0	
 }
 
+var turnTables = new Array(TRACK_NUM);
+for (let i = 0 ; i < TRACK_NUM; i++){
+	turnTables[i] = {};
+	turnTables[i].rad = Math.PI / 3;
+	turnTables[i].timer = null;
+	turnTables[i].speed = 1.0;
+
+	//internal state
+	turnTables[i]._processing = false;
+	turnTables[i]._startOffsetRad = 0;
+	turnTables[i]._prevSec = 0;
+
+	
+}
 
 window.addEventListener("resize", function(e){
 	onResize();
@@ -144,8 +162,6 @@ function onResize(){
 	h = rulerCanvas.clientHeight;
 	rulerCanvas.width = w;
 	rulerCanvas.height = h;
-
-
 
 	mydata.needsRedrawWave = true;
 	redrawCanvas();
@@ -193,6 +209,11 @@ window.addEventListener("load", function(){
 		b.addEventListener("dragover", onTrackDragover, false); 
 		b.addEventListener("dragleave", onTrackDragleave, false);
 		b.addEventListener("drop" , onTrackDrop,false);
+	});
+
+	const ttButtons = document.querySelectorAll(".ttButton");
+	ttButtons.forEach(function(b){
+		b.addEventListener("click", onTTButtonClicked, false);
 	});
 
 	const speeds = document.querySelectorAll(".speed");
@@ -400,9 +421,9 @@ function onPanResetClicked(e){
 function onQuantizeChanged(e){
 	let index = getIndexFromEvent(e, ".quantizeChk");
 	if (document.querySelectorAll(".quantizeChk")[index].checked){
-		mydata.trackQuantize[index] = true;
+		mydata.tracks[index].setQuantize(true);
 	}else{
-		mydata.trackQuantize[index] = false;
+		mydata.tracks[index].setQuantize(false);
 	}
 }
 
@@ -431,11 +452,15 @@ function onLoadButton2Clicked(e){
 
 
 function onPlayButtonClicked(e){
-
 	let index = getIndexFromEvent(e, ".playButton");
 	onPlayStopTrack(index);
-
 }
+
+function onTTButtonClicked(e){
+	let index = getIndexFromEvent(e, ".ttButton");
+	onTT(index);
+}
+
 
 function onTrackDragover(e){
 	e.preventDefault();
@@ -635,10 +660,9 @@ function sync(index){
 
 	if (masterIndex == -1) return;	//no master
 	if (masterIndex != 99){
-		if (!mydata.trackLoaded[masterIndex]) return;
+		if (!mydata.tracks[masterIndex]._loaded) return;
 	}
-	if (!mydata.trackLoaded[index]) return;
-
+	if (!mydata.tracks[index]._loaded) return;
 
 	let c = 1;
 	let masterRatio = 0;
@@ -647,25 +671,24 @@ function sync(index){
 		masterRatio = 1.0;
 		masterLength = 60 / mydata.bpm * 44100;
 	}else{
-		masterRatio = mydata.trackRatio[masterIndex];
-		masterLength = mydata.trackLength[masterIndex];
+		masterRatio = mydata.tracks[masterIndex]._ratio;
+		masterLength = mydata.tracks[masterIndex]._length;
 	}
 
 	while(true){
-		mydata.trackRatio[index] = 
-			masterRatio * masterLength 
-		/ mydata.trackLength[index] / c ;
-		if (1/mydata.trackRatio[index] < 0.75){
+		mydata.tracks[index]._ratio = masterRatio * masterLength / mydata.tracks[index]._length / c;
+
+		if (1/mydata.tracks[index]._ratio < 0.75){
 			c*=2;
 			continue;
-		}else if (1/mydata.trackRatio[index] > 1.5){
+		}else if (1/mydata.tracks[index]._ratio > 1.5){
 			c/=2;
 			continue;
 		}
 		break;
 	}
 
-	console.log("trackRatio for " + (index+1) + " = " + mydata.trackRatio[index]);
+	console.log("trackRatio for " + (index+1) + " = " + mydata.tracks[index]._ratio);
 
 	updateSpeedLabel(index);
 
@@ -674,15 +697,15 @@ function sync(index){
 function updateSpeedLabel(index){
 	let speedSlider = document.querySelectorAll(".speedSlider");
 	let value = 0;
-	if (1/mydata.trackRatio[index] * 100 >= 100){
-		value = 1/mydata.trackRatio[index]*100;
+	if (1/mydata.tracks[index]._ratio * 100 >= 100){
+		value = 1/mydata.tracks[index]._ratio*100;
 	}else{
-		value = 2*(1/mydata.trackRatio[index]*100 - 50);
+		value = 2*(1/mydata.tracks[index]._ratio*100 - 50);
 	}
 	speedSlider[index].value = value; 
 
 	let speedLabel = document.querySelectorAll(".speedLabel");
-	let roundedSpeed = 1/mydata.trackRatio[index] * 100;
+	let roundedSpeed = 1/mydata.tracks[index]._ratio * 100;
 	roundedSpeed = Math.round(roundedSpeed *1000) / 1000;
 	speedLabel[index].innerText = roundedSpeed.toString() + "%";
 }
@@ -690,14 +713,14 @@ function updateSpeedLabel(index){
 function onHalfSpeedClick(e){
 
 	let index = getIndexFromEvent(e, ".halfSpeedButton");
-	mydata.trackRatio[index] *= 2;
+	mydata.tracks[index]._ratio *= 2;
 	updateSpeedLabel(index);
 }
 
 function onDoubleSpeedClick(e){
 
 	let index = getIndexFromEvent(e, ".doubleSpeedButton");
-	mydata.trackRatio[index] /= 2;
+	mydata.tracks[index]._ratio /= 2;
 	updateSpeedLabel(index);
 }
 
@@ -750,7 +773,6 @@ function onMasterChanged(e){
 
 }
 
-
 function onSpeedChanged(index){
 	const speedSlider = document.querySelectorAll(".speedSlider")[index];
 	const speedLabel = document.querySelectorAll(".speedLabel")[index];
@@ -763,17 +785,19 @@ function onSpeedChanged(index){
 		speed = 1/2 * val + 50;
 	}
 
-	mydata.trackRatio[index] = 1/(speed/100);
+	mydata.tracks[index].setRatio(1/(speed/100));
 
-	calcState.current_grain_start[index] = Math.round(mydata.trackCurrentFrame[index])
-	calcState.current_x[index] = 0;
-	if (mydata.trackRatio[index] >= 1){
-		calcState.current_grain_start2[index] = calcState.current_grain_start[index] + mydata.grain_size / 2;
-		calcState.current_x2[index] = -1.0 * Math.round(mydata.grain_size/2*mydata.trackRatio[index]);
-	}else{
-		calcState.current_grain_start2[index] = calcState.current_grain_start[index] + mydata.grain_size;
-		calcState.current_x2[index] = Math.round(mydata.grain_size*(mydata.trackRatio[index])*(-1));
-	}
+	// mydata.trackRatio[index] = 1/(speed/100);
+
+	// calcState.current_grain_start[index] = Math.round(mydata.trackCurrentFrame[index])
+	// calcState.current_x[index] = 0;
+	// if (mydata.trackRatio[index] >= 1){
+	// 	calcState.current_grain_start2[index] = calcState.current_grain_start[index] + mydata.grain_size / 2;
+	// 	calcState.current_x2[index] = -1.0 * Math.round(mydata.grain_size/2*mydata.trackRatio[index]);
+	// }else{
+	// 	calcState.current_grain_start2[index] = calcState.current_grain_start[index] + mydata.grain_size;
+	// 	calcState.current_x2[index] = Math.round(mydata.grain_size*(mydata.trackRatio[index])*(-1));
+	// }
 
 	speedLabel.innerText = speed.toString() + "%";
 }
@@ -787,7 +811,7 @@ function onVolumeChanged(index){
 	let db = 20*Math.log10(val/100);
 	let roundedDb = Math.round(db *100) / 100;
 
-	mydata.trackVolume[index] = val/100;
+	mydata.tracks[index].setVolume(val/100);
 
 	volumeLabel.innerText = roundedDb.toString() + "dB";
 }
@@ -798,7 +822,7 @@ function onPanChanged(index){
 
 	let val = panSlider.value;
 
-	mydata.trackPan[index] = val/100;
+	mydata.tracks[index].setPan(val/100);
 
 	panLabel.innerText = val.toString();
 }
@@ -808,7 +832,7 @@ function onOffsetChanged(index){
 	const offsetLabel = document.querySelectorAll(".offsetLabel")[index];
 
 	let val = offsetSlider.valueAsNumber;
-	mydata.trackOffset[index] = val;
+	mydata.tracks[index].setOffset(val);
 	offsetLabel.innerText = val.toString();
 }
 
@@ -816,44 +840,51 @@ function onOffsetChanged(index){
 function onLoadSample(index){
 	console.log("loading sample from editor for track:" + (index+1));
 
-	mydata.trackLength[index] = mydata.selectEndFrame - mydata.selectStartFrame;
+	// mydata.trackLength[index] = mydata.selectEndFrame - mydata.selectStartFrame;
 	
-	mydata.trackBufferLeft[index] = new Float32Array(mydata.trackLength[index]);
-	mydata.trackBufferRight[index] = new Float32Array(mydata.trackLength[index]);
-	for (let i = 0; i < mydata.trackLength[index]; i++){
-		mydata.trackBufferLeft[index][i] = 
-					audioBufferLeft[mydata.selectStartFrame + i];
-		mydata.trackBufferRight[index][i] = 
-					audioBufferRight[mydata.selectStartFrame + i];					
-	}
-	mydata.trackCurrentFrame[index] = 0;
-	mydata.trackPlaying[index] = false;
-	mydata.trackLoaded[index] = true;
+	// mydata.trackBufferLeft[index] = new Float32Array(mydata.trackLength[index]);
+	// mydata.trackBufferRight[index] = new Float32Array(mydata.trackLength[index]);
+	// for (let i = 0; i < mydata.trackLength[index]; i++){
+	// 	mydata.trackBufferLeft[index][i] = 
+	// 				audioBufferLeft[mydata.selectStartFrame + i];
+	// 	mydata.trackBufferRight[index][i] = 
+	// 				audioBufferRight[mydata.selectStartFrame + i];					
+	// }
+	// mydata.trackCurrentFrame[index] = 0;
+	// mydata.trackPlaying[index] = false;
+	// mydata.trackLoaded[index] = true;
+
+	mydata.tracks[index].loadSampleFromBuffer(
+		audioBufferLeft, audioBufferRight, mydata.selectStartFrame, mydata.selectEndFrame);
 
 	let titles = document.querySelectorAll(".title");
 	titles[index].innerText = "sample" + (index+1);
 }
 
 function onLoadSampleFromFile(index, file){
-	tryLoadSampleFromFileStandard(index, file)
-	.then(function(length){
-		console.log("success standard : " + (index+1).toString());
-		trackLoadedFromFile(index, length, file.name);
-	}, function(e){
-		console.log("decode error(Standard) : " + e);
-		tryLoadSampleFromFileAAC(index, file)
-		.then(function(length){
-			console.log("success AAC");
-			trackLoadedFromFile(index, length, file.name);
-		}, function(e){
-			console.log("decode error(AAC) : " + e);
-		});
+	mydata.tracks[index].loadSampleFromFile(file, file.name)
+	.then(function(){
+		let titles = document.querySelectorAll(".title");
+		titles[index].innerText = file.name
 	});
+
+	// tryLoadSampleFromFileStandard(index, file)
+	// .then(function(length){
+	// 	console.log("success standard : " + (index+1).toString());
+	// 	trackLoadedFromFile(index, length, file.name);
+	// }, function(e){
+	// 	console.log("decode error(Standard) : " + e);
+	// 	tryLoadSampleFromFileAAC(index, file)
+	// 	.then(function(length){
+	// 		console.log("success AAC");
+	// 		trackLoadedFromFile(index, length, file.name);
+	// 	}, function(e){
+	// 		console.log("decode error(AAC) : " + e);
+	// 	});
+	// });
 }
 
 function onLoadSampleFromList(index){
-
-
 	loadSample(index, mydata.soundList.selectedText());
 }
 
@@ -870,67 +901,123 @@ function loadSample(index, soundName){
 
 	//read and done;
 	var done = function(blob){
-		console.log(blob);
-		tryLoadSampleFromFileStandard(index, blob)
-		.then(function (length) {
-			console.log("success standard : " + (index + 1).toString());
-			trackLoadedFromFile(index, length, soundName);
-		}, function (e) {
-			console.log("decode error(Standard) : " + e);
-			tryLoadSampleFromFileAAC(index, blob)
-			.then(function (length) {
-				console.log("success AAC");
-				trackLoadedFromFile(index, length, soundName);
-			}, function (e) {
-				console.log("decode error(AAC) : " + e);
-			});
+
+		mydata.tracks[index].loadSampleFromFile(blob, soundName)
+		.then(function(){
+			let titles = document.querySelectorAll(".title");
+			titles[index].innerText = soundName;
 		});
+		// console.log(blob);
+		// tryLoadSampleFromFileStandard(index, blob)
+		// .then(function (length) {
+		// 	console.log("success standard : " + (index + 1).toString());
+		// 	trackLoadedFromFile(index, length, soundName);
+		// }, function (e) {
+		// 	console.log("decode error(Standard) : " + e);
+		// 	tryLoadSampleFromFileAAC(index, blob)
+		// 	.then(function (length) {
+		// 		console.log("success AAC");
+		// 		trackLoadedFromFile(index, length, soundName);
+		// 	}, function (e) {
+		// 		console.log("decode error(AAC) : " + e);
+		// 	});
+		// });
 	}
 	xhr.send();
 }
 
-function trackLoadedFromFile(index, length, name){
-	mydata.trackLength[index] = length;
-	mydata.trackCurrentFrame[index] = 0;
-	mydata.trackPlaying[index] = false;
-	mydata.trackLoaded[index] = true;
+// function trackLoadedFromFile(index, length, name){
+// 	mydata.trackLength[index] = length;
+// 	mydata.trackCurrentFrame[index] = 0;
+// 	mydata.trackPlaying[index] = false;
+// 	mydata.trackLoaded[index] = true;
 
-	let titles = document.querySelectorAll(".title");
-	titles[index].innerText = name
-}
+// 	let titles = document.querySelectorAll(".title");
+// 	titles[index].innerText = name
+// }
 
 
 
-function tryLoadSampleFromFileStandard(index, blob){
-	return new Promise(function(resolve, reject){
-		const fileReader = new FileReader();
-		fileReader.onload = function(e){
-			const fileContents = e.target.result;
-			const audioContextForDecode = new AudioContext();
-			audioContextForDecode.decodeAudioData(fileContents)
-			.then(function(buf){
-				mydata.trackBufferLeft[index] = buf.getChannelData(0);
-				if (buf.numberOfChannels == 1){
-					mydata.trackBufferRight[index] = buf.getChannelData(0);
-				}else{
-					mydata.trackBufferRight[index] = buf.getChannelData(1);
-				}
-				audioContextForDecode.close();
-				resolve(buf.length);
-			}, function(e){
-				reject(e);
-			});
+// function tryLoadSampleFromFileStandard(index, blob){
+// 	return new Promise(function(resolve, reject){
+// 		const fileReader = new FileReader();
+// 		fileReader.onload = function(e){
+// 			const fileContents = e.target.result;
+// 			const audioContextForDecode = new AudioContext();
+// 			audioContextForDecode.decodeAudioData(fileContents)
+// 			.then(function(buf){
+// 				mydata.trackBufferLeft[index] = buf.getChannelData(0);
+// 				if (buf.numberOfChannels == 1){
+// 					mydata.trackBufferRight[index] = buf.getChannelData(0);
+// 				}else{
+// 					mydata.trackBufferRight[index] = buf.getChannelData(1);
+// 				}
+// 				audioContextForDecode.close();
+// 				resolve(buf.length);
+// 			}, function(e){
+// 				reject(e);
+// 			});
 
-		};
-		fileReader.readAsArrayBuffer(blob);
-	});
-}
+// 		};
+// 		fileReader.readAsArrayBuffer(blob);
+// 	});
+// }
+
+// function tryLoadSampleFromFileAAC(index, blob) {
+// 	//use aac.js/aurora.js to decode caf(AAC compressed Apple Loops)
+// 	return new Promise(function (resolve, reject) {
+// 		let asset = AV.Asset.fromFile(blob);
+// 		asset.on("error", function (e) {
+// 			reject(e);
+// 		});
+
+// 		asset.get("duration", function (duration) {
+// 			console.log("duration = " + duration);
+
+// 			//if came here, we assume file is OK.
+// 			//now get priming/reminder frame (if possible)
+
+// 			const fileReader = new FileReader();
+// 			fileReader.onload = function (e) {
+// 				let fileContents = e.target.result;
+// 				let view = new DataView(fileContents);
+
+// 				let encodingDelay = getEncodingDelayForCAF(view);
+
+// 				asset.decodeToBuffer(function (buffer) {
+// 					// if (encodingDelay){
+// 					// 	let validLen = encodingDelay.validFrames;
+// 					// 	let primingFrames = encodingDelay.primingFrames;
+// 					// 	mydata.trackBufferLeft[index] = new Float32Array(validLen);
+// 					// 	mydata.trackBufferRight[index] = new Float32Array(validLen);
+// 					// 	for(let i = 0; i < validLen; i++){
+// 					// 		mydata.trackBufferLeft[index][i] = 
+// 					// 			buffer[(primingFrames + i)*2];
+// 					// 		mydata.trackBufferRight[index][i] = 
+// 					// 			buffer[(primingFrames + i)*2+1];
+// 					// 	}
+// 					// 	resolve(validLen);
+
+// 					// }else{
+// 					mydata.trackBufferLeft[index] = new Float32Array(buffer.length / 2);
+// 					mydata.trackBufferRight[index] = new Float32Array(buffer.length / 2);
+// 					for (let i = 0; i < buffer.length / 2; i++) {
+// 						mydata.trackBufferLeft[index][i] = buffer[i * 2];
+// 						mydata.trackBufferRight[index][i] = buffer[i * 2 + 1];
+// 					}
+// 					resolve(buffer.length / 2);
+// 					// }
+// 				});
+// 			}
+
+// 			fileReader.readAsArrayBuffer(blob);
+// 		});
+// 	});
+// }
+
 
 function clearTrack(index){
-	mydata.trackLength[index] = 0;
-	mydata.trackCurrentFrame[index] = 0;
-	mydata.trackPlaying[index] = false;
-	mydata.trackLoaded[index] = false;
+	mydata.tracks[index].clear();
 
 	let titles = document.querySelectorAll(".title");
 	titles[index].innerText = "----";
@@ -1017,57 +1104,7 @@ function getEncodingDelayForCAF(view){
 	}
 }
 
-function tryLoadSampleFromFileAAC(index, blob){
-	//use aac.js/aurora.js to decode caf(AAC compressed Apple Loops)
-	return new Promise(function(resolve, reject){
-		let asset = AV.Asset.fromFile(blob);
-		asset.on("error", function(e){
-			reject(e);
-		});
 
-		asset.get("duration", function(duration){
-			console.log("duration = " + duration);
-
-			//if came here, we assume file is OK.
-			//now get priming/reminder frame (if possible)
-
-			const fileReader = new FileReader();
-			fileReader.onload = function(e){
-				let fileContents = e.target.result;
-				let view = new DataView(fileContents);
-
-				let encodingDelay = getEncodingDelayForCAF(view);
-
-				asset.decodeToBuffer(function(buffer){
-					// if (encodingDelay){
-					// 	let validLen = encodingDelay.validFrames;
-					// 	let primingFrames = encodingDelay.primingFrames;
-					// 	mydata.trackBufferLeft[index] = new Float32Array(validLen);
-					// 	mydata.trackBufferRight[index] = new Float32Array(validLen);
-					// 	for(let i = 0; i < validLen; i++){
-					// 		mydata.trackBufferLeft[index][i] = 
-					// 			buffer[(primingFrames + i)*2];
-					// 		mydata.trackBufferRight[index][i] = 
-					// 			buffer[(primingFrames + i)*2+1];
-					// 	}
-					// 	resolve(validLen);
-
-					// }else{
-						mydata.trackBufferLeft[index] = new Float32Array(buffer.length/2);
-						mydata.trackBufferRight[index] = new Float32Array(buffer.length/2);
-						for (let i = 0; i < buffer.length/2; i++){
-							mydata.trackBufferLeft[index][i] = buffer[i*2];
-							mydata.trackBufferRight[index][i] = buffer[i*2+1];
-						}
-						resolve(buffer.length/2);
-					// }
-				});
-			}
-
-			fileReader.readAsArrayBuffer(blob);
-		});
-	});
-}
 
 function onEditorLoadSampleFromFile(blob){
 	tryEditorLoadSampleFromFileStandard(blob)
@@ -1145,10 +1182,10 @@ function tryEditorLoadSampleFromFileAAC(blob){
 
 			const fileReader = new FileReader();
 			fileReader.onload = function(e){
-				let fileContents = e.target.result;
-				let view = new DataView(fileContents);
+				// let fileContents = e.target.result;
+				// let view = new DataView(fileContents);
 
-				let encodingDelay = getEncodingDelayForCAF(view);
+				// let encodingDelay = getEncodingDelayForCAF(view);
 
 				asset.decodeToBuffer(function(buffer){
 
@@ -1156,13 +1193,31 @@ function tryEditorLoadSampleFromFileAAC(blob){
 						audioBufferLeft[i]  = buffer[i*2];
 						audioBufferRight[i] = buffer[i*2+1];
 					}
+					console.log("samples = " + buffer.length / 2);
 					resolve(buffer.length/2);
 				});
 			}
 
-			fileReader.readAsArrayBuffer(blob);
+			fileReader.readAsArrayBuffer(blob);	//somehow this required
 		});
 	});
+}
+
+function onPlayStopTrack(index){
+
+	let masterIndex = getMasterIndex();
+
+	let masterTrack = null;
+	
+	if (masterIndex == 99){
+		masterTrack = null;
+	}else if(masterIndex == -1){
+		masterTrack = null;
+	}else{
+		masterTrack = mydata.tracks[masterIndex];
+	}
+
+	mydata.tracks[index].playStop(masterTrack);
 }
 
 
@@ -1175,7 +1230,7 @@ function playStateChanged(){
 		shouldStop = false
 	}
 	for (let i=0; i < TRACK_NUM; i++){
-		if (mydata.trackLoaded[i] && mydata.trackPlaying[i]){
+		if (mydata.tracks[i]._loaded && mydata.tracks[i].isPlaying()){
 			shouldStop = false;
 		}
 	}
@@ -1585,16 +1640,16 @@ function onAudioProcessOut(e){
 	// }
 
 	for (let i = 0; i < TRACK_NUM; i++){
-		if (mydata.trackPlaying[i]){
+		if (mydata.tracks[i].isPlaying()){
 			for (let j = 0; j < outLeft.length; j++){
-				let v = getAt(i,Math.round(j*turnTable.speed));
+				let v = mydata.tracks[i].getAt(Math.round(j*turnTables[i].speed));
 				let l = v[0];
 				let r = v[1];
 				outLeft[j] += l;
 				outRight[j] += r;
 			}
-			consume_scratch(i, Math.round(outLeft.length*turnTable.speed));
-			consume_backyard(i, outLeft.length);
+			mydata.tracks[i].consume_scratch(Math.round(outLeft.length * turnTables[i].speed));
+			mydata.tracks[i].consume_backyard(outLeft.length);
 		}
 	}
 
@@ -2629,128 +2684,66 @@ function onEffectBypassChanged(e){
 }
 
 
-function showTT(){
+function onTT(index){
+	console.log("onTT index = " + index.toString());
+
 	$.jsPanel({
-		headerTitle: "scratch",
-		content: "<div id=\"con\"></div>",
-		callback: panelLoaded,
-		contentSize: { width: 400, height: 400 },
-		resizable: {
-			resize: function () { panelResized(); }
+		headerTitle : "track" + (index+1).toString(),
+		content : "<div class=\"ttCon\" id=\"ttCon" + index.toString() + "\"+ ></div>",
+		callback : function() {ttLoaded(index);},
+		contentSize : {width : 300, height : 300},
+		resizable : {
+			resize : function(){ ttResized(turnTables[index]);}
 		},
-		onclosed: panelClosed
+		onclosed: function() {ttClosed(turnTables[index]);}
 	});
-
 }
 
-function panelClosed() {
-	clearInterval(turnTable.timer);
-}
+function ttLoaded(index){
 
-function onTTMousedown(e) {
-	let canvas = document.querySelector("#tt");
-	const rect = e.target.getBoundingClientRect();
-	let x = e.clientX - rect.left;
-	x -= canvas.clientWidth / 2;
-	let y = e.clientY - rect.top;
-	y -= canvas.clientHeight / 2;
-	y *= -1;
-
-	let rad = Math.acos(x / Math.sqrt(x * x + y * y));
-	// turnTable.rad = rad;
-
-	turnTable._processing = true;
-	turnTable._startOffsetRad = rad;
-	turnTable._prevSec = Date.now() / 1000;
-	turnTable.speed = 0;
-	console.log("speed", turnTable.speed);
-	// console.log(x,y);
-	follow();
-	drawTT();
-}
-
-function onTTMousemove(e) {
-	if (!turnTable._processing) return;
-
-	let canvas = document.querySelector("#tt");
-	const rect = e.target.getBoundingClientRect();
-	let x = e.clientX - rect.left;
-	x -= canvas.clientWidth / 2;
-	let y = e.clientY - rect.top;
-	y -= canvas.clientHeight / 2;
-	y *= -1;
-
-	let rad = Math.acos(x / Math.sqrt(x * x + y * y));
-
-	if (y < 0) {
-		rad = 2 * Math.PI - rad;
-	}
-
-	let delta = rad - turnTable._startOffsetRad;
-	if (rad2deg(delta) > 340){
-		delta = -1 * (2*Math.PI - delta);
-	}
-	if (rad2deg(delta) < -340){
-		delta = 2*Math.PI - (-1*delta);
-	}
-
-	turnTable.rad -= delta;
-
-	let nowS = Date.now() / 1000;
-	let radS = -delta / (turnTable._prevSec - nowS);
-	turnTable.speed = radS / RPS;
-
-	turnTable._prevSec = nowS;
-	turnTable._startOffsetRad = rad;
-
-	drawTT();
-}
-function rad2deg(rad){
-	return rad / Math.PI * 180;
-}
-
-function onTTMouseup(e) {
-	if (turnTable._processing) {
-		turnTable._processing = false;
-	}
-	turnTable.speed = 1;
-	follow();
-}
-
-function panelLoaded() {
-
-	let con = document.querySelector("#con");
+	let con = document.querySelector("#ttCon" + index.toString());
 	let canvas = document.createElement("canvas");
-	canvas.id = "tt";
+	canvas.classList.add("tt");
+	canvas.id = "tt" + index.toString();
 	con.appendChild(canvas);
 
+	turnTables[index]._canvas = canvas;
+	turnTables[index]._track = mydata.tracks[index];
 
-	canvas.addEventListener("mousedown", onTTMousedown, false);
-	canvas.addEventListener("mousemove", onTTMousemove, false);
-	canvas.addEventListener("mouseup", onTTMouseup, false);
+	canvas.addEventListener("mousedown", function(e){
+		onTTMousedown(e, turnTables[index]);
+	} , false);
+	canvas.addEventListener("mousemove", function(e){
+		onTTMousemove(e, turnTables[index]);
+	 }, false);
+	canvas.addEventListener("mouseup", function(e){
+		onTTMouseup(e, turnTables[index]);
+	}, false);
 
-	panelResized();
+	ttResized(turnTables[index]);
 
-	turnTable.timer = setInterval(function () {
-		if (!turnTable._processing) {
-			turnTable.rad -= RPS / 100;
+	turnTables[index].timer = setInterval(function () {
+		if (!turnTables[index]._processing) {
+			turnTables[index].rad -= RPS / 100;
 		}
-		drawTT();
+		ttDraw(turnTables[index]);
 	}, 10);
+
 }
 
-function panelResized() {
-	let canvas = document.querySelector("#tt");
-	canvas.width = canvas.clientWidth;
-	canvas.height = canvas.clientHeight;
+function ttResized(tt) {
+	let canvas = tt._canvas;
 
-	console.log("w,h = " + canvas.width + "," + canvas.height);
-	drawTT();
+	if(tt._canvas){
+		canvas.width = canvas.clientWidth;
+		canvas.height = canvas.clientHeight;
+
+		ttDraw(tt);
+	}
 }
 
-function drawTT() {
-	// console.log("drawTT");
-	let canvas = document.querySelector("#tt");
+function ttDraw(tt){
+	let canvas = tt._canvas;
 	let c = canvas.getContext("2d");
 	let w = canvas.width;
 	let h = canvas.height;
@@ -2774,9 +2767,152 @@ function drawTT() {
 	c.strokeStyle = "orange";
 	c.lineWidth = 5;
 	c.moveTo(w / 2, h / 2);
-	c.lineTo(w / 2 + r * Math.cos(turnTable.rad), h / 2 + r * Math.sin(turnTable.rad));
+	c.lineTo(w / 2 + r * Math.cos(tt.rad), h / 2 + r * Math.sin(tt.rad));
 	c.stroke();
+}
+
+function ttClosed(tt){
+	clearInterval(tt.timer);
+}
+
+function showTT(){
+	$.jsPanel({
+		headerTitle: "master",
+		content: "<div id=\"con\"></div>",
+		callback: ttMasterLoaded,
+		contentSize: { width: 400, height: 400 },
+		resizable: {
+			resize: function () { ttResized(turnTable); }
+		},
+		onclosed: function(){ttClosed(turnTable);}
+	});
 
 }
+
+// function panelClosed() {
+// 	clearInterval(turnTable.timer);
+// }
+
+function onTTMousedown(e, tt) {
+	let canvas = tt._canvas;
+	const rect = e.target.getBoundingClientRect();
+	let x = e.clientX - rect.left;
+	x -= canvas.clientWidth / 2;
+	let y = e.clientY - rect.top;
+	y -= canvas.clientHeight / 2;
+	y *= -1;
+
+	let rad = Math.acos(x / Math.sqrt(x * x + y * y));
+	// turnTable.rad = rad;
+
+	tt._processing = true;
+	tt._startOffsetRad = rad;
+	tt._prevSec = Date.now() / 1000;
+	tt.speed = 0;
+
+	if (tt._track){
+		tt._track.follow();
+	}else{
+
+		for (let i = 0 ; i < TRACK_NUM; i++){
+			mydata.tracks[i].follow();
+		}
+	}
+
+	ttDraw(tt);
+}
+
+function onTTMousemove(e, tt) {
+	if (!tt._processing) return;
+
+	let canvas = tt._canvas;
+	const rect = e.target.getBoundingClientRect();
+	let x = e.clientX - rect.left;
+	x -= canvas.clientWidth / 2;
+	let y = e.clientY - rect.top;
+	y -= canvas.clientHeight / 2;
+	y *= -1;
+
+	let rad = Math.acos(x / Math.sqrt(x * x + y * y));
+
+	if (y < 0) {
+		rad = 2 * Math.PI - rad;
+	}
+
+	let delta = rad - tt._startOffsetRad;
+	if (rad2deg(delta) > 340){
+		delta = -1 * (2*Math.PI - delta);
+	}
+	if (rad2deg(delta) < -340){
+		delta = 2*Math.PI - (-1*delta);
+	}
+
+	tt.rad -= delta;
+
+	let nowS = Date.now() / 1000;
+	let radS = -delta / (tt._prevSec - nowS);
+	tt.speed = radS / RPS;
+	if (tt.speed > 100){
+		tt.speed = 100;
+	}
+	if (tt.speed < -100){
+		tt.speed = -100;
+	}
+
+	tt._prevSec = nowS;
+	tt._startOffsetRad = rad;
+
+	ttDraw(tt);
+}
+function rad2deg(rad){
+	return rad / Math.PI * 180;
+}
+
+function onTTMouseup(e, tt) {
+	if (tt._processing) {
+		tt._processing = false;
+	}
+	tt.speed = 1;
+	if (tt._track){
+		tt._track.follow();
+	}else{
+		for (let i = 0; i < TRACK_NUM; i++) {
+			mydata.tracks[i].follow();
+		}
+	}
+}
+
+function ttMasterLoaded() {
+
+	let con = document.querySelector("#con");
+	let canvas = document.createElement("canvas");
+	canvas.id = "tt";
+	con.appendChild(canvas);
+
+	turnTable._track = null;
+	turnTable._canvas = canvas;
+
+
+	canvas.addEventListener("mousedown", function(e){
+		onTTMousedown(e, turnTable);
+	}, false);
+	canvas.addEventListener("mousemove", function(e){
+		onTTMousemove(e, turnTable);
+	}, false);
+	canvas.addEventListener("mouseup",  function(e){
+		onTTMouseup(e, turnTable);
+	}, false);
+
+	ttResized(turnTable);
+
+	turnTable.timer = setInterval(function () {
+		if (!turnTable._processing) {
+			turnTable.rad -= RPS / 100;
+		}
+		ttDraw(turnTable);
+	}, 10);
+}
+
+
 
 

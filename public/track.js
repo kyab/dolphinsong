@@ -1,11 +1,14 @@
 'use strict';
+
+const GRAIN_SIZE = 6000;
 function MyTrack() {
     this._bufferLeft = null;
     this._bufferRight = null;
     this._loaded = false;
     this._playing = false;
     this._ratio = 1;
-    this._currentFrame = 0;
+	this._currentFrame = 0;
+	this._currentFrame_scratch  = 0;
     this._length = 0;
     this._master = false;
     this._volume = 1;
@@ -17,15 +20,21 @@ function MyTrack() {
 	this._loop = true;
 	this.onStateChanged = null;
 
-	const grain_size = 6000;
-
+	const grain_size = GRAIN_SIZE;
+	
 	this._calcState = {
 		stretchedLX : new Float32Array(44100*60),
 		stretchedRX : new Float32Array(44100*60),
 		current_grain_start : 0,
 		current_x : 0,
 		current_grain_start2 : grain_size / 2,
-		current_x2: -1.0 * Math.round(grain_size / 2 * this._ratio)
+		current_x2: -1.0 * Math.round(grain_size / 2 * this._ratio),
+		current_grain_start_scratch : 0,
+		current_x_scratch : 0,
+		current_grain_start2_scratch: 0,
+		current_x2_scratch: 0,
+
+	
 	}
 
 	var that = this;
@@ -64,14 +73,52 @@ function MyTrack() {
 		if (that.onStateChanged) that.onStateChanged(that);
 	}
 
+	this.setVolume = function(val){
+		this._volume = val;
+	}
+
 	this.setQuantize = function(val){
 		this._quantize = val;
+	}
+
+	this.setOffset = function(val){
+		this._offset = val;
 	}
 
 	this.setLoop = function(val){
 		this._loop = val;
 	}
+
+	this.setRatio = function(ratio){
+		this._ratio = ratio;
+
+		let cs = this._calcState;
+
+		cs.current_grain_start = Math.round(this._currentFrame);
+		cs.current_x = 0;
+		if (ratio >= 1) {
+			cs.current_grain_start2 = cs.current_grain_start + GRAIN_SIZE / 2;
+			cs.current_x2 = -1.0 * Math.round(GRAIN_SIZE / 2 * ratio);
+		} else {
+			cs.current_grain_start2 = cs.current_grain_start + GRAIN_SIZE;
+			cs.current_x2 = Math.round(GRAIN_SIZE * (ratio) * (-1));
+		}	
+	}
+
+	this.setMaster = function(isMaster){
+		this._master = isMaster;
+	}
 	
+	this.isMaster = function(){
+		return this._master; 
+	}
+	
+	this.clear = function(){
+		this._length = 0;
+		this._currentFrame = 0;
+		this._playing = false;
+		this._loaded = false;
+	}
 
     this.loadSampleFromBuffer = function(leftBuf, rightBuf, startFrame, endFrame){
         this._length = endFrame - startFrame;
@@ -87,8 +134,8 @@ function MyTrack() {
         this._currentFrame = 0;
         this._playing = false;
 		this._loaded = true;
-		this._name = "editor";
-     
+		this._name = "__editor__";
+
     } 
 
 
@@ -100,7 +147,7 @@ function MyTrack() {
 		that._loaded = true;
 	}
 	
-    this.loadSampleFromFile = function(file,name){
+    this.loadSampleFromFile = function(file, name){
 		return new Promise(function(resolve, reject){
 			tryLoadSampleFromFileStandard(file)
 			.then(function(length){
@@ -150,16 +197,27 @@ function MyTrack() {
 			});
 
 			asset.get("duration", function(duration){
+				console.log("duration = " + duration);
 
-				asset.decodeToBuffer(function(buffer){
-					that._bufferLeft= new Float32Array(buffer.length / 2);
-					that._bufferRight =  new Float32Array(buffer.length / 2);
-					for (let i = 0; i < buffer.length / 2; i++) {
-						that._bufferLeft[i] = buffer[i * 2];
-						that._bufferRight[i] = buffer[i * 2 + 1];
-					}
-					resolve(buffer.length / 2);
-				});
+				const fileReader = new FileReader();
+				fileReader.onload = function (e) {
+					// let fileContents = e.target.result;
+					// let view = new DataView(fileContents);
+
+					// let encodingDelay = getEncodingDelayForCAF(view);
+
+					asset.decodeToBuffer(function(buffer){
+						that._bufferLeft= new Float32Array(buffer.length / 2);
+						that._bufferRight =  new Float32Array(buffer.length / 2);
+						for (let i = 0; i < buffer.length / 2; i++) {
+							that._bufferLeft[i] = buffer[i * 2];
+							that._bufferRight[i] = buffer[i * 2 + 1];
+						}
+						console.log("samples = " + buffer.length / 2);
+						resolve(buffer.length / 2);
+					});
+				}
+				fileReader.readAsArrayBuffer(blob);	//somehow this required
 
 			});
 		});
@@ -373,160 +431,162 @@ function MyTrack() {
 
 }
 
+MyTrack.prototype.consume_backyard = function (offset) {
 
-
-function consume_backyard(index, offset) {
-
-	let grain_size = mydata.grain_size;
-	let ratio = mydata.trackRatio[index];
+	const ratio = this._ratio;
+	let cs = this._calcState;
 
 	if (ratio >= 1) {
 		for (let c = 0; c < offset; c++) {
-			if (calcState.current_x[index] > grain_size * (1 + (ratio - 1) / 2)) {
-				calcState.current_grain_start[index] += grain_size;
-				calcState.current_x[index] = Math.round((grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1))
+			if (cs.current_x > GRAIN_SIZE * (1 + (ratio - 1) / 2)) {
+				cs.current_grain_start += GRAIN_SIZE;
+				cs.current_x = Math.round((GRAIN_SIZE * (1 + (ratio - 1) / 2) - GRAIN_SIZE) * (-1))
 			}
-			if (calcState.current_x2[index] > grain_size * (1 + (ratio - 1) / 2)) {
-				calcState.current_grain_start2[index] += grain_size;
-				calcState.current_x2[index] = Math.round((grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1));
+			if (cs.current_x2 > GRAIN_SIZE * (1 + (ratio - 1) / 2)) {
+				cs.current_grain_start2 += GRAIN_SIZE;
+				cs.current_x2 = Math.round((GRAIN_SIZE * (1 + (ratio - 1) / 2) - GRAIN_SIZE) * (-1));
 			}
 
-			calcState.current_x[index]++;
-			calcState.current_x2[index]++;
+			cs.current_x++;
+			cs.current_x2++;
 
-			mydata.trackCurrentFrame[index] += 1 * 1 / ratio;
-			if (mydata.trackCurrentFrame[index] > mydata.trackLength[index]) {
-				mydata.trackCurrentFrame[index] = 0;
-				calcState.current_grain_start[index] = 0;
-				calcState.current_x[index] = 0;
-				calcState.current_grain_start2[index] = mydata.grain_size / 2;
-				calcState.current_x2[index] = -1.0 * Math.round(mydata.grain_size / 2 * mydata.trackRatio[index]);
+			this._currentFrame += 1 * 1 / ratio;
+			if (this._currentFrame > this._length) {
+				this._currentFrame = 0;
+				cs.current_grain_start = 0;
+				cs.current_x = 0;
+				cs.current_grain_start2 = GRAIN_SIZE / 2;
+				cs.current_x2 = -1.0 * Math.round(GRAIN_SIZE / 2 * ratio);
 			}
 		}
 	} else {
 		for (let c = 0; c < offset; c++) {
-			if (calcState.current_x[index] > grain_size * (1 + ratio - 1 / 2)) {
-				calcState.current_grain_start[index] += grain_size * 2;
-				calcState.current_x[index] = Math.round(grain_size * (ratio - 1 / 2) * (-1));
+			if (cs.current_x > GRAIN_SIZE * (1 + ratio - 1 / 2)) {
+				cs.current_grain_start += GRAIN_SIZE * 2;
+				cs.current_x = Math.round(GRAIN_SIZE * (ratio - 1 / 2) * (-1));
 			}
-			if (calcState.current_x2[index] > grain_size * (1 + ratio - 1 / 2)) {
-				calcState.current_grain_start2[index] += grain_size * 2;
-				calcState.current_x2[index] = Math.round(grain_size * (ratio - 1 / 2) * (-1));
+			if (cs.current_x2 > GRAIN_SIZE * (1 + ratio - 1 / 2)) {
+				cs.current_grain_start2 += GRAIN_SIZE * 2;
+				cs.current_x2 = Math.round(GRAIN_SIZE * (ratio - 1 / 2) * (-1));
 			}
-			calcState.current_x[index]++;
-			calcState.current_x2[index]++;
+			cs.current_x++;
+			cs.current_x2++;
 
-			mydata.trackCurrentFrame[index] += 1 * 1 / ratio;
-			if (mydata.trackCurrentFrame[index] > mydata.trackLength[index]) {
-				mydata.trackCurrentFrame[index] = 0;
-				calcState.current_grain_start[index] = 0;
-				calcState.current_x[index] = 0;
-				calcState.current_grain_start2[index] = grain_size;
-				calcState.current_x2[index] = Math.round(grain_size * (ratio) * (-1));
+			this._currentFrame += 1 * 1 / ratio;
+			if (this._currentFrame > this._length) {
+				this._currentFrame = 0;
+				cs.current_grain_start = 0;
+				cs.current_x = 0;
+				cs.current_grain_start2 = GRAIN_SIZE;
+				cs.current_x2 = Math.round(GRAIN_SIZE * (ratio) * (-1));
 			}
 		}
 	}
 }
 
-function consume_scratch(index, offset) {
+MyTrack.prototype.consume_scratch = function(offset) {
 
-	let grain_size = mydata.grain_size;
-	let ratio = mydata.trackRatio[index];
+	let ratio = this._ratio;
+	let cs = this._calcState;
 
 	if (ratio >= 1) {
 		if (offset >= 0) {
 			for (let c = 0; c < offset; c++) {
-				if (calcState.current_x_scratch[index] > grain_size * (1 + (ratio - 1) / 2)) {
-					calcState.current_grain_start_scratch[index] += grain_size;
-					calcState.current_x_scratch[index] = Math.round((grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1));
-				}
-				if (calcState.current_x2_scratch[index] > grain_size * (1 + (ratio - 1) / 2)) {
-					calcState.current_grain_start2_scratch[index] += grain_size;
-					calcState.current_x2_scratch[index] = Math.round((grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1));
-				}
 
-				calcState.current_x_scratch[index]++;
-				calcState.current_x2_scratch[index]++;
+				if (cs.current_x_scratch > GRAIN_SIZE * (1 + (ratio - 1) / 2)) {
+					cs.current_grain_start_scratch += GRAIN_SIZE;
+					cs.current_x_scratch = Math.round((GRAIN_SIZE * (1 + (ratio - 1) / 2) - GRAIN_SIZE) * (-1));
+				}
+				if (cs.current_x2_scratch > GRAIN_SIZE * (1 + (ratio - 1) / 2)) {
+					cs.current_grain_start2_scratch += GRAIN_SIZE;
+					cs.current_x2_scratch = Math.round((GRAIN_SIZE * (1 + (ratio - 1) / 2) - GRAIN_SIZE) * (-1));
+				}
+				cs.current_x_scratch++;
+				cs.current_x2_scratch++;
 
-				mydata.trackCurrentFrame_scratch[index] += 1 * 1 / ratio;
-				if (mydata.trackCurrentFrame_scratch[index] > mydata.trackLength[index]) {
-					mydata.trackCurrentFrame_scratch[index] = 0;
-					calcState.current_grain_start_scratch[index] = 0;
-					calcState.current_x_scratch[index] = 0;
-					calcState.current_grain_start2_scratch[index] = mydata.grain_size / 2;
-					calcState.current_x2_scratch[index] = -1.0 * Math.round(mydata.grain_size / 2 * mydata.trackRatio[index]);
+				this._currentFrame_scratch += 1 * 1 / ratio;
+				if (this._currentFrame_scratch > this._length) {
+					this._currentFrame_scratch = 0;
+					cs.current_grain_start_scratch = 0;
+					cs.current_x_scratch = 0;
+					cs.current_grain_start2_scratch = GRAIN_SIZE / 2;
+					cs.current_x2_scratch = -1.0 * Math.round(GRAIN_SIZE / 2 * ratio);
 				}
 			}
 		} else {
 			for (let c = 0; c < -offset; c++) {
-				if (calcState.current_x_scratch[index] < (grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1)) {
-					calcState.current_grain_start_scratch[index] -= grain_size;
-					calcState.current_x_scratch[index] = Math.round(grain_size * (1 + (ratio - 1) / 2));
+
+				if (cs.current_x_scratch < (GRAIN_SIZE * (1 + (ratio - 1) / 2) - GRAIN_SIZE) * (-1)) {
+					cs.current_grain_start_scratch -= GRAIN_SIZE;
+					cs.current_x_scratch = Math.round(GRAIN_SIZE * (1 + (ratio - 1) / 2));
 				}
-				if (calcState.current_x2_scratch[index] < (grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1)) {
-					calcState.current_grain_start2_scratch[index] -= grain_size;
-					calcState.current_x2_scratch[index] = Math.round(grain_size * (1 + (ratio - 1) / 2));
+				if (cs.current_x2_scratch < (GRAIN_SIZE * (1 + (ratio - 1) / 2) - GRAIN_SIZE) * (-1)) {
+					cs.current_grain_start2_scratch -= GRAIN_SIZE;
+					cs.current_x2_scratch = Math.round(GRAIN_SIZE * (1 + (ratio - 1) / 2));
 				}
 
-				calcState.current_x_scratch[index]--;
-				calcState.current_x2_scratch[index]--;
+				cs.current_x_scratch--;
+				cs.current_x2_scratch--;
 
-				mydata.trackCurrentFrame_scratch[index] -= 1 * 1 / ratio;
-				if (mydata.trackCurrentFrame_scratch[index] < 0) {
-					mydata.trackCurrentFrame_scratch[index] = mydata.trackLength[index];
-					calcState.current_grain_start_scratch[index] = mydata.trackLength[index];
-					calcState.current_x_scratch[index] = mydata.trackLength[index];
-					calcState.current_grain_start2_scratch[index] = mydata.trackLength[index] - grain_size / 2;
-					calcState.current_x2_scratch[index] = grain_size + Math.round(grain_size * ratio / 2);
+
+				this._currentFrame_scratch -= 1 * 1 / ratio;
+				if (this._currentFrame_scratch < 0) {
+					this._currentFrame_scratch = this._length;
+					cs.current_grain_start_scratch = this._length;
+					cs.current_x_scratch = this._length;
+					cs.current_grain_start2_scratch = this._length - GRAIN_SIZE / 2;
+					cs.current_x2_scratch = GRAIN_SIZE + Math.round(GRAIN_SIZE * ratio / 2);
 				}
 			}
 		}
 	} else {
 		if (offset >= 0) {
 			for (let c = 0; c < offset; c++) {
-				if (calcState.current_x_scratch[index] > grain_size * (1 + ratio - 1 / 2)) {
-					calcState.current_grain_start_scratch[index] += grain_size * 2;
-					calcState.current_x_scratch[index] = Math.round(grain_size * (ratio - 1 / 2) * (-1));
-				}
-				if (calcState.current_x2_scratch[index] > grain_size * (1 + ratio - 1 / 2)) {
-					calcState.current_grain_start2_scratch[index] += grain_size * 2;
-					calcState.current_x2_scratch[index] = Math.round(grain_size * (ratio - 1 / 2) * (-1));
-				}
-				calcState.current_x_scratch[index]++;
-				calcState.current_x2_scratch[index]++;
 
-				mydata.trackCurrentFrame_scratch[index] += 1 * 1 / ratio;
-				if (mydata.trackCurrentFrame_scratch[index] > mydata.trackLength[index]) {
-					mydata.trackCurrentFrame_scratch[index] = 0;
-					calcState.current_grain_start_scratch[index] = 0;
-					calcState.current_x_scratch[index] = 0;
-					calcState.current_grain_start2_scratch[index] = grain_size;
-					calcState.current_x2_scratch[index] = Math.round(grain_size * (ratio) * (-1));
+				if (cs.current_x_scratch > GRAIN_SIZE * (1 + ratio - 1 / 2)) {
+					cs.current_grain_start_scratch += GRAIN_SIZE * 2;
+					cs.current_x_scratch = Math.round(GRAIN_SIZE * (ratio - 1 / 2) * (-1));
+				}
+				if (cs.current_x2_scratch > GRAIN_SIZE * (1 + ratio - 1 / 2)) {
+					cs.current_grain_start2_scratch += GRAIN_SIZE * 2;
+					cs.current_x2_scratch = Math.round(GRAIN_SIZE * (ratio - 1 / 2) * (-1));
+				}
+
+				cs.current_x_scratch++;
+				cs.current_x2_scratch++;
+
+				this._currentFrame_scratch += 1 * 1 / ratio;
+				if (this._currentFrame_scratch > this._length) {
+					this._currentFrame_scratch = 0;
+					cs.current_grain_start_scratch = 0;
+					cs.current_x_scratch = 0;
+					cs.current_grain_start2_scratch = GRAIN_SIZE;
+					cs.current_x2_scratch = Math.round(GRAIN_SIZE * (ratio) * (-1));
 				}
 			}
 		} else {	//reverse
 
 			for (let c = 0; c < -offset; c++) {
 
-				if (calcState.current_x_scratch[index] < grain_size * (ratio - 1 / 2) * (-1)) {
-					calcState.current_grain_start_scratch[index] -= grain_size * 2;
-					calcState.current_x_scratch[index] = Math.round(grain_size * (1 + ratio - 1 / 2));
+				cs.current_x_scratch--;
+				cs.current_x2_scratch--;
+
+				if (cs.current_x_scratch < GRAIN_SIZE * (ratio - 1 / 2) * (-1)) {
+					cs.current_grain_start_scratch -= GRAIN_SIZE * 2;
+					cs.current_x_scratch = Math.round(GRAIN_SIZE * (1 + ratio - 1 / 2));
 				}
-				if (calcState.current_x2_scratch[index] < grain_size * (ratio - 1 / 2) * (-1)) {
-					calcState.current_grain_start2_scratch[index] -= grain_size * 2;
-					calcState.current_x2_scratch[index] = Math.round(grain_size * (1 + ratio - 1 / 2));
+				if (cs.current_x2_scratch < GRAIN_SIZE * (ratio - 1 / 2) * (-1)) {
+					cs.current_grain_start2_scratch -= GRAIN_SIZE * 2;
+					cs.current_x2_scratch = Math.round(GRAIN_SIZE * (1 + ratio - 1 / 2));
 				}
 
-				calcState.current_x_scratch[index]--;
-				calcState.current_x2_scratch[index]--;
-
-				mydata.trackCurrentFrame_scratch[index] -= 1 * 1 / ratio;
-				if (mydata.trackCurrentFrame_scratch[index] < 0) {
-					mydata.trackCurrentFrame_scratch[index] = mydata.trackLength[index];
-					calcState.current_grain_start_scratch[index] = mydata.trackLength[index];
-					calcState.current_x_scratch[index] = mydata.trackLength[index];
-					calcState.current_grain_start2_scratch[index] = mydata.trackLength[index] - grain_size;
-					calcState.current_x_scratch[index] = grain_size + Math.round(grain_size * ratio);
+				this._currentFrame_scratch -= 1 * 1 / ratio;
+				if (this._currentFrame_scratch < 0) {
+					this._currentFrame_scratch = this._length;
+					cs.current_grain_start_scratch = this._length;
+					cs.current_x_scratch = this._length;
+					cs.current_grain_start2_scratch = this._length - GRAIN_SIZE;
+					cs.current_x_scratch = GRAIN_SIZE + Math.round(GRAIN_SIZE * ratio);
 				}
 			}
 		}
@@ -534,30 +594,32 @@ function consume_scratch(index, offset) {
 }
 
 
-function follow() {
-	for (let i = 0; i < TRACK_NUM; i++) {
-		calcState.current_x_scratch[i] = calcState.current_x[i];
-		calcState.current_grain_start_scratch[i] = calcState.current_grain_start[i];
-		calcState.current_x2_scratch[i] = calcState.current_x2[i];
-		calcState.current_grain_start2_scratch[i] = calcState.current_grain_start2[i];
+MyTrack.prototype.follow = function(){
+	let cs = this._calcState;
 
-		mydata.trackCurrentFrame_scratch[i] = mydata.trackCurrentFrame[i];
-	}
+	cs.current_x_scratch = cs.current_x;
+	cs.current_grain_start_scratch = cs.current_grain_start;
+	cs.current_x2_scratch = cs.current_x2;
+	cs.current_grain_start2_scratch = cs.current_grain_start2;
+
+	this._currentFrame_scratch = this._currentFrame;
 }
 
-function getAt(index, offset) {
-	let grain_size = mydata.grain_size;
-	let ratio = mydata.trackRatio[index];
+MyTrack.prototype.getAt = function(offset){
+
+	let ratio = this._ratio;
+	let cs = this._calcState;
 
 	let ret = new Array();
 	let retL = 0;
 	let retR = 0;
 
-	let current_x = calcState.current_x_scratch[index];
-	let current_grain_start = calcState.current_grain_start_scratch[index];
-	let current_x2 = calcState.current_x2_scratch[index];
-	let current_grain_start2 = calcState.current_grain_start2_scratch[index];
-	let current_scratch = mydata.trackCurrentFrame_scratch[index];
+	let current_x = cs.current_x_scratch;
+	let current_grain_start = cs.current_grain_start_scratch;
+	let current_x2 = cs.current_x2_scratch;
+	let current_grain_start2 = cs.current_grain_start2_scratch;
+	// let current_scratch = mydata.trackCurrentFrame_scratch;
+	let current_scratch = this._currentFrame_scratch;
 
 
 	if (ratio >= 1) {
@@ -566,23 +628,26 @@ function getAt(index, offset) {
 		if (offset >= 0) {
 
 			for (let c = 0; c < offset; c++) {
+
+				if (current_x > GRAIN_SIZE * (1 + (ratio - 1) / 2)) {
+					current_grain_start += GRAIN_SIZE;
+					current_x = Math.round((GRAIN_SIZE * (1 + (ratio - 1) / 2) - GRAIN_SIZE) * (-1))
+				}
+				if (current_x2 > GRAIN_SIZE * (1 + (ratio - 1) / 2)) {
+					current_grain_start2 += GRAIN_SIZE;
+					current_x2 = Math.round((GRAIN_SIZE * (1 + (ratio - 1) / 2) - GRAIN_SIZE) * (-1));
+				}
+
 				current_x++;
 				current_x2++;
-				if (current_x > grain_size * (1 + (ratio - 1) / 2)) {
-					current_grain_start += grain_size;
-					current_x = Math.round((grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1))
-				}
-				if (current_x2 > grain_size * (1 + (ratio - 1) / 2)) {
-					current_grain_start2 += grain_size;
-					current_x2 = Math.round((grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1));
-				}
+
 				current_scratch += 1 * 1 / ratio;
-				if (current_scratch > mydata.trackLength[index]) {
+				if (current_scratch > this._length) {
 					current_scratch = 0;
 					current_grain_start = 0;
 					current_x = 0;
-					current_grain_start2 = grain_size / 2;
-					current_x2 = -1.0 * Math.round(grain_size / 2 * ratio);
+					current_grain_start2 = GRAIN_SIZE / 2;
+					current_x2 = -1.0 * Math.round(GRAIN_SIZE / 2 * ratio);
 				}
 			}
 		} else {	//reverse
@@ -590,22 +655,22 @@ function getAt(index, offset) {
 			for (let c = 0; c < -offset; c++) {
 				current_x--;
 				current_x2--;
-				if (current_x < (grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1)) {
-					current_grain_start -= grain_size;
-					current_x = Math.round(grain_size * (1 + (ratio - 1) / 2));
+				if (current_x < (GRAIN_SIZE * (1 + (ratio - 1) / 2) - GRAIN_SIZE) * (-1)) {
+					current_grain_start -= GRAIN_SIZE;
+					current_x = Math.round(GRAIN_SIZE * (1 + (ratio - 1) / 2));
 				}
-				if (current_x2 < (grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1)) {
-					current_grain_start2 -= grain_size;
-					current_x2 = Math.round(grain_size * (1 + (ratio - 1) / 2));
+				if (current_x2 < (GRAIN_SIZE * (1 + (ratio - 1) / 2) - GRAIN_SIZE) * (-1)) {
+					current_grain_start2 -= GRAIN_SIZE;
+					current_x2 = Math.round(GRAIN_SIZE * (1 + (ratio - 1) / 2));
 				}
 				current_scratch -= 1 * 1 / ratio;
 				if (current_scratch < 0) {
 
-					current_scratch = mydata.trackLength[index];
-					current_grain_start = mydata.trackLength[index];
-					current_x = mydata.trackLength[index];
-					current_grain_start2 = mydata.trackLength[index] - grain_size / 2;
-					current_x2 = grain_size + Math.round(grain_size * ratio / 2);
+					current_scratch = this._length;
+					current_grain_start = this._length;
+					current_x = this._length;
+					current_grain_start2 = this._length - GRAIN_SIZE / 2;
+					current_x2 = GRAIN_SIZE + Math.round(GRAIN_SIZE * ratio / 2);
 				}
 			}
 
@@ -613,13 +678,13 @@ function getAt(index, offset) {
 		{
 			let x = current_grain_start + current_x;
 
-			let valL = mydata.trackBufferLeft[index][x];
-			let valR = mydata.trackBufferRight[index][x];
+			let valL = this._bufferLeft[x];
+			let valR = this._bufferRight[x];
 			if (current_x2 < 0) {
 				//no windowing for some beggining frames
 			} else {
-				valL = sinFadeWindow(fadeStartRate, current_x / grain_size, valL);
-				valR = sinFadeWindow(fadeStartRate, current_x / grain_size, valR);
+				valL = sinFadeWindow(fadeStartRate, current_x / GRAIN_SIZE, valL);
+				valR = sinFadeWindow(fadeStartRate, current_x / GRAIN_SIZE, valR);
 			}
 			retL = valL;
 			retR = valR;
@@ -627,11 +692,11 @@ function getAt(index, offset) {
 
 		{
 			let x2 = current_grain_start2 + current_x2;
-			let valL2 = mydata.trackBufferLeft[index][x2];
-			let valR2 = mydata.trackBufferRight[index][x2];
+			let valL2 = this._bufferLeft[x2];
+			let valR2 = this._bufferRight[x2];
 
-			valL2 = sinFadeWindow(fadeStartRate, current_x2 / grain_size, valL2);
-			valR2 = sinFadeWindow(fadeStartRate, current_x2 / grain_size, valR2);
+			valL2 = sinFadeWindow(fadeStartRate, current_x2 / GRAIN_SIZE, valL2);
+			valR2 = sinFadeWindow(fadeStartRate, current_x2 / GRAIN_SIZE, valR2);
 			retL += valL2;
 			retR += valR2;
 		}
@@ -641,45 +706,51 @@ function getAt(index, offset) {
 
 		if (offset >= 0) {
 			for (let c = 0; c < offset; c++) {
+
+				if (current_x > GRAIN_SIZE * (1 + ratio - 1 / 2)) {
+					current_grain_start += GRAIN_SIZE * 2;
+					current_x = Math.round(GRAIN_SIZE * (ratio - 1 / 2) * (-1));
+				}
+				if (current_x2 > GRAIN_SIZE * (1 + ratio - 1 / 2)) {
+					current_grain_start2 += GRAIN_SIZE * 2;
+					current_x2 = Math.round(GRAIN_SIZE * (ratio - 1 / 2) * (-1));
+				}
+
 				current_x++;
 				current_x2++;
-				if (current_x > grain_size * (1 + ratio - 1 / 2)) {
-					current_grain_start += grain_size * 2;
-					current_x = Math.round(grain_size * (ratio - 1 / 2) * (-1));
-				}
-				if (current_x2 > grain_size * (1 + ratio - 1 / 2)) {
-					current_grain_start2 += grain_size * 2;
-					current_x2 = Math.round(grain_size * (ratio - 1 / 2) * (-1));
-				}
+
 				current_scratch += 1 * 1 / ratio;
-				if (current_scratch > mydata.trackLength[index]) {
+				if (current_scratch > this._length) {
 					current_scratch = 0;
 					current_grain_start = 0;
 					current_x = 0;
-					current_grain_start2 = grain_size;
-					current_x2 = Math.round(grain_size * (ratio) * (-1));
+					current_grain_start2 = GRAIN_SIZE;
+					current_x2 = Math.round(GRAIN_SIZE * (ratio) * (-1));
 				}
 			}
 		} else {	//reverse
 
 			for (let c = 0; c < -offset; c++) {
+
+				if (current_x < GRAIN_SIZE * (ratio - 1 / 2) * (-1)) {
+					current_grain_start -= GRAIN_SIZE * 2;
+					current_x = Math.round(GRAIN_SIZE * (1 + ratio - 1 / 2));
+				}
+				if (current_x2 < GRAIN_SIZE * (ratio - 1 / 2) * (-1)) {
+					current_grain_start2 -= GRAIN_SIZE * 2;
+					current_x2 = Math.round(GRAIN_SIZE * (1 + ratio - 1 / 2));
+				}
+
 				current_x--;
 				current_x2--;
-				if (current_x < grain_size * (ratio - 1 / 2) * (-1)) {
-					current_grain_start -= grain_size * 2;
-					current_x = Math.round(grain_size * (1 + ratio - 1 / 2));
-				}
-				if (current_x2 < grain_size * (ratio - 1 / 2) * (-1)) {
-					current_grain_start2 -= grain_size * 2;
-					current_x2 = Math.round(grain_size * (1 + ratio - 1 / 2));
-				}
+
 				current_scratch -= 1 * 1 / ratio;
 				if (current_scratch < 0) {
-					current_scratch = mydata.trackLength[index];
-					current_grain_start = mydata.trackLength[index];
-					current_x = mydata.trackLength[index];
-					current_grain_start2 = mydata.trackLength[index] - grain_size;
-					current_x2 = grain_size + Math.round(grain_size * ratio);
+					current_scratch = this._length;
+					current_grain_start = this._length;
+					current_x = this._length;
+					current_grain_start2 = this._length - GRAIN_SIZE;
+					current_x2 = GRAIN_SIZE + Math.round(GRAIN_SIZE * ratio);
 				}
 			}
 
@@ -687,13 +758,13 @@ function getAt(index, offset) {
 		{
 			let x = current_grain_start + current_x;
 
-			let valL = mydata.trackBufferLeft[index][x];
-			let valR = mydata.trackBufferRight[index][x];
+			let valL = this._bufferLeft[x];
+			let valR = this._bufferRight[x];
 			if (current_x2 < 0) {
 				//no windowing for some beggining frames
 			} else {
-				valL = sinFadeWindow(fadeStartRate, current_x / grain_size, valL);
-				valR = sinFadeWindow(fadeStartRate, current_x / grain_size, valR);
+				valL = sinFadeWindow(fadeStartRate, current_x / GRAIN_SIZE, valL);
+				valR = sinFadeWindow(fadeStartRate, current_x / GRAIN_SIZE, valR);
 			}
 			retL = valL;
 			retR = valR;
@@ -701,27 +772,25 @@ function getAt(index, offset) {
 
 		{
 			let x2 = current_grain_start2 + current_x2;
-			let valL2 = mydata.trackBufferLeft[index][x2];
-			let valR2 = mydata.trackBufferRight[index][x2];
 
-			valL2 = sinFadeWindow(fadeStartRate, current_x2 / grain_size, valL2);
-			valR2 = sinFadeWindow(fadeStartRate, current_x2 / grain_size, valR2);
+			let valL2 = this._bufferLeft[x2];
+			let valR2 = this._bufferRight[x2];
+
+			valL2 = sinFadeWindow(fadeStartRate, current_x2 / GRAIN_SIZE, valL2);
+			valR2 = sinFadeWindow(fadeStartRate, current_x2 / GRAIN_SIZE, valR2);
 			retL += valL2;
 			retR += valR2;
 		}
-
 	}
-
 
 	ret[0] = retL;
 	ret[1] = retR;
 	return ret;
-
 }
 
 function stretch_continue3(index, inBufL, inBufR, len) {
 
-	let grain_size = mydata.grain_size;
+	let grain_size = GRAIN_SIZE;
 	let ratio = mydata.trackRatio[index];
 
 	if (ratio >= 1) {
@@ -878,9 +947,6 @@ function stretch_continue3(index, inBufL, inBufR, len) {
 }
 
 
-
-
-
 function sinFadeWindow(fadeStartRate, x, val) {
 	let y = 0;
 
@@ -915,97 +981,101 @@ function noFadeWindow(fadeStartRate, x, val) {
 }
 
 
-function onPlayStopTrack(index) {
-	if (mydata.trackLoaded[index]) {
-		if (!mydata.trackPlaying[index]) {
-			mydata.trackCurrentFrame[index] = 0;
-			calcState.current_grain_start[index] = 0;
-			calcState.current_x[index] = 0;
+MyTrack.prototype.playStop = function(masterTrack) {
+	let ratio = this._ratio;
+	let cs = this._calcState;
 
-			if (mydata.trackRatio[index] >= 1) {
-				calcState.current_grain_start2[index] = mydata.grain_size / 2;
-				calcState.current_x2[index] = -1.0 * Math.round(mydata.grain_size / 2 * mydata.trackRatio[index]);
+	if (this._loaded) {
+		if (!this._playing) {
+			this._currentFrame = 0;
+			cs.current_grain_start = 0;
+			cs.current_x = 0;
+
+			if (ratio >= 1) {
+				cs.current_grain_start2= GRAIN_SIZE / 2;
+				cs.current_x2= -1.0 * Math.round(GRAIN_SIZE / 2 * ratio);
 			} else {
-				calcState.current_grain_start2[index] = mydata.grain_size;
-				calcState.current_x2[index] = Math.round(mydata.grain_size * (mydata.trackRatio[index]) * (-1));
+				cs.current_grain_start2= GRAIN_SIZE;
+				cs.current_x2= Math.round(GRAIN_SIZE * (ratio) * (-1));
 			}
 
 			//quantize test [TODO:think offset]
-			if (mydata.trackQuantize[index]) {
+			if (this._quantize) {
 				console.log("quantized start");
-				//get master
-				let masterIndex = getMasterIndex();
 
-				if (index != masterIndex && -1 != masterIndex && 99 != masterIndex && mydata.trackPlaying[masterIndex]) {
-					let rm = mydata.trackRatio[masterIndex];
-					let cfm = mydata.trackCurrentFrame[masterIndex];
-					let lenm = mydata.trackLength[masterIndex];
+				//get master
+				// let masterIndex = getMasterIndex();
+
+				if (this != masterTrack && null != masterTrack  && masterTrack._playing) {
+					let rm = masterTrack._ratio;
+					let cfm = masterTrack._currentFrame;
+					let lenm = masterTrack._length
 
 					let lag = cfm * rm - Math.floor(32 * cfm / lenm) * (lenm * rm / 32);
 					if (lag < lenm * rm / 64) {
 						//late comming
 
-						mydata.trackCurrentFrame[index] = Math.round(lag / mydata.trackRatio[index]);
+						this._currentFrame = Math.round(lag / ratio);
 
 						//offset
-						if (mydata.trackOffset[index] >= 0) {
-							mydata.trackCurrentFrame[index] += Math.round(mydata.trackOffset[index] * mydata.trackRatio[index]);
+						if (this._offset >= 0) {
+							this._currentFrame += Math.round(this._offset * ratio);
 						} else {
-							mydata.trackCurrentFrame[index] -= Math.round(-1 * mydata.trackOffset[index] * mydata.trackRatio[index]);
-							if (mydata.trackCurrentFrame[index] < 0) {
-								mydata.trackWaitCount[index] = -1 * mydata.trackCurrentFrame[index];
-								mydata.trackCurrentFrame[index] = 0;
+							this._currentFrame -= Math.round(-1 * this._offset * ratio);
+							if (this._currentFrame < 0) {
+								this._waitCount = -1 * this._currentFrame;
+								this._currentFrame = 0;
 							}
 						}
-						calcState.current_grain_start[index] = mydata.trackCurrentFrame[index];
-						if (mydata.trackRatio[index] >= 1) {
-							calcState.current_grain_start2[index] = mydata.trackCurrentFrame[index] + mydata.grain_size / 2;
+						cs.current_grain_start = this._currentFrame;
+						if (ratio >= 1) {
+							cs.current_grain_start2 = this._currentFrame + GRAIN_SIZE / 2;
 						} else {
-							calcState.current_grain_start2[index] = mydata.trackCurrentFrame[index] + mydata.grain_size;
+							cs.current_grain_start2 = this._currentFrame + GRAIN_SIZE;
 						}
 
 					} else {
 						//wait required
-						mydata.trackWaitCount[index] = Math.round(lenm * rm / 32 - lag);
+						this._waitCount = Math.round(lenm * rm / 32 - lag);
 
 						//offset
-						if (mydata.trackOffset[index] >= 0) {
-							mydata.trackWaitCount[index] -= Math.round(mydata.trackOffset[index] * mydata.trackRatio[index]);
-							if (mydata.trackWaitCount[index] < 0) {
-								mydata.trackCurrentFrame[index] = -1.0 * mydata.trackWaitCount[index];
-								mydata.trackWaitCount[index] = 0;
+						if (this._offset >= 0) {
+							this._waitCount -= Math.round(this._offset * ratio);
+							if (this._waitCount < 0) {
+								this._currentFrame = -1.0 * this._waitCount;
+								this._waitCount = 0;
 							}
 						} else {
-							mydata.trackWaitCount[index] += Math.round(-1 * mydata.trackOffset[index] * mydata.trackRatio[index]);
+							this._waitCount += Math.round(-1 * this._offset * ratio);
 						}
-						calcState.current_grain_start[index] = mydata.trackCurrentFrame[index];
-						if (mydata.trackRatio[index] >= 1) {
-							calcState.current_grain_start2[index] = mydata.trackCurrentFrame[index] + mydata.grain_size / 2;
+						cs.current_grain_start = this._currentFrame;
+						if (ratio >= 1) {
+							cs.current_grain_start2 = this._currentFrame + GRAIN_SIZE / 2;
 						} else {
-							calcState.current_grain_start2[index] = mydata.trackCurrentFrame[index] + mydata.grain_size;
+							cs.current_grain_start2 = this._currentFrame + GRAIN_SIZE;
 						}
 					}
 				}
 			} else {
 
 				//calc offset
-				if (mydata.trackOffset[index] >= 0) {
-					mydata.trackCurrentFrame[index] = Math.round(mydata.trackOffset[index] * mydata.trackRatio[index]);
-					calcState.current_grain_start[index] = mydata.trackCurrentFrame[index];
-					if (mydata.trackRatio[index] >= 1) {
-						calcState.current_grain_start2[index] = mydata.trackCurrentFrame[index] + mydata.grain_size / 2;
+				if (this._offset >= 0) {
+					this._currentFrame = Math.round(this._offset * ratio);
+					cs.current_grain_start = this._currentFrame;
+					if (ratio >= 1) {
+						cs.current_grain_start2 = this._currentFrame + GRAIN_SIZE / 2;
 					} else {
-						calcState.current_grain_start2[index] = mydata.trackCurrentFrame[index] + mydata.grain_size;
+						cs.current_grain_start2 = this._currentFrame + GRAIN_SIZE;
 					}
 				} else {
-					mydata.trackWaitCount[index] = Math.round(-1 * mydata.trackOffset[index] * mydata.trackRatio[index]);
+					this._waitCount = Math.round(-1 * this._offset * ratio);
 				}
 			}
-			follow();
-			mydata.trackPlaying[index] = true;
+			this.follow();
+			this._playing = true;
 
 		} else {
-			mydata.trackPlaying[index] = false;
+			this._playing = false;
 		}
 	}
 
