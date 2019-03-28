@@ -2654,6 +2654,8 @@ function onNoteOff(noteNumber, receivedSec){
 }
 
 function onControlChange(number, value, receivedSec){
+	
+	// console.log("cc : " + number);
 	switch(number){
 	case 1:	//rate
 		{
@@ -2700,38 +2702,88 @@ function onControlChange(number, value, receivedSec){
 			}
 		}
 		break;
-	case 34: //MIDI scratch
+	case 34: //MIDI scratch 
 		{
 			onMIDIScratch(value, receivedSec);
 		}
 		break;
+
+	case 33:
+		{
+			onMIDIScratch(value, receivedSec);
+		}
+		break;
+
 	}
 }
 
 
 let prevSec = 0;
+let prevRad = 0;
 let jogTouching = false;
-// let timer = null;
+let timer = null;
+let zeroCount = 0;
 
 function onStartStopJog(receivedSec){
 	if (!jogTouching){
 		jogTouching = true;
 		prevSec = receivedSec;
+		prevRad = turnTables[0].rad;
 		turnTables[0]._processing = true;
+		zeroCount = 0;
 
-		// timer = setInterval(function(){
+		timer = setInterval(function(){
 
-		// },10);
+			let deltaRad = turnTables[0].rad - prevRad;
+			let radS = deltaRad / 1/0.01;
+			let speed = -radS / RPS;
+
+			turnTables[0].speed = speed;
+			prevRad = turnTables[0].rad;
+			
+			if (speed == 0){
+				if (zeroCount >= 0){
+					if (!turnTables[0]._processing){
+						turnTables[0].speed = 1.0;
+						mydata.tracks[0].follow();
+						clearInterval(timer);
+					}else{
+						zeroCount = 0;
+					}
+				}else{
+					zeroCount++;
+				}
+			}else{
+				zeroCount = 0;
+			}
+
+			// console.log("timer");
+
+			
+		},10);
 	}else{
 		jogTouching = false;
 		turnTables[0].speed = 1.0;
-		turnTables[0].accel = 0.0;
 		turnTables[0]._processing = false;
 		mydata.tracks[0].follow();
+		// clearInterval(timer);
 	}
 }
 
 function onMIDIScratch(value, receivedSec){
+
+	let delta = value - 64;
+	let deltaRad = 2 * Math.PI / 720 * delta; 	//720 for 1 cycle.
+
+	turnTables[0].rad += deltaRad;
+
+	ttDraw(turnTables[0]);
+
+	// console.log("scratch, value = " + value);
+
+}
+
+function onMIDIScratch_old(value, receivedSec){
 
 	let nowS = receivedSec;
 
