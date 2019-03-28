@@ -1171,6 +1171,7 @@ function tryEditorLoadSampleFromFileStandard(blob){
 
 
 function tryEditorLoadSampleFromFileAAC(blob){
+
 	//use aac.js/aurora.js to decode caf(AAC compressed Apple Loops)
 	return new Promise(function(resolve, reject){
 		let asset = AV.Asset.fromFile(blob);
@@ -1625,38 +1626,63 @@ function onAudioProcessOut(e){
 		}
 	}
 
-	//mix track data
 	// for (let i = 0; i < TRACK_NUM; i++){
-	// 	if (mydata.trackPlaying[i]){
-	// 		stretch_continue3(i, outLeft, outRight, outLeft.length);
+	// 	let speed = turnTables[i].speed;
+	// 	if (mydata.tracks[i].isPlaying()){
+	// 		for (let j = 0; j < outLeft.length; j++){
+	// 			let v = mydata.tracks[i].getAt(Math.round(j*speed));
+	// 			let l = v[0];
+	// 			let r = v[1];
+	// 			outLeft[j] += l;
+	// 			outRight[j] += r;
+	// 		}
+	// 		mydata.tracks[i].consume_scratch(Math.round(outLeft.length * speed));
+	// 		mydata.tracks[i].consume_backyard(outLeft.length);
 	// 	}
 	// }
-	// pushTo(outLeft, outRight);
-	// if (turnTable._processing){
-	// 	writeWithRatio(outLeft, outRight, turnTable.speed);
-	// }else{
-	// 	//follow
-	// 	mydata.tempRead = mydata.tempWrite -4410;
-	// }
 
-	for (let i = 0; i < TRACK_NUM; i++){
-		if (mydata.tracks[i].isPlaying()){
-			for (let j = 0; j < outLeft.length; j++){
-				let v = mydata.tracks[i].getAt(Math.round(j*turnTables[i].speed));
-				let l = v[0];
-				let r = v[1];
-				outLeft[j] += l;
-				outRight[j] += r;
+	for (let i = 0; i < TRACK_NUM; i++) {
+		let speed = turnTables[i].speed;
+		// turnTables[i].speed -= 0.01
+		// if (turnTables[i].speed < 0.1){
+		// 	turnTables[i].speed = 1.0;
+		// }
+		let accel = turnTables[i].accel;
+		let last = 0;
+		if (mydata.tracks[i].isPlaying()) {
+			for (let j = 0; j < outLeft.length; j++) {
+				let s = speed;// + accel/44100*j;
+				let x0 = Math.floor(j * s);
+				let x1 = Math.ceil(j * s);
+				let y0 = mydata.tracks[i].getAt(x0);
+				let y1 = mydata.tracks[i].getAt(x1);
+
+				let y_l = linearInterporation(x0, y0[0], x1, y1[0], j*s);
+				let y_r = linearInterporation(x0, y0[1], x1, y1[1], j*s);
+
+				outLeft[j] += y_l;
+				outRight[j] += y_r;
 			}
-			mydata.tracks[i].consume_scratch(Math.round(outLeft.length * turnTables[i].speed));
+			mydata.tracks[i].consume_scratch(Math.round(
+				outLeft.length * speed));
 			mydata.tracks[i].consume_backyard(outLeft.length);
 		}
 	}
+
+
 
 	if (mydata.vTrack.isPlaying()){
 		mydata.vTrack.process(outLeft, outRight, outLeft.length);
 	}
 
+}
+
+function linearInterporation(x0, y0, x1, y1, x){
+	if (x0 == x1){return y0;}
+
+	let a = (y1-y0)/(x1-x0);
+	let y = y0 + a * (x -x0);
+	return y;
 }
 
 // function writeWithRatio(outLeft, outRight, ratio){
@@ -2561,28 +2587,28 @@ function onMIDIMessage(e){
 			{
 				let noteNumber = second;
 				console.log("note off : " + noteNumber.toString());
-				onNoteOff(noteNumber);
+				onNoteOff(noteNumber, e.timeStamp/1000.0);
 			}
 			break;
-		case 9: //note off
+		case 9: //note on
 			{
 				let noteNumber = second;
 				console.log("note on : " + noteNumber.toString());
-				onNoteOff(noteNumber);
+				onNoteOn(noteNumber, e.timeStamp/1000.0);
 			}
 			break;
 		case 0x0b: // CC
 			{
 				let controlNumber = second;
 				let value = third;
-				console.log("CC : " + controlNumber.toString(), "," + value.toString());
-				onControlChange(controlNumber, value);
+				// console.log("CC : " + controlNumber.toString(), "," + value.toString());
+				onControlChange(controlNumber, value, e.timeStamp/1000.0);
 			}
 			break;
 	}
 }
 
-function onNoteOn(noteNumber){
+function onNoteOn(noteNumber, receivedSec){
 	switch(noteNumber){
 	case 36:
 		onPlayStopTrack(0);
@@ -2600,11 +2626,14 @@ function onNoteOn(noteNumber){
 		onPlayStopTrack(4);
 		break;
 
+	case 54:	//DDJ-400 jog touch
+		onStartStopJog(receivedSec);
+
 	}
 
 }
 
-function onNoteOff(noteNumber){
+function onNoteOff(noteNumber, receivedSec){
 	switch (noteNumber) {
 	case 36:
 		onPlayStopTrack(0);
@@ -2624,7 +2653,7 @@ function onNoteOff(noteNumber){
 	}
 }
 
-function onControlChange(number, value){
+function onControlChange(number, value, receivedSec){
 	switch(number){
 	case 1:	//rate
 		{
@@ -2671,7 +2700,59 @@ function onControlChange(number, value){
 			}
 		}
 		break;
+	case 34: //MIDI scratch
+		{
+			onMIDIScratch(value, receivedSec);
+		}
+		break;
 	}
+}
+
+
+let prevSec = 0;
+let jogTouching = false;
+// let timer = null;
+
+function onStartStopJog(receivedSec){
+	if (!jogTouching){
+		jogTouching = true;
+		prevSec = receivedSec;
+		turnTables[0]._processing = true;
+
+		// timer = setInterval(function(){
+
+		// },10);
+	}else{
+		jogTouching = false;
+		turnTables[0].speed = 1.0;
+		turnTables[0].accel = 0.0;
+		turnTables[0]._processing = false;
+		mydata.tracks[0].follow();
+	}
+}
+
+function onMIDIScratch(value, receivedSec){
+
+	let nowS = receivedSec;
+
+	let delta = value - 64;
+	let deltaRad = 2 * Math.PI / 720 * delta; 	//720 for 1 cycle.
+	
+	turnTables[0].rad += deltaRad;
+
+	let radS =  deltaRad/(nowS - prevSec);
+
+	let nowSpeed = radS / RPS;
+	turnTables[0].speed = nowSpeed;
+
+	if (turnTables[0].speed  > 100) {
+		turnTables[0].speed  = 100;
+	}
+	if (turnTables[0].speed  < -100) {
+		turnTables[0].speed  = -100;
+	}
+
+	prevSec = nowS;
 
 }
 
@@ -2789,9 +2870,37 @@ function showTT(){
 
 }
 
-// function panelClosed() {
-// 	clearInterval(turnTable.timer);
-// }
+function ttMasterLoaded() {
+
+	let con = document.querySelector("#con");
+	let canvas = document.createElement("canvas");
+	canvas.id = "tt";
+	con.appendChild(canvas);
+
+	turnTable._track = null;
+	turnTable._canvas = canvas;
+
+
+	canvas.addEventListener("mousedown", function (e) {
+		onTTMousedown(e, turnTable);
+	}, false);
+	canvas.addEventListener("mousemove", function (e) {
+		onTTMousemove(e, turnTable);
+	}, false);
+	canvas.addEventListener("mouseup", function (e) {
+		onTTMouseup(e, turnTable);
+	}, false);
+
+	ttResized(turnTable);
+
+	turnTable.timer = setInterval(function () {
+		if (!turnTable._processing) {
+			turnTable.rad -= RPS / 100;
+		}
+		ttDraw(turnTable);
+	}, 10);
+}
+
 
 function onTTMousedown(e, tt) {
 	let canvas = tt._canvas;
@@ -2850,6 +2959,7 @@ function onTTMousemove(e, tt) {
 	tt.rad -= delta;
 
 	let nowS = Date.now() / 1000;
+	// nowS = e.timeStamp/1000;
 	let radS = -delta / (tt._prevSec - nowS);
 	tt.speed = radS / RPS;
 	if (tt.speed > 100){
@@ -2858,6 +2968,8 @@ function onTTMousemove(e, tt) {
 	if (tt.speed < -100){
 		tt.speed = -100;
 	}
+
+	console.log("speed =" + tt.speed);
 
 	tt._prevSec = nowS;
 	tt._startOffsetRad = rad;
@@ -2882,36 +2994,6 @@ function onTTMouseup(e, tt) {
 	}
 }
 
-function ttMasterLoaded() {
-
-	let con = document.querySelector("#con");
-	let canvas = document.createElement("canvas");
-	canvas.id = "tt";
-	con.appendChild(canvas);
-
-	turnTable._track = null;
-	turnTable._canvas = canvas;
-
-
-	canvas.addEventListener("mousedown", function(e){
-		onTTMousedown(e, turnTable);
-	}, false);
-	canvas.addEventListener("mousemove", function(e){
-		onTTMousemove(e, turnTable);
-	}, false);
-	canvas.addEventListener("mouseup",  function(e){
-		onTTMouseup(e, turnTable);
-	}, false);
-
-	ttResized(turnTable);
-
-	turnTable.timer = setInterval(function () {
-		if (!turnTable._processing) {
-			turnTable.rad -= RPS / 100;
-		}
-		ttDraw(turnTable);
-	}, 10);
-}
 
 
 
