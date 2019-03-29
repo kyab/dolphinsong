@@ -77,6 +77,10 @@ function MyTrack() {
 		this._volume = val;
 	}
 
+	this.setPan = function(val){
+		this._pan = val;
+	}
+
 	this.setQuantize = function(val){
 		this._quantize = val;
 	}
@@ -783,8 +787,21 @@ MyTrack.prototype.getAt = function(offset){
 		}
 	}
 
-	ret[0] = retL;
-	ret[1] = retR;
+	//pan and volume
+	let vol = this._volume;
+	let pan = this._pan;
+	let volLeft = 0;
+	let volRight = 0;
+	if (pan < 0) {
+		volLeft = 1.0;
+		volRight = pan + 1;
+	} else {
+		volLeft = -1 * pan + 1;
+		volRight = 1.0;
+	}
+
+	ret[0] = retL * vol * volLeft;
+	ret[1] = retR * vol * volRight;
 	return ret;
 }
 
