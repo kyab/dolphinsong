@@ -81,6 +81,8 @@ mydata.tapMaster = false;
 
 mydata.effectBypass = true;
 
+mydata.abSwitchValue = 0.0;
+
 var audioContext;
 var audioContext2;
 
@@ -139,9 +141,19 @@ for (let i = 0 ; i < TRACK_NUM; i++){
 	turnTables[i]._processing = false;
 	turnTables[i]._startOffsetRad = 0;
 	turnTables[i]._prevSec = 0;
-
-	
 }
+
+var turnTableA = {};
+var turnTableB = {};
+([turnTableA, turnTableB]).forEach(function(t){
+	t.rad = Math.PI / 3;
+	t.timer = null;
+	t.speed = 1.0;
+
+	t._processing = false;
+	t._startOffsetRad = 0;
+	t._prevSec = 0;
+})
 
 window.addEventListener("resize", function(e){
 	onResize();
@@ -378,6 +390,14 @@ window.addEventListener("load", function(){
 	$("#selectOutputDevices").on("change", outputDeviceChanged);
 
 	$("#effectBypassChk").on("change", onEffectBypassChanged);
+
+	$("#aBtn").on("click", onAButtonClicked);
+	$("#bBtn").on("click", onBButtonClicked);
+	$("#abSlider").on("input", onABSliderChanged);
+
+	$(".Achk").on("change", onAChkChanged);
+	$(".Bchk").on("change", onBChkChanged);
+
 
 	initMedia();
 	initMIDI();
@@ -1626,32 +1646,39 @@ function onAudioProcessOut(e){
 		}
 	}
 
-	// for (let i = 0; i < TRACK_NUM; i++){
-	// 	let speed = turnTables[i].speed;
-	// 	if (mydata.tracks[i].isPlaying()){
-	// 		for (let j = 0; j < outLeft.length; j++){
-	// 			let v = mydata.tracks[i].getAt(Math.round(j*speed));
-	// 			let l = v[0];
-	// 			let r = v[1];
-	// 			outLeft[j] += l;
-	// 			outRight[j] += r;
-	// 		}
-	// 		mydata.tracks[i].consume_scratch(Math.round(outLeft.length * speed));
-	// 		mydata.tracks[i].consume_backyard(outLeft.length);
-	// 	}
-	// }
 
 	for (let i = 0; i < TRACK_NUM; i++) {
+
 		let speed = turnTables[i].speed;
-		// turnTables[i].speed -= 0.01
-		// if (turnTables[i].speed < 0.1){
-		// 	turnTables[i].speed = 1.0;
-		// }
-		let accel = turnTables[i].accel;
-		let last = 0;
+		let speedA = turnTableA.speed;
+		let speedB = turnTableB.speed;
+
 		if (mydata.tracks[i].isPlaying()) {
+			
+			let s = 1.0;
+			let gain = 1.0;
+			let AorB = mydata.tracks[i].getABSwitch();
+			if (AorB == "A"){
+				s = speedA;
+				if (mydata.abSwitchValue >= 0){
+					gain = - mydata.abSwitchValue + 1.0;
+				}else{
+					gain = 1.0;
+				}
+			}else if (AorB == "B"){
+				s = speedB;
+				if (mydata.abSwitchValue <=0){
+					gain = mydata.abSwitchValue + 1.0;
+				}else{
+					gain = 1.0;
+				}
+			}else{
+				s = speed;
+				gain = 1.0;
+			}
+
+
 			for (let j = 0; j < outLeft.length; j++) {
-				let s = speed;// + accel/44100*j;
 				let x0 = Math.floor(j * s);
 				let x1 = Math.ceil(j * s);
 				let y0 = mydata.tracks[i].getAt(x0);
@@ -1660,16 +1687,13 @@ function onAudioProcessOut(e){
 				let y_l = linearInterporation(x0, y0[0], x1, y1[0], j*s);
 				let y_r = linearInterporation(x0, y0[1], x1, y1[1], j*s);
 
-				outLeft[j] += y_l;
-				outRight[j] += y_r;
+				outLeft[j] += y_l*gain;
+				outRight[j] += y_r*gain;
 			}
-			mydata.tracks[i].consume_scratch(Math.round(
-				outLeft.length * speed));
+			mydata.tracks[i].consume_scratch(Math.round(outLeft.length * s));
 			mydata.tracks[i].consume_backyard(outLeft.length);
 		}
 	}
-
-
 
 	if (mydata.vTrack.isPlaying()){
 		mydata.vTrack.process(outLeft, outRight, outLeft.length);
@@ -2727,25 +2751,41 @@ let zeroCount = 0;
 function onStartStopJog(receivedSec){
 	if (!jogTouching){
 		jogTouching = true;
-		prevSec = receivedSec;
-		prevRad = turnTables[0].rad;
-		turnTables[0]._processing = true;
+		prevSec = Date.now() / 1000;;
+		prevRad = turnTableA.rad;
+		turnTableA._processing = true;
 		zeroCount = 0;
 
 		timer = setInterval(function(){
+			let nowS = Date.now() / 1000;
+			let deltaRad = turnTableA.rad - prevRad;
 
-			let deltaRad = turnTables[0].rad - prevRad;
-			let radS = deltaRad / 1/0.01;
+			if (nowS == prevSec) return;
+
+			let radS = deltaRad / (nowS - prevSec);
 			let speed = -radS / RPS;
 
-			turnTables[0].speed = speed;
-			prevRad = turnTables[0].rad;
+			turnTableA.speed = speed;
+			if (turnTableA.speed > 100) {
+				turnTableA.speed = 100;
+				console.log("over speed");
+			}
+			if (turnTableA.speed < -100) {
+				turnTableA.speed = -100;
+				console.log("over speed2");
+			}
+			prevRad = turnTableA.rad;
+			prevSec = nowS;
 			
 			if (speed == 0){
 				if (zeroCount >= 0){
-					if (!turnTables[0]._processing){
-						turnTables[0].speed = 1.0;
-						mydata.tracks[0].follow();
+					if (!turnTableA._processing){
+						turnTableA.speed = 1.0;
+						mydata.tracks.forEach(function (t) {
+							if (t.getABSwitch() == "A") {
+								t.follow();
+							}
+						});
 						clearInterval(timer);
 					}else{
 						zeroCount = 0;
@@ -2756,16 +2796,17 @@ function onStartStopJog(receivedSec){
 			}else{
 				zeroCount = 0;
 			}
-
-			// console.log("timer");
-
 			
 		},10);
 	}else{
 		jogTouching = false;
-		turnTables[0].speed = 1.0;
-		turnTables[0]._processing = false;
-		mydata.tracks[0].follow();
+		turnTableA.speed = 1.0;
+		turnTableA._processing = false;
+		mydata.tracks.forEach(function(t){
+			if (t.getABSwitch() == "A"){
+				t.follow();
+			}
+		});
 		// clearInterval(timer);
 	}
 }
@@ -2775,38 +2816,38 @@ function onMIDIScratch(value, receivedSec){
 	let delta = value - 64;
 	let deltaRad = 2 * Math.PI / 720 * delta; 	//720 for 1 cycle.
 
-	turnTables[0].rad += deltaRad;
+	turnTableA.rad += deltaRad;
 
-	ttDraw(turnTables[0]);
+	ttDraw(turnTableA);
 
 	// console.log("scratch, value = " + value);
 
 }
 
-function onMIDIScratch_old(value, receivedSec){
+// function onMIDIScratch_old(value, receivedSec){
 
-	let nowS = receivedSec;
+// 	let nowS = receivedSec;
 
-	let delta = value - 64;
-	let deltaRad = 2 * Math.PI / 720 * delta; 	//720 for 1 cycle.
+// 	let delta = value - 64;
+// 	let deltaRad = 2 * Math.PI / 720 * delta; 	//720 for 1 cycle.
 	
-	turnTables[0].rad += deltaRad;
+// 	turnTables[0].rad += deltaRad;
 
-	let radS =  deltaRad/(nowS - prevSec);
+// 	let radS =  deltaRad/(nowS - prevSec);
 
-	let nowSpeed = radS / RPS;
-	turnTables[0].speed = nowSpeed;
+// 	let nowSpeed = radS / RPS;
+// 	turnTables[0].speed = nowSpeed;
 
-	if (turnTables[0].speed  > 100) {
-		turnTables[0].speed  = 100;
-	}
-	if (turnTables[0].speed  < -100) {
-		turnTables[0].speed  = -100;
-	}
+// 	if (turnTables[0].speed  > 100) {
+// 		turnTables[0].speed  = 100;
+// 	}
+// 	if (turnTables[0].speed  < -100) {
+// 		turnTables[0].speed  = -100;
+// 	}
 
-	prevSec = nowS;
+// 	prevSec = nowS;
 
-}
+// }
 
 function onEffectBypassChanged(e){
 	let chk = $("#effectBypassChk").get(0);
@@ -2822,7 +2863,7 @@ function onTT(index){
 
 	$.jsPanel({
 		headerTitle : "track" + (index+1).toString(),
-		content : "<div class=\"ttCon\" id=\"ttCon" + index.toString() + "\"+ ></div>",
+		content : "<div class=\"ttContents\" id=\"ttContents" + index.toString() + "\"+ ></div>",
 		callback : function() {ttLoaded(index);},
 		contentSize : {width : 300, height : 300},
 		resizable : {
@@ -2832,36 +2873,74 @@ function onTT(index){
 	});
 }
 
-function ttLoaded(index){
+function onABTT(AorB){
 
-	let con = document.querySelector("#ttCon" + index.toString());
+	let turnTable = "";
+	if(AorB == "A"){
+		turnTable = turnTableA;
+	}else if (AorB == "B"){
+		turnTable = turnTableB;
+	}
+
+	$.jsPanel({
+		headerTitle: AorB,
+		content : "<div class=\"ttContents\" id=\"ttContents" + AorB + "\" + ><div>",
+		callback : function() {ttLoaded(-1, AorB);},
+		contentSize : {width : 200, height : 200},
+		resizable : {
+			resize : function(){ ttResized(turnTable);}
+		},
+		onclosed: function() {ttClosed(turnTable);}
+	})
+}
+
+function ttLoaded(index, AorB){
+
+	let postFix = "";
+	if (AorB != null){
+		postFix = AorB;
+	}else{
+		postFix = index.toString();
+	}
+
+	let turnTable = null;
+	if (AorB == "A") {
+		turnTable = turnTableA;
+	} else if (AorB == "B") {
+		turnTable = turnTableB;
+	}else{
+		turnTable = turnTables[index];
+	}
+
+	let con = document.querySelector("#ttContents" + postFix);
 	let canvas = document.createElement("canvas");
 	canvas.classList.add("tt");
-	canvas.id = "tt" + index.toString();
+	canvas.id = "tt" + postFix;
 	con.appendChild(canvas);
 
-	turnTables[index]._canvas = canvas;
-	turnTables[index]._track = mydata.tracks[index];
+	turnTable._canvas = canvas;
+	if (AorB == null){
+		turnTable._track = mydata.tracks[index];
+	}
 
 	canvas.addEventListener("mousedown", function(e){
-		onTTMousedown(e, turnTables[index]);
+		onTTMousedown(e, turnTable);
 	} , false);
 	canvas.addEventListener("mousemove", function(e){
-		onTTMousemove(e, turnTables[index]);
+		onTTMousemove(e, turnTable);
 	 }, false);
 	canvas.addEventListener("mouseup", function(e){
-		onTTMouseup(e, turnTables[index]);
+		onTTMouseup(e, turnTable);
 	}, false);
 
-	ttResized(turnTables[index]);
+	ttResized(turnTable);
 
-	turnTables[index].timer = setInterval(function () {
-		if (!turnTables[index]._processing) {
-			turnTables[index].rad -= RPS / 100;
+	turnTable.timer = setInterval(function () {
+		if (!turnTable._processing) {
+			turnTable.rad -= RPS / 100;
 		}
-		ttDraw(turnTables[index]);
+		ttDraw(turnTable);
 	}, 10);
-
 }
 
 function ttResized(tt) {
@@ -2877,6 +2956,7 @@ function ttResized(tt) {
 
 function ttDraw(tt){
 	let canvas = tt._canvas;
+	if (!canvas) return;
 	let c = canvas.getContext("2d");
 	let w = canvas.width;
 	let h = canvas.height;
@@ -2908,50 +2988,50 @@ function ttClosed(tt){
 	clearInterval(tt.timer);
 }
 
-function showTT(){
-	$.jsPanel({
-		headerTitle: "master",
-		content: "<div id=\"con\"></div>",
-		callback: ttMasterLoaded,
-		contentSize: { width: 400, height: 400 },
-		resizable: {
-			resize: function () { ttResized(turnTable); }
-		},
-		onclosed: function(){ttClosed(turnTable);}
-	});
+// function showTT(){
+// 	$.jsPanel({
+// 		headerTitle: "master",
+// 		content: "<div id=\"con\"></div>",
+// 		callback: ttMasterLoaded,
+// 		contentSize: { width: 400, height: 400 },
+// 		resizable: {
+// 			resize: function () { ttResized(turnTable); }
+// 		},
+// 		onclosed: function(){ttClosed(turnTable);}
+// 	});
 
-}
+// }
 
-function ttMasterLoaded() {
+// function ttMasterLoaded() {
 
-	let con = document.querySelector("#con");
-	let canvas = document.createElement("canvas");
-	canvas.id = "tt";
-	con.appendChild(canvas);
+// 	let con = document.querySelector("#con");
+// 	let canvas = document.createElement("canvas");
+// 	canvas.id = "tt";
+// 	con.appendChild(canvas);
 
-	turnTable._track = null;
-	turnTable._canvas = canvas;
+// 	turnTable._track = null;
+// 	turnTable._canvas = canvas;
 
 
-	canvas.addEventListener("mousedown", function (e) {
-		onTTMousedown(e, turnTable);
-	}, false);
-	canvas.addEventListener("mousemove", function (e) {
-		onTTMousemove(e, turnTable);
-	}, false);
-	canvas.addEventListener("mouseup", function (e) {
-		onTTMouseup(e, turnTable);
-	}, false);
+// 	canvas.addEventListener("mousedown", function (e) {
+// 		onTTMousedown(e, turnTable);
+// 	}, false);
+// 	canvas.addEventListener("mousemove", function (e) {
+// 		onTTMousemove(e, turnTable);
+// 	}, false);
+// 	canvas.addEventListener("mouseup", function (e) {
+// 		onTTMouseup(e, turnTable);
+// 	}, false);
 
-	ttResized(turnTable);
+// 	ttResized(turnTable);
 
-	turnTable.timer = setInterval(function () {
-		if (!turnTable._processing) {
-			turnTable.rad -= RPS / 100;
-		}
-		ttDraw(turnTable);
-	}, 10);
-}
+// 	turnTable.timer = setInterval(function () {
+// 		if (!turnTable._processing) {
+// 			turnTable.rad -= RPS / 100;
+// 		}
+// 		ttDraw(turnTable);
+// 	}, 10);
+// }
 
 
 function onTTMousedown(e, tt) {
@@ -2975,9 +3055,9 @@ function onTTMousedown(e, tt) {
 		tt._track.follow();
 	}else{
 
-		for (let i = 0 ; i < TRACK_NUM; i++){
-			mydata.tracks[i].follow();
-		}
+		// for (let i = 0 ; i < TRACK_NUM; i++){
+		// 	mydata.tracks[i].follow();
+		// }
 	}
 
 	ttDraw(tt);
@@ -3021,7 +3101,7 @@ function onTTMousemove(e, tt) {
 		tt.speed = -100;
 	}
 
-	console.log("speed =" + tt.speed);
+	// console.log("speed =" + tt.speed);
 
 	tt._prevSec = nowS;
 	tt._startOffsetRad = rad;
@@ -3040,10 +3120,67 @@ function onTTMouseup(e, tt) {
 	if (tt._track){
 		tt._track.follow();
 	}else{
-		for (let i = 0; i < TRACK_NUM; i++) {
-			mydata.tracks[i].follow();
+		let AorB = null;
+
+		if (tt == turnTableA){
+			AorB = "A";
+		}else if (tt == turnTableB){
+			AorB = "B";
 		}
+		mydata.tracks.forEach(function(t){
+			if (t.getABSwitch() == AorB){
+				t.follow();
+			}
+		});
 	}
+}
+
+function onAButtonClicked(e){
+	onABTT("A");
+}
+function onBButtonClicked(e){
+	onABTT("B");
+}
+
+function onABSliderChanged(e){
+	mydata.abSwitchValue = $("#abSlider").get(0).valueAsNumber;
+}
+
+function onAChkChanged(e){
+	onABSwitchChanged(e, "A");
+}
+function onBChkChanged(e){
+	onABSwitchChanged(e, "B");
+}
+
+function onABSwitchChanged(e, AorB){
+	let index = -1;
+
+	let checks = null;
+	let anotherChecks = null;
+	if (AorB == "A"){
+		checks = document.querySelectorAll(".Achk");
+		anotherChecks = document.querySelectorAll(".Bchk");
+	}else{
+		checks = document.querySelectorAll(".Bchk");
+		anotherChecks = document.querySelectorAll(".Achk");
+	}
+	for (let i = 0 ; i < checks.length; i++){
+		if (e.target == checks[i]) {
+			index = i;
+			break;
+		} 
+	}
+
+	if (e.target.checked){
+		mydata.tracks[index].setABSwitch(AorB);
+		anotherChecks[index].checked = false;
+	}else{
+		mydata.tracks[index].setABSwitch(null);
+	}
+	
+	console.log("AB switch for index:" + index.toString() + " = " 
+			+ mydata.tracks[index].getABSwitch() );
 }
 
 

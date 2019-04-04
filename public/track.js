@@ -18,6 +18,7 @@ function MyTrack() {
     this._waitCount = 0;
 	this._name = "";
 	this._loop = true;
+	this._abSwitch = null;
 	this.onStateChanged = null;
 
 	const grain_size = GRAIN_SIZE;
@@ -115,6 +116,14 @@ function MyTrack() {
 	
 	this.isMaster = function(){
 		return this._master; 
+	}
+
+	this.setABSwitch = function(AorB){
+		this._abSwitch = AorB;
+	}
+
+	this.getABSwitch = function(){
+		return this._abSwitch;
 	}
 	
 	this.clear = function(){
