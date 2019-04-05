@@ -2010,6 +2010,27 @@ document.onkeydown = function (e){
 		}
 		break;
 
+	case 50:/*2*/
+		e.stopPropagation();
+		e.preventDefault();
+		{
+			onSwitchToA();
+		}
+		break;
+	case 51:/*3*/
+		e.stopPropagation();
+		e.preventDefault();
+		{
+			onSwitchToCenter();
+		}
+		break;
+	case 52:/*4*/
+		e.stopPropagation();
+		e.preventDefault();
+		{
+			onSwitchToB();
+		}
+		break;
 	}
 
 
@@ -2766,14 +2787,7 @@ function onStartStopJog(receivedSec){
 			let speed = -radS / RPS;
 
 			turnTableA.speed = speed;
-			if (turnTableA.speed > 100) {
-				turnTableA.speed = 100;
-				console.log("over speed");
-			}
-			if (turnTableA.speed < -100) {
-				turnTableA.speed = -100;
-				console.log("over speed2");
-			}
+
 			prevRad = turnTableA.rad;
 			prevSec = nowS;
 			
@@ -2820,34 +2834,8 @@ function onMIDIScratch(value, receivedSec){
 
 	ttDraw(turnTableA);
 
-	// console.log("scratch, value = " + value);
-
 }
 
-// function onMIDIScratch_old(value, receivedSec){
-
-// 	let nowS = receivedSec;
-
-// 	let delta = value - 64;
-// 	let deltaRad = 2 * Math.PI / 720 * delta; 	//720 for 1 cycle.
-	
-// 	turnTables[0].rad += deltaRad;
-
-// 	let radS =  deltaRad/(nowS - prevSec);
-
-// 	let nowSpeed = radS / RPS;
-// 	turnTables[0].speed = nowSpeed;
-
-// 	if (turnTables[0].speed  > 100) {
-// 		turnTables[0].speed  = 100;
-// 	}
-// 	if (turnTables[0].speed  < -100) {
-// 		turnTables[0].speed  = -100;
-// 	}
-
-// 	prevSec = nowS;
-
-// }
 
 function onEffectBypassChanged(e){
 	let chk = $("#effectBypassChk").get(0);
@@ -2957,6 +2945,7 @@ function ttResized(tt) {
 function ttDraw(tt){
 	let canvas = tt._canvas;
 	if (!canvas) return;
+
 	let c = canvas.getContext("2d");
 	let w = canvas.width;
 	let h = canvas.height;
@@ -2988,52 +2977,6 @@ function ttClosed(tt){
 	clearInterval(tt.timer);
 }
 
-// function showTT(){
-// 	$.jsPanel({
-// 		headerTitle: "master",
-// 		content: "<div id=\"con\"></div>",
-// 		callback: ttMasterLoaded,
-// 		contentSize: { width: 400, height: 400 },
-// 		resizable: {
-// 			resize: function () { ttResized(turnTable); }
-// 		},
-// 		onclosed: function(){ttClosed(turnTable);}
-// 	});
-
-// }
-
-// function ttMasterLoaded() {
-
-// 	let con = document.querySelector("#con");
-// 	let canvas = document.createElement("canvas");
-// 	canvas.id = "tt";
-// 	con.appendChild(canvas);
-
-// 	turnTable._track = null;
-// 	turnTable._canvas = canvas;
-
-
-// 	canvas.addEventListener("mousedown", function (e) {
-// 		onTTMousedown(e, turnTable);
-// 	}, false);
-// 	canvas.addEventListener("mousemove", function (e) {
-// 		onTTMousemove(e, turnTable);
-// 	}, false);
-// 	canvas.addEventListener("mouseup", function (e) {
-// 		onTTMouseup(e, turnTable);
-// 	}, false);
-
-// 	ttResized(turnTable);
-
-// 	turnTable.timer = setInterval(function () {
-// 		if (!turnTable._processing) {
-// 			turnTable.rad -= RPS / 100;
-// 		}
-// 		ttDraw(turnTable);
-// 	}, 10);
-// }
-
-
 function onTTMousedown(e, tt) {
 	let canvas = tt._canvas;
 	const rect = e.target.getBoundingClientRect();
@@ -3051,13 +2994,21 @@ function onTTMousedown(e, tt) {
 	tt._prevSec = Date.now() / 1000;
 	tt.speed = 0;
 
-	if (tt._track){
+	if (tt._track) {
 		tt._track.follow();
-	}else{
+	} else {
+		let AorB = null;
 
-		// for (let i = 0 ; i < TRACK_NUM; i++){
-		// 	mydata.tracks[i].follow();
-		// }
+		if (tt == turnTableA) {
+			AorB = "A";
+		} else if (tt == turnTableB) {
+			AorB = "B";
+		}
+		mydata.tracks.forEach(function (t) {
+			if (t.getABSwitch() == AorB) {
+				t.follow();
+			}
+		});
 	}
 
 	ttDraw(tt);
@@ -3108,6 +3059,7 @@ function onTTMousemove(e, tt) {
 
 	ttDraw(tt);
 }
+
 function rad2deg(rad){
 	return rad / Math.PI * 180;
 }
@@ -3181,6 +3133,21 @@ function onABSwitchChanged(e, AorB){
 	
 	console.log("AB switch for index:" + index.toString() + " = " 
 			+ mydata.tracks[index].getABSwitch() );
+}
+
+function onSwitchToA(){
+	mydata.abSwitchValue = -1.0;
+	$("#abSlider").get(0).valueAsNumber = -1.0;
+}
+
+function onSwitchToB(){
+	mydata.abSwitchValue = 1.0;
+	$("#abSlider").get(0).valueAsNumber = 1.0;
+}
+
+function onSwitchToCenter() {
+	mydata.abSwitchValue = 0.0;
+	$("#abSlider").get(0).valueAsNumber = 0.0;
 }
 
 
