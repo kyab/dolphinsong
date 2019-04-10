@@ -367,7 +367,7 @@ window.addEventListener("load", function(){
 	mydata.songList = new MyListBox(songList, "songItem", "./songlist");
 	mydata.songList.reload();
 
-	mydata.vTrack.onStateChanged = playStateChanged;
+	// mydata.vTrack.onStateChanged = playStateChanged;
 
 	const tapButton = document.querySelector("#tapButton");
 	tapButton.addEventListener("click", onTapClicked, false);
@@ -440,11 +440,19 @@ function onPanResetClicked(e){
 
 function onQuantizeChanged(e){
 	let index = getIndexFromEvent(e, ".quantizeChk");
+	let quantize = false;
 	if (document.querySelectorAll(".quantizeChk")[index].checked){
-		mydata.tracks[index].setQuantize(true);
+		quantize = true;
 	}else{
-		mydata.tracks[index].setQuantize(false);
+		quantize = false;
 	}
+
+	mydata.tracks[index].setQuantize(quantize);
+	mydata.mainNode.port.postMessage({
+		"cmd" : "setQuantize",
+		"index" : index,
+		"quantize" : quantize
+	});
 }
 
 function onOffsetSliderChanged(e){
@@ -710,6 +718,12 @@ function sync(index){
 
 	console.log("trackRatio for " + (index+1) + " = " + mydata.tracks[index]._ratio);
 
+	mydata.mainNode.port.postMessage({
+		"cmd" : "setRatio",
+		"index" : index,
+		"ratio" : mydata.tracks[index]._ratio
+	});
+
 	updateSpeedLabel(index);
 
 }
@@ -734,6 +748,13 @@ function onHalfSpeedClick(e){
 
 	let index = getIndexFromEvent(e, ".halfSpeedButton");
 	mydata.tracks[index]._ratio *= 2;
+
+	mydata.mainNode.port.postMessage({
+		"cmd" : "setRatio",
+		"index" : index,
+		"ratio" : mydata.tracks[index]._ratio
+	});
+
 	updateSpeedLabel(index);
 }
 
@@ -741,6 +762,13 @@ function onDoubleSpeedClick(e){
 
 	let index = getIndexFromEvent(e, ".doubleSpeedButton");
 	mydata.tracks[index]._ratio /= 2;
+
+	mydata.mainNode.port.postMessage({
+		"cmd": "setRatio",
+		"index": index,
+		"ratio": mydata.tracks[index]._ratio
+	});
+
 	updateSpeedLabel(index);
 }
 
@@ -807,17 +835,11 @@ function onSpeedChanged(index){
 
 	mydata.tracks[index].setRatio(1/(speed/100));
 
-	// mydata.trackRatio[index] = 1/(speed/100);
-
-	// calcState.current_grain_start[index] = Math.round(mydata.trackCurrentFrame[index])
-	// calcState.current_x[index] = 0;
-	// if (mydata.trackRatio[index] >= 1){
-	// 	calcState.current_grain_start2[index] = calcState.current_grain_start[index] + mydata.grain_size / 2;
-	// 	calcState.current_x2[index] = -1.0 * Math.round(mydata.grain_size/2*mydata.trackRatio[index]);
-	// }else{
-	// 	calcState.current_grain_start2[index] = calcState.current_grain_start[index] + mydata.grain_size;
-	// 	calcState.current_x2[index] = Math.round(mydata.grain_size*(mydata.trackRatio[index])*(-1));
-	// }
+	mydata.mainNode.port.postMessage({
+		"cmd" : "setRatio",
+		"index" : index,
+		"ratio" : (1/(speed/100))
+	});
 
 	speedLabel.innerText = speed.toString() + "%";
 }
@@ -832,6 +854,11 @@ function onVolumeChanged(index){
 	let roundedDb = Math.round(db *100) / 100;
 
 	mydata.tracks[index].setVolume(val/100);
+	mydata.mainNode.port.postMessage({
+		"cmd" : "setVolume",
+		"index" : index,
+		"volume": mydata.tracks[index]._volume
+	});
 
 	volumeLabel.innerText = roundedDb.toString() + "dB";
 }
@@ -844,6 +871,12 @@ function onPanChanged(index){
 
 	mydata.tracks[index].setPan(val/100);
 
+	mydata.mainNode.port.postMessage({
+		"cmd": "setPan",
+		"index": index,
+		"pan": mydata.tracks[index]._pan
+	});
+
 	panLabel.innerText = val.toString();
 }
 
@@ -853,6 +886,13 @@ function onOffsetChanged(index){
 
 	let val = offsetSlider.valueAsNumber;
 	mydata.tracks[index].setOffset(val);
+
+	mydata.mainNode.port.postMessage({
+		"cmd": "setOffset",
+		"index": index,
+		"offset" : val
+	});
+
 	offsetLabel.innerText = val.toString();
 }
 
@@ -860,48 +900,52 @@ function onOffsetChanged(index){
 function onLoadSample(index){
 	console.log("loading sample from editor for track:" + (index+1));
 
-	// mydata.trackLength[index] = mydata.selectEndFrame - mydata.selectStartFrame;
-	
-	// mydata.trackBufferLeft[index] = new Float32Array(mydata.trackLength[index]);
-	// mydata.trackBufferRight[index] = new Float32Array(mydata.trackLength[index]);
-	// for (let i = 0; i < mydata.trackLength[index]; i++){
-	// 	mydata.trackBufferLeft[index][i] = 
-	// 				audioBufferLeft[mydata.selectStartFrame + i];
-	// 	mydata.trackBufferRight[index][i] = 
-	// 				audioBufferRight[mydata.selectStartFrame + i];					
-	// }
-	// mydata.trackCurrentFrame[index] = 0;
-	// mydata.trackPlaying[index] = false;
-	// mydata.trackLoaded[index] = true;
-
 	mydata.tracks[index].loadSampleFromBuffer(
 		audioBufferLeft, audioBufferRight, mydata.selectStartFrame, mydata.selectEndFrame);
 
 	let titles = document.querySelectorAll(".title");
 	titles[index].innerText = "sample" + (index+1);
+
+	{
+		if (!mydata.mainNode) return;
+
+		let m = {
+			"cmd": "setBuffer",
+			"index": index,
+			"left": mydata.tracks[index]._bufferLeft,
+			"right": mydata.tracks[index]._bufferRight
+		};
+		let t = [
+			mydata.tracks[index]._bufferLeft.buffer,
+			mydata.tracks[index]._bufferRight.buffer
+		];
+
+		mydata.mainNode.port.postMessage(m, t);
+	}
 }
 
 function onLoadSampleFromFile(index, file){
 	mydata.tracks[index].loadSampleFromFile(file, file.name)
 	.then(function(){
 		let titles = document.querySelectorAll(".title");
-		titles[index].innerText = file.name
-	});
+		titles[index].innerText = file.name;
+		{
+			if (!mydata.mainNode) return;
 
-	// tryLoadSampleFromFileStandard(index, file)
-	// .then(function(length){
-	// 	console.log("success standard : " + (index+1).toString());
-	// 	trackLoadedFromFile(index, length, file.name);
-	// }, function(e){
-	// 	console.log("decode error(Standard) : " + e);
-	// 	tryLoadSampleFromFileAAC(index, file)
-	// 	.then(function(length){
-	// 		console.log("success AAC");
-	// 		trackLoadedFromFile(index, length, file.name);
-	// 	}, function(e){
-	// 		console.log("decode error(AAC) : " + e);
-	// 	});
-	// });
+			let m = {
+				"cmd": "setBuffer",
+				"index": index,
+				"left": mydata.tracks[index]._bufferLeft,
+				"right": mydata.tracks[index]._bufferRight
+			};
+			let t = [
+				mydata.tracks[index]._bufferLeft.buffer,
+				mydata.tracks[index]._bufferRight.buffer
+			];
+
+			mydata.mainNode.port.postMessage(m, t);
+		}
+	});
 }
 
 function onLoadSampleFromList(index){
@@ -921,119 +965,31 @@ function loadSample(index, soundName){
 
 	//read and done;
 	var done = function(blob){
-
 		mydata.tracks[index].loadSampleFromFile(blob, soundName)
 		.then(function(){
 			let titles = document.querySelectorAll(".title");
 			titles[index].innerText = soundName;
+			{
+				if (!mydata.mainNode) return;
+
+				let m = {
+					"cmd" : "setBuffer",
+					"index" : index,
+					"left" : mydata.tracks[index]._bufferLeft,
+					"right" : mydata.tracks[index]._bufferRight
+				};
+				let t = [
+					mydata.tracks[index]._bufferLeft.buffer,
+					mydata.tracks[index]._bufferRight.buffer
+				];
+
+				mydata.mainNode.port.postMessage(m, t);
+			}
 		});
-		// console.log(blob);
-		// tryLoadSampleFromFileStandard(index, blob)
-		// .then(function (length) {
-		// 	console.log("success standard : " + (index + 1).toString());
-		// 	trackLoadedFromFile(index, length, soundName);
-		// }, function (e) {
-		// 	console.log("decode error(Standard) : " + e);
-		// 	tryLoadSampleFromFileAAC(index, blob)
-		// 	.then(function (length) {
-		// 		console.log("success AAC");
-		// 		trackLoadedFromFile(index, length, soundName);
-		// 	}, function (e) {
-		// 		console.log("decode error(AAC) : " + e);
-		// 	});
-		// });
 	}
 	xhr.send();
 }
 
-// function trackLoadedFromFile(index, length, name){
-// 	mydata.trackLength[index] = length;
-// 	mydata.trackCurrentFrame[index] = 0;
-// 	mydata.trackPlaying[index] = false;
-// 	mydata.trackLoaded[index] = true;
-
-// 	let titles = document.querySelectorAll(".title");
-// 	titles[index].innerText = name
-// }
-
-
-
-// function tryLoadSampleFromFileStandard(index, blob){
-// 	return new Promise(function(resolve, reject){
-// 		const fileReader = new FileReader();
-// 		fileReader.onload = function(e){
-// 			const fileContents = e.target.result;
-// 			const audioContextForDecode = new AudioContext();
-// 			audioContextForDecode.decodeAudioData(fileContents)
-// 			.then(function(buf){
-// 				mydata.trackBufferLeft[index] = buf.getChannelData(0);
-// 				if (buf.numberOfChannels == 1){
-// 					mydata.trackBufferRight[index] = buf.getChannelData(0);
-// 				}else{
-// 					mydata.trackBufferRight[index] = buf.getChannelData(1);
-// 				}
-// 				audioContextForDecode.close();
-// 				resolve(buf.length);
-// 			}, function(e){
-// 				reject(e);
-// 			});
-
-// 		};
-// 		fileReader.readAsArrayBuffer(blob);
-// 	});
-// }
-
-// function tryLoadSampleFromFileAAC(index, blob) {
-// 	//use aac.js/aurora.js to decode caf(AAC compressed Apple Loops)
-// 	return new Promise(function (resolve, reject) {
-// 		let asset = AV.Asset.fromFile(blob);
-// 		asset.on("error", function (e) {
-// 			reject(e);
-// 		});
-
-// 		asset.get("duration", function (duration) {
-// 			console.log("duration = " + duration);
-
-// 			//if came here, we assume file is OK.
-// 			//now get priming/reminder frame (if possible)
-
-// 			const fileReader = new FileReader();
-// 			fileReader.onload = function (e) {
-// 				let fileContents = e.target.result;
-// 				let view = new DataView(fileContents);
-
-// 				let encodingDelay = getEncodingDelayForCAF(view);
-
-// 				asset.decodeToBuffer(function (buffer) {
-// 					// if (encodingDelay){
-// 					// 	let validLen = encodingDelay.validFrames;
-// 					// 	let primingFrames = encodingDelay.primingFrames;
-// 					// 	mydata.trackBufferLeft[index] = new Float32Array(validLen);
-// 					// 	mydata.trackBufferRight[index] = new Float32Array(validLen);
-// 					// 	for(let i = 0; i < validLen; i++){
-// 					// 		mydata.trackBufferLeft[index][i] = 
-// 					// 			buffer[(primingFrames + i)*2];
-// 					// 		mydata.trackBufferRight[index][i] = 
-// 					// 			buffer[(primingFrames + i)*2+1];
-// 					// 	}
-// 					// 	resolve(validLen);
-
-// 					// }else{
-// 					mydata.trackBufferLeft[index] = new Float32Array(buffer.length / 2);
-// 					mydata.trackBufferRight[index] = new Float32Array(buffer.length / 2);
-// 					for (let i = 0; i < buffer.length / 2; i++) {
-// 						mydata.trackBufferLeft[index][i] = buffer[i * 2];
-// 						mydata.trackBufferRight[index][i] = buffer[i * 2 + 1];
-// 					}
-// 					resolve(buffer.length / 2);
-// 					// }
-// 				});
-// 			}
-
-// 			fileReader.readAsArrayBuffer(blob);
-// 		});
-// 	});
-// }
 
 
 function clearTrack(index){
@@ -1238,7 +1194,17 @@ function onPlayStopTrack(index){
 		masterTrack = mydata.tracks[masterIndex];
 	}
 
-	mydata.tracks[index].playStop(masterTrack);
+	// mydata.tracks[index].playStop(masterTrack);
+	{
+		if (!mydata.mainNode) return;
+		let m = {
+			"cmd": "playStop",
+			"index" : index,
+		}
+
+		mydata.mainNode.port.postMessage(m);
+	}
+
 }
 
 
@@ -1367,6 +1333,7 @@ function initMedia(){
 		// console.log("calling startOutEngine()");
 		// return startOutEngine();
 		editorStateChanged();
+		return startOutEngine();
 	});
 
 }
@@ -1537,33 +1504,45 @@ function startEditorEngine() {
 
 function startOutEngine(){
 	audioContext2 = new AudioContext();
-	var scriptSource = audioContext2.createScriptProcessor(256/*latency*/,2,2);
-	scriptSource.onaudioprocess = onAudioProcessOut;
+	// var scriptSource = audioContext2.createScriptProcessor(256/*latency*/,2,2);
+	// scriptSource.onaudioprocess = onAudioProcessOut;
 	var dest = audioContext2.createMediaStreamDestination();
 	
-	// scriptSource.connect(dest);
-
-	{
-		let tuna = new Tuna(audioContext2);
-		mydata.phaser = new tuna.Phaser({
-			rate: 1.2,                     //0.01 to 8 is a decent range, but higher values are possible
-			depth: 0.3,                    //0 to 1
-			feedback: 0.8,                 //0 to 1+
-			stereoPhase: 30,               //0 to 180
-			baseModulationFrequency: 700,  //500 to 1500
-			bypass: 1
+	audioContext2.audioWorklet.addModule("mainworklet.js")
+	.then(function(){
+		mydata.mainNode = new AudioWorkletNode(audioContext2, "main-processor", {
+			outputChannelCount:[2]
 		});
-		scriptSource.connect(mydata.phaser);
-		mydata.phaser.connect(dest);
-	}
+		let mainNode = mydata.mainNode;
 
-	audioElem2 = new Audio();
-	audioElem2.srcObject = dest.stream;
-	audioElem2.setSinkId(mydata.outDevId);
-	audioElem2.play();
-	mydata.isPlayerActive = true;
+		// // scriptSource.connect(dest);
+		// {
+		// 	let tuna = new Tuna(audioContext2);
+		// 	mydata.phaser = new tuna.Phaser({
+		// 		rate: 1.2,                     //0.01 to 8 is a decent range, but higher values are possible
+		// 		depth: 0.3,                    //0 to 1
+		// 		feedback: 0.8,                 //0 to 1+
+		// 		stereoPhase: 30,               //0 to 180
+		// 		baseModulationFrequency: 700,  //500 to 1500
+		// 		bypass: 1
+		// 	});
+		// 	scriptSource.connect(mydata.phaser);
+		// 	mydata.phaser.connect(mainNode);
+		// 	mainNode.connect(dest);
+		// 	// mainNode.port.postMessage("foo");
+		// }
+		// scriptSource.connect(mainNode);
 
-	console.log("OutEngine started.")
+		mainNode.connect(dest);
+
+		audioElem2 = new Audio();
+		audioElem2.srcObject = dest.stream;
+		audioElem2.setSinkId(mydata.outDevId);
+		audioElem2.play();
+		mydata.isPlayerActive = true;
+
+		console.log("OutEngine started.")
+	});
 }
 
 function onAudioProcess(e) {
@@ -2410,7 +2389,8 @@ function uploadWAV(){
 function onSoundListClick(){
 	console.log("single click");
 	$("#soundDeleteButton").get(0).disabled = false;
-	mydata.vTrack.pause();
+	// mydata.vTrack.pause();
+	toShadow2();
 }
 
 function onSoundListDblClick(){
@@ -2434,7 +2414,8 @@ function onSoundListDblClick(){
 				console.log("vtrack load done");
 				mydata.vTrack.setQuantize(false);
 				mydata.vTrack.setLoop(false);
-				mydata.vTrack.play();
+				// mydata.vTrack.play();
+				toShadow();
 			}, function (e) {
 				console.log("vtrack load failed:" + e);
 			});
@@ -2443,6 +2424,38 @@ function onSoundListDblClick(){
 
 	xhr.send();
 }
+
+function toShadow(){
+	if (!mydata.mainNode) return ;
+	let port = mydata.mainNode.port;
+	
+	let m = {
+		"cmd": "setBufferV",
+		"left" : mydata.vTrack._bufferLeft,
+		"right" : mydata.vTrack._bufferRight
+	};
+	let t = [mydata.vTrack._bufferLeft.buffer, mydata.vTrack._bufferRight.buffer];
+	port.postMessage(m,t);
+
+	m = {
+		"cmd" : "playV"
+	};
+	port.postMessage(m);
+	// port.postMessage(m, t);
+}
+
+function toShadow2(){
+	if (!mydata.mainNode) return;
+
+	let port = mydata.mainNode.port;
+
+	let m = {
+		"cmd":"stopV"
+	};
+	port.postMessage(m);
+
+}
+
 
 
 function onTapClicked(e){
@@ -2628,28 +2641,28 @@ function onMIDIMessage(e){
 	let second = e.data[1];
 	let third = e.data[2];
 	switch (first) {
-		case 8: //note off
-			{
-				let noteNumber = second;
-				console.log("note off : " + noteNumber.toString());
-				onNoteOff(noteNumber, e.timeStamp/1000.0);
-			}
-			break;
-		case 9: //note on
-			{
-				let noteNumber = second;
-				console.log("note on : " + noteNumber.toString());
-				onNoteOn(noteNumber, e.timeStamp/1000.0);
-			}
-			break;
-		case 0x0b: // CC
-			{
-				let controlNumber = second;
-				let value = third;
-				// console.log("CC : " + controlNumber.toString(), "," + value.toString());
-				onControlChange(controlNumber, value, e.timeStamp/1000.0);
-			}
-			break;
+	case 8: //note off
+		{
+			let noteNumber = second;
+			// console.log("note off : " + noteNumber.toString());
+			onNoteOff(noteNumber, e.timeStamp/1000.0);
+		}
+		break;
+	case 9: //note on
+		{
+			let noteNumber = second;
+			// console.log("note on : " + noteNumber.toString());
+			onNoteOn(noteNumber, e.timeStamp/1000.0);
+		}
+		break;
+	case 0x0b: // CC
+		{
+			let controlNumber = second;
+			let value = third;
+			// console.log("CC : " + controlNumber.toString(), "," + value.toString());
+			onControlChange(controlNumber, value, e.timeStamp/1000.0);
+		}
+		break;
 	}
 }
 
@@ -2700,7 +2713,7 @@ function onNoteOff(noteNumber, receivedSec){
 
 function onControlChange(number, value, receivedSec){
 	
-	// console.log("cc : " + number);
+	//console.log("cc : " + number + " value : " + value);
 	switch(number){
 	case 1:	//rate
 		{
@@ -2759,6 +2772,11 @@ function onControlChange(number, value, receivedSec){
 		}
 		break;
 
+	case 31: //cross fader
+		{
+			onMIDICrossfader(value, receivedSec);
+		}
+
 	}
 }
 
@@ -2766,18 +2784,22 @@ function onControlChange(number, value, receivedSec){
 let prevSec = 0;
 let prevRad = 0;
 let jogTouching = false;
-let timer = null;
+let timer__ = null;
 let zeroCount = 0;
 
 function onStartStopJog(receivedSec){
 	if (!jogTouching){
 		jogTouching = true;
+		turnTableA._processing = true;
 		prevSec = Date.now() / 1000;;
 		prevRad = turnTableA.rad;
-		turnTableA._processing = true;
+
 		zeroCount = 0;
 
-		timer = setInterval(function(){
+		
+		if (timer__) return;
+		console.log("start timer");
+		timer__ = setInterval(function(){
 			let nowS = Date.now() / 1000;
 			let deltaRad = turnTableA.rad - prevRad;
 
@@ -2787,20 +2809,47 @@ function onStartStopJog(receivedSec){
 			let speed = -radS / RPS;
 
 			turnTableA.speed = speed;
+			{
+				// console.log("A-1");
+				mydata.mainNode.port.postMessage({
+					"cmd":"setSpeedA",
+					"speed":speed
+				});
+			}
 
 			prevRad = turnTableA.rad;
 			prevSec = nowS;
 			
 			if (speed == 0){
 				if (zeroCount >= 0){
-					if (!turnTableA._processing){
+					if (!jogTouching){
 						turnTableA.speed = 1.0;
-						mydata.tracks.forEach(function (t) {
-							if (t.getABSwitch() == "A") {
-								t.follow();
+						{
+							// console.log("A-2");
+							mydata.mainNode.port.postMessage({
+								"cmd":"setSpeedA",
+								"speed":1.0
+							});
+						}
+
+						for (let i = 0; i < mydata.tracks.length ; i++){
+							if (mydata.tracks[i].getABSwitch() == "A"){
+								mydata.mainNode.port.postMessage({
+									"cmd":"follow",
+									"index":i
+								});
 							}
-						});
-						clearInterval(timer);
+						}
+
+						// mydata.tracks.forEach(function (t) {
+						// 	if (t.getABSwitch() == "A") {
+						// 		t.follow();
+						// 	}
+						// });
+						console.log("timer cleared");
+						clearInterval(timer__);
+						timer__ = null;
+						turnTableA._processing = false;
 					}else{
 						zeroCount = 0;
 					}
@@ -2811,17 +2860,26 @@ function onStartStopJog(receivedSec){
 				zeroCount = 0;
 			}
 			
-		},10);
+		},5);
 	}else{
 		jogTouching = false;
-		turnTableA.speed = 1.0;
-		turnTableA._processing = false;
-		mydata.tracks.forEach(function(t){
-			if (t.getABSwitch() == "A"){
-				t.follow();
-			}
-		});
-		// clearInterval(timer);
+		// turnTableA.speed = 1.0;
+		// // turnTableA._processing = false;
+		// mydata.mainNode.port.postMessage({
+		// 	"cmd": "setSpeedA",
+		// 	"speed": 1.0
+		// });
+
+
+		// for (let i = 0; i < mydata.tracks.length; i++) {
+		// 	if (mydata.tracks[i].getABSwitch() == "A") {
+		// 		mydata.mainNode.port.postMessage({
+		// 			"cmd": "follow",
+		// 			"index": i
+		// 		});
+		// 	}
+		// }
+
 	}
 }
 
@@ -2834,6 +2892,21 @@ function onMIDIScratch(value, receivedSec){
 
 	ttDraw(turnTableA);
 
+}
+
+function onMIDICrossfader(value, receivedSec){
+	let v = (value-63.5) /63.5;
+	$("#abSlider").get(0).valueAsNumber = v;
+	mydata.abSwitchValue = v;
+
+	{
+		if (!mydata.mainNode) return;
+		let m = {
+			"cmd" : "setABSwitchValue",
+			"value" : v
+		};
+		mydata.mainNode.port.postMessage(m);
+	}
 }
 
 
@@ -2912,13 +2985,13 @@ function ttLoaded(index, AorB){
 	}
 
 	canvas.addEventListener("mousedown", function(e){
-		onTTMousedown(e, turnTable);
+		onTTMousedown(e, turnTable, index, AorB);
 	} , false);
 	canvas.addEventListener("mousemove", function(e){
-		onTTMousemove(e, turnTable);
+		onTTMousemove(e, turnTable, index, AorB);
 	 }, false);
 	canvas.addEventListener("mouseup", function(e){
-		onTTMouseup(e, turnTable);
+		onTTMouseup(e, turnTable, index, AorB);
 	}, false);
 
 	ttResized(turnTable);
@@ -2977,7 +3050,7 @@ function ttClosed(tt){
 	clearInterval(tt.timer);
 }
 
-function onTTMousedown(e, tt) {
+function onTTMousedown(e, tt, index, AorB) {
 	let canvas = tt._canvas;
 	const rect = e.target.getBoundingClientRect();
 	let x = e.clientX - rect.left;
@@ -2995,26 +3068,54 @@ function onTTMousedown(e, tt) {
 	tt.speed = 0;
 
 	if (tt._track) {
-		tt._track.follow();
+
+		mydata.mainNode.port.postMessage({
+			"cmd":"setSpeed",
+			"index": index,
+			"speed":tt.speed
+		});
+
+		mydata.mainNode.port.postMessage({
+			"cmd": "follow",
+			"index": index
+		});
 	} else {
 		let AorB = null;
 
 		if (tt == turnTableA) {
 			AorB = "A";
+			mydata.mainNode.port.postMessage({
+				"cmd":"setSpeedA",
+				"speed":tt.speed
+			});
 		} else if (tt == turnTableB) {
 			AorB = "B";
+			mydata.mainNode.port.postMessage({
+				"cmd": "setSpeedB",
+				"speed": tt.speed
+			});
 		}
-		mydata.tracks.forEach(function (t) {
-			if (t.getABSwitch() == AorB) {
-				t.follow();
+
+		for (let i = 0; i < mydata.tracks.length; i++){
+			if (mydata.tracks[i].getABSwitch() == AorB){
+				mydata.mainNode.port.postMessage({
+					"cmd":"follow",
+					"index":i
+				});
 			}
-		});
+		}
+
+		// mydata.tracks.forEach(function (t) {
+		// 	if (t.getABSwitch() == AorB) {
+		// 		t.follow();
+		// 	}
+		// });
 	}
 
 	ttDraw(tt);
 }
 
-function onTTMousemove(e, tt) {
+function onTTMousemove(e, tt, index, AorB) {
 	if (!tt._processing) return;
 
 	let canvas = tt._canvas;
@@ -3052,6 +3153,24 @@ function onTTMousemove(e, tt) {
 		tt.speed = -100;
 	}
 
+	if (AorB == "A"){
+		mydata.mainNode.port.postMessage({
+			"cmd": "setSpeedA",
+			"speed": tt.speed
+		});
+	}else if (AorB == "B"){
+		mydata.mainNode.port.postMessage({
+			"cmd": "setSpeedB",
+			"speed": tt.speed
+		});
+	}else{
+		mydata.mainNode.port.postMessage({
+			"cmd":"setSpeed",
+			"index":index,
+			"speed": tt.speed
+		});
+	}
+
 	// console.log("speed =" + tt.speed);
 
 	tt._prevSec = nowS;
@@ -3064,27 +3183,66 @@ function rad2deg(rad){
 	return rad / Math.PI * 180;
 }
 
-function onTTMouseup(e, tt) {
+function onTTMouseup(e, tt, index, AorB) {
 	if (tt._processing) {
 		tt._processing = false;
 	}
 	tt.speed = 1;
+
 	if (tt._track){
-		tt._track.follow();
+		mydata.mainNode.port.postMessage({
+			"cmd": "setSpeed",
+			"index": index,
+			"speed": tt.speed
+		});
+
+		mydata.mainNode.port.postMessage({
+			"cmd": "follow",
+			"index": index
+		});		
+		//tt._track.follow();
 	}else{
 		let AorB = null;
 
-		if (tt == turnTableA){
+		if (tt == turnTableA) {
 			AorB = "A";
-		}else if (tt == turnTableB){
+			mydata.mainNode.port.postMessage({
+				"cmd": "setSpeedA",
+				"speed": tt.speed
+			});
+		} else if (tt == turnTableB) {
 			AorB = "B";
+			mydata.mainNode.port.postMessage({
+				"cmd": "setSpeedB",
+				"speed": tt.speed
+			});
 		}
-		mydata.tracks.forEach(function(t){
-			if (t.getABSwitch() == AorB){
-				t.follow();
+
+		for (let i = 0; i < mydata.tracks.length; i++) {
+			if (mydata.tracks[i].getABSwitch() == AorB) {
+				mydata.mainNode.port.postMessage({
+					"cmd": "follow",
+					"index": i
+				});
 			}
-		});
+		}
 	}
+
+
+		// }else{
+	// 	let AorB = null;
+
+	// 	if (tt == turnTableA){
+	// 		AorB = "A";
+	// 	}else if (tt == turnTableB){
+	// 		AorB = "B";
+	// 	}
+	// 	mydata.tracks.forEach(function(t){
+	// 		if (t.getABSwitch() == AorB){
+	// 			t.follow();
+	// 		}
+	// 	});
+	// }
 }
 
 function onAButtonClicked(e){
@@ -3096,6 +3254,10 @@ function onBButtonClicked(e){
 
 function onABSliderChanged(e){
 	mydata.abSwitchValue = $("#abSlider").get(0).valueAsNumber;
+	mydata.mainNode.port.postMessage({
+		"cmd":"setABSwitchValue",
+		"value": mydata.abSwitchValue
+	});
 }
 
 function onAChkChanged(e){
@@ -3127,8 +3289,21 @@ function onABSwitchChanged(e, AorB){
 	if (e.target.checked){
 		mydata.tracks[index].setABSwitch(AorB);
 		anotherChecks[index].checked = false;
+
+		mydata.mainNode.port.postMessage({
+			"cmd": "setABSwitch",
+			"index":index,
+			"AorB":AorB
+		});
+
 	}else{
 		mydata.tracks[index].setABSwitch(null);
+
+		mydata.mainNode.port.postMessage({
+			"cmd":"setABSwitch",
+			"index":index,
+			"AorB":null
+		});
 	}
 	
 	console.log("AB switch for index:" + index.toString() + " = " 
@@ -3138,16 +3313,31 @@ function onABSwitchChanged(e, AorB){
 function onSwitchToA(){
 	mydata.abSwitchValue = -1.0;
 	$("#abSlider").get(0).valueAsNumber = -1.0;
+
+	mydata.mainNode.port.postMessage({
+		"cmd": "setABSwitchValue",
+		"value": mydata.abSwitchValue
+	});	
 }
 
 function onSwitchToB(){
 	mydata.abSwitchValue = 1.0;
 	$("#abSlider").get(0).valueAsNumber = 1.0;
+
+	mydata.mainNode.port.postMessage({
+		"cmd": "setABSwitchValue",
+		"value": mydata.abSwitchValue
+	});
 }
 
 function onSwitchToCenter() {
 	mydata.abSwitchValue = 0.0;
 	$("#abSlider").get(0).valueAsNumber = 0.0;
+
+	mydata.mainNode.port.postMessage({
+		"cmd": "setABSwitchValue",
+		"value": mydata.abSwitchValue
+	});
 }
 
 
