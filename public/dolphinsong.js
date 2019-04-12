@@ -1503,7 +1503,7 @@ function startEditorEngine() {
 }
 
 function startOutEngine(){
-	audioContext2 = new AudioContext();
+	audioContext2 = new AudioContext({latencyHint:0});
 	// var scriptSource = audioContext2.createScriptProcessor(256/*latency*/,2,2);
 	// scriptSource.onaudioprocess = onAudioProcessOut;
 	var dest = audioContext2.createMediaStreamDestination();
@@ -1541,7 +1541,7 @@ function startOutEngine(){
 		audioElem2.play();
 		mydata.isPlayerActive = true;
 
-		console.log("OutEngine started.")
+		console.log("OutEngine started. with baseLatency:" + audioContext2.baseLatency.toString());
 	});
 }
 
@@ -2467,7 +2467,7 @@ function onTapClicked(e){
 	mydata.tapTimes[4] = mydata.tapTimes[5];
 	mydata.tapTimes[5] = mydata.tapTimes[6];
 	mydata.tapTimes[6] = mydata.tapTimes[7];
-	mydata.tapTimes[7] = Date.now();
+	mydata.tapTimes[7] = window.performance.now();
 	if (mydata.tapTimes[0] == null){
 		// no enough counts
 		return;
@@ -2791,16 +2791,24 @@ function onStartStopJog(receivedSec){
 	if (!jogTouching){
 		jogTouching = true;
 		turnTableA._processing = true;
-		prevSec = Date.now() / 1000;;
+		prevSec = window.performance.now() / 1000;;
 		prevRad = turnTableA.rad;
 
 		zeroCount = 0;
 
+		turnTableA.speed = 0;
+		{
+			// console.log("A-1");
+			mydata.mainNode.port.postMessage({
+				"cmd": "setSpeedA",
+				"speed": 0
+			});
+		}
 		
 		if (timer__) return;
-		console.log("start timer");
+		// console.log("start timer");
 		timer__ = setInterval(function(){
-			let nowS = Date.now() / 1000;
+			let nowS = window.performance.now() / 1000;
 			let deltaRad = turnTableA.rad - prevRad;
 
 			if (nowS == prevSec) return;
@@ -2846,7 +2854,7 @@ function onStartStopJog(receivedSec){
 						// 		t.follow();
 						// 	}
 						// });
-						console.log("timer cleared");
+						// console.log("timer cleared");
 						clearInterval(timer__);
 						timer__ = null;
 						turnTableA._processing = false;
@@ -2860,7 +2868,7 @@ function onStartStopJog(receivedSec){
 				zeroCount = 0;
 			}
 			
-		},5);
+		},10);
 	}else{
 		jogTouching = false;
 		// turnTableA.speed = 1.0;
@@ -3064,7 +3072,7 @@ function onTTMousedown(e, tt, index, AorB) {
 
 	tt._processing = true;
 	tt._startOffsetRad = rad;
-	tt._prevSec = Date.now() / 1000;
+	tt._prevSec = window.performance.now() / 1000;
 	tt.speed = 0;
 
 	if (tt._track) {
@@ -3142,7 +3150,7 @@ function onTTMousemove(e, tt, index, AorB) {
 
 	tt.rad -= delta;
 
-	let nowS = Date.now() / 1000;
+	let nowS = window.performance.now() / 1000;
 	// nowS = e.timeStamp/1000;
 	let radS = -delta / (tt._prevSec - nowS);
 	tt.speed = radS / RPS;
