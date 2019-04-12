@@ -779,8 +779,8 @@ function getMasterIndex(){
 	
 	if (mydata.tapMaster) return 99;
 
-	for (let i = 0; i < mydata.trackMaster.length; i++){
-		if (mydata.trackMaster[i]){
+	for (let i = 0; i < mydata.tracks.length; i++){
+		if (mydata.tracks[i].isMaster()){
 			index = i;
 			break;
 		}
@@ -800,7 +800,7 @@ function onMasterChanged(e){
 		for (let i = 0; i < masterChks.length; i++){
 			if (i != index){
 				masterChks[i].checked = false;
-				mydata.trackMaster[i] = false;
+				mydata.tracks[i].setMaster(false);
 			}
 		}
 
@@ -809,13 +809,13 @@ function onMasterChanged(e){
 		}else{
 			tapMasterChk.checked = false;
 			mydata.tapMaster = false;
-			mydata.trackMaster[index] = true;
+			mydata.tracks[index].setMaster(true);
 		}
 	}else{
 		if (checkBox == tapMasterChk){
 			mydata.tapMaster = false;
 		}else{
-			mydata.trackMaster[index] = false;
+			mydata.tracks[index].setMaster(false);
 		}
 	}
 
@@ -2546,13 +2546,20 @@ function loadSongByJSON(songJSON){
 			clearTrack(i);
 		}
 		if(tracks[i].speed != null){
-			mydata.trackRatio[i] = tracks[i].speed;
+			// mydata.trackRatio[i] = tracks[i].speed;
+			mydata.tracks[i]._ratio = tracks[i].speed;
 			updateSpeedLabel(i);
+			mydata.mainNode.port.postMessage({
+				"cmd": "setRatio",
+				"index": i,
+				"ratio": mydata.tracks[i]._ratio
+			});
 		}
 
 		if(tracks[i].master != null){
 			$(".masterChk").get(i).checked = tracks[i].master;
-			mydata.trackMaster[i] = tracks[i].master;
+			mydata.tracks[i].setMaster(tracks[i].master);
+			
 		}
 
 		if(tracks[i].volume != null){
@@ -2566,8 +2573,8 @@ function loadSongByJSON(songJSON){
 		}
 
 		if(tracks[i].quantize != null){
-			$(".quantizeChk").get(i).checked = mydata.trackQuantize[i];
-			mydata.trackQuantize[i] = mydata.trackQuantize[i];
+			$(".quantizeChk").get(i).checked = tracks[i].quantize;
+			mydata.tracks[i].setQuantize(tracks[i].quantize);
 		}
 
 		if(tracks[i].offset != null){
