@@ -1105,6 +1105,6 @@ MyTrack.prototype.playStop = function(masterTrack) {
 		}
 	}
 
-	playStateChanged();
+	// playStateChanged();
 }
 

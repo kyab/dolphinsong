@@ -1119,6 +1119,6 @@ ShadowTrack.prototype.playStop = function (masterTrack) {
         }
     }
 
-    playStateChanged();
+    // playStateChanged();
 }
 

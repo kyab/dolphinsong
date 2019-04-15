@@ -1454,7 +1454,7 @@ function outputDeviceChanged(){
 	}
 
 
-	playStateChanged();
+	// playStateChanged();
 	//also input engine should be restarted
 	inputDeviceChanged();
 	
@@ -1497,7 +1497,7 @@ function startEditorEngine() {
 		})
 		.then(function(){
 			mydata.isEditorActive = true;
-			console.log("EditoEngine started");
+			console.log("EditorEngine started");
 		});
 	});
 }
@@ -1551,22 +1551,46 @@ function onAudioProcess(e) {
 	let inbuf = e.inputBuffer;
 	let outbuf = e.outputBuffer;
 
+	const len = inbuf.getChannelData(0).length;
+	const outLeft = outbuf.getChannelData(0);
+	const outRight = outbuf.getChannelData(1);
 
+	//monitor
 	if (mydata.monitor){
     	for (let i=0; i < inbuf.getChannelData(0).length; i++){
     		outbuf.getChannelData(0)[i] = inbuf.getChannelData(0)[i];
     		outbuf.getChannelData(1)[i] = inbuf.getChannelData(1)[i];
     	}
     } else {
-    	const len = inbuf.getChannelData(0).length;
-    	const outLeft = outbuf.getChannelData(0);
-    	const outRight = outbuf.getChannelData(1);
     	for (let i=0; i < len; i++){
     		outLeft[i] = 0;
     		outRight[i] = 0;
     	}
-    }
+	}
+	
+	if (mydata.playing) {
+		for (let i = 0; i < outLeft.length; i++) {
+			outLeft[i] += audioBufferLeft[mydata.currentFramePlay];
+			outRight[i] += audioBufferRight[mydata.currentFramePlay];
+			mydata.currentFramePlay++;
 
+			if (mydata.selected) {
+				if (mydata.currentFramePlay > mydata.selectEndFrame) {
+					mydata.currentFramePlay = mydata.selectStartFrame;
+				}
+			} else {
+				if (mydata.currentFramePlay > mydata.currentFrame) {
+					mydata.playing = false;
+					redrawCanvas();
+					// playStateChanged();
+					break;
+				}
+			}
+
+		}
+	}
+
+	//level monitor
 	if (mydata.level){
 		//input level calc
 		let level = 0.0;
@@ -1579,6 +1603,7 @@ function onAudioProcess(e) {
 		mydata.inputLevel = level;
 	}
 
+	//recording 
     if (mydata.recording){
     	for (let i=0; i < inbuf.getChannelData(0).length; i++){
 	    	audioBufferLeft[mydata.currentFrame] = inbuf.getChannelData(0)[i];
@@ -1611,7 +1636,7 @@ function onAudioProcessOut(e){
 				if (mydata.currentFramePlay > mydata.currentFrame){
 					mydata.playing = false;
 					redrawCanvas();
-					playStateChanged();
+					// playStateChanged();
 
 					break;
 				}
@@ -1751,13 +1776,13 @@ function startPlay(){
 	}
 	//playStateChanged();
 	mydata.playing = true;	
-	playStateChanged();
+	// playStateChanged();
 }
 
 function stopPlay(){
 
 	mydata.playing = false;
-	playStateChanged();
+	// playStateCh	anged();
 }
 
 function drawInputLevel(){
@@ -2878,12 +2903,12 @@ function onStartStopJog(receivedSec){
 		},10);
 	}else{
 		jogTouching = false;
-		// turnTableA.speed = 1.0;
-		// // turnTableA._processing = false;
-		// mydata.mainNode.port.postMessage({
-		// 	"cmd": "setSpeedA",
-		// 	"speed": 1.0
-		// });
+		turnTableA.speed = 1.0;
+		// turnTableA._processing = false;
+		mydata.mainNode.port.postMessage({
+			"cmd": "setSpeedA",
+			"speed": 1.0
+		});
 
 
 		// for (let i = 0; i < mydata.tracks.length; i++) {
