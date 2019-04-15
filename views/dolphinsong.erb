@@ -286,43 +286,14 @@ body{
 </div>
 
 <div id="main">
-<div id="control">
-	<div id="control-inner">
-		<div>
-			In:
-			<select id="selectInputDevices"></select>
-			<div id="inputLevel">
-				<canvas width=60 height=10; id="inputLevelCanvas"></canvas>
-			</div>
-			<input id="chkLevel" type="checkbox" checked onclick="onLevelChanged();" />
-			<input id="chkMonitor" type="checkbox" value="true" onclick="onMonitorChanged();">monitor[m]</input>
-			Out:
-			<select id="selectOutputDevices"></select>
-		</div>
-		<div>
-			<input type="button" value="startRecord" onclick="startRecord();"/>
-			<input type="button" value="stopRecord" onclick="stopRecord();"/>
-			<input type="button" value="startPlay" onclick="startPlay();"/>
-			<input type="button" value="stopPlay" onclick="stopPlay();"/>
-			<input type="button" value="download" onclick="exportWAV();"/>
-			<input type="button" value="upload" onclick="uploadWAV()";/>
-		</div>
-
-	</div>
-</div>
-<div id="editor">
-	<canvas id="canvas"></canvas>
-	<canvas id="canvas2" dropzone="copy"></canvas>
-	<canvas id="rulerCanvas"></canvas>
-</div>
 <div id="songControl">
 	<input id="songLoadButton" type="button" value="&#x27a1;loadsong" />
 	<input id="songTitle" type="text" value="song1" />
-	<input id="songSaveButton" type="button" value="save"/>
+	<input id="songSaveButton" type="button" value="save" />
 </div>
-	<input type="button" id="aBtn" value="A"/>
-	<input type="range" id="abSlider" min="-1" max="1" value="0" step="0.01" />
-	<input type="button" id="bBtn" value="B"/>
+<input type="button" id="aBtn" value="A" />
+<input type="range" id="abSlider" min="-1" max="1" value="0" step="0.01" />
+<input type="button" id="bBtn" value="B" />
 <div id="player">
 	<table>
 		<tr>
@@ -419,13 +390,42 @@ body{
 			<% end %>
 	
 	</table>
+</div>
+<div id="control">
+	<div id="control-inner">
+		<div>
+			In:
+			<select id="selectInputDevices"></select>
+			<div id="inputLevel">
+				<canvas width=60 height=10; id="inputLevelCanvas"></canvas>
+			</div>
+			<input id="chkLevel" type="checkbox" checked onclick="onLevelChanged();" />
+			<input id="chkMonitor" type="checkbox" value="true" onclick="onMonitorChanged();">monitor[m]</input>
+			Out:
+			<select id="selectOutputDevices"></select>
+		</div>
+		<div>
+			<input type="button" value="startRecord" onclick="startRecord();" />
+			<input type="button" value="stopRecord" onclick="stopRecord();" />
+			<input type="button" value="startPlay" onclick="startPlay();" />
+			<input type="button" value="stopPlay" onclick="stopPlay();" />
+			<input type="button" value="download" onclick="exportWAV();" />
+			<input type="button" value="upload" onclick="uploadWAV()" ; />
+		</div>
+
 	</div>
-	<div id="phaser">
+</div>
+<div id="editor">
+	<canvas id="canvas"></canvas>
+	<canvas id="canvas2" dropzone="copy"></canvas>
+	<canvas id="rulerCanvas"></canvas>
+</div>
+	<!-- <div id="phaser">
 		<input type="checkbox" id="effectBypassChk" checked>bypass effect(phaser)</input>
-	</div>
+	</div> -->
+
 	<script src="jquery-2.2.4.min.js"></script>
 	<script src="jquery.cookie-1.4.1.min.js"></script>
-
 <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
 <script type="text/javascript"
 	src="https://cdnjs.cloudflare.com/ajax/libs/jspanel3/3.11.0/jquery.jspanel-compiled.js"></script>
