@@ -398,6 +398,8 @@ window.addEventListener("load", function(){
 	$(".Achk").on("change", onAChkChanged);
 	$(".Bchk").on("change", onBChkChanged);
 
+	$("#filterSlider").on("input", onFilterSliderChanged);
+
 
 	initMedia();
 	initMIDI();
@@ -1533,7 +1535,34 @@ function startOutEngine(){
 		// }
 		// scriptSource.connect(mainNode);
 
-		mainNode.connect(dest);
+		// let filter = audioContext2.createScriptProcessor(1024,2,2);
+		// filter.onaudioprocess = onFilterProcess;
+		// mainNode.connect(filter);
+		// filter.connect(dest);
+
+		// let base = audioContext2.createBiquadFilter();
+		// base.type = "highshelf";
+		// base.frequency.value = 500;
+		// base.gain.value = 18;
+		// mainNode.connect(base);
+		// base.connect(dest);
+
+		mydata.filterNodeLow = audioContext2.createBiquadFilter();
+		mydata.filterNodeLow.type = "lowpass";
+		mydata.filterNodeLow.gain.value = -40;
+		mydata.filterNodeLow.frequency.value = 22050;
+
+		mydata.filterNodeHigh = audioContext2.createBiquadFilter();
+		mydata.filterNodeHigh.type = "highpass";
+		mydata.filterNodeHigh.gain.value = -40;
+		mydata.filterNodeHigh.frequency.value = 0;
+
+		mainNode.connect(mydata.filterNodeLow);
+		mydata.filterNodeLow.connect(mydata.filterNodeHigh);
+		mydata.filterNodeHigh.connect(dest);
+
+
+		// mainNode.connect(dest);
 
 		audioElem2 = new Audio();
 		audioElem2.srcObject = dest.stream;
@@ -1616,6 +1645,206 @@ function onAudioProcess(e) {
 		}
     }
 };
+
+let preInLeft = new Float32Array(1024);
+let preInRight = new Float32Array(1024);
+let preOutLeft = new Float32Array(1024);
+let preOutRight = new Float32Array(1024);
+
+function onFilterProcess(e){
+	let outLeft = e.outputBuffer.getChannelData(0);
+	let outRight = e.outputBuffer.getChannelData(1);
+
+	let inLeft = e.inputBuffer.getChannelData(0);
+	let inRight = e.inputBuffer.getChannelData(1);
+
+	for (let i = 0; i < outLeft.length; i++) {
+		outLeft[i] = 0;//inLeft[i];
+		outRight[i] = 0;//inRight[i];
+	}
+
+	let fs = 44100;
+	let fc = 500.0/fs;
+	let Q = 1.0/Math.sqrt(2.0);
+	let I = 2;
+	let J = 2;
+
+	let a = new Float32Array(3);
+	let b = new Float32Array(3);
+	IIR_HPF(fc, Q, a, b);
+
+	for (let n = 0; n < outLeft.length; n++) {
+		for (let m = 0; m <= J; m++) {
+			if (n - m >= 0) {
+				outLeft[n] += b[m] * inLeft[n - m];
+				outRight[n] += b[m] * inRight[n - m];
+			}else{
+				outLeft[n] += b[m] * preInLeft[inLeft.length + (n - m)];
+				outRight[n] += b[m] * preInRight[inRight.length + (n - m)];
+			}
+		}
+
+		for (let m = 1; m <= I; m++){
+			if (n - m >=0){
+				outLeft[n] += -a[m]*outLeft[n-m];
+				outRight[n] += -a[m]*outRight[n-m];
+			}else{
+				outLeft[n] += -a[m] * preOutLeft[inLeft.length + (n-m)];
+				outRight[n] += -a[m] * preOutRight[inRight.length + (n - m)];
+			}
+		}
+	}
+
+	for (let i = 0; i < outLeft.length; i++) {
+		preInLeft[i] = inLeft[i];
+		preInRight[i] = inRight[i];
+		preOutLeft[i] = outLeft[i];
+		preOutRight[i] = outRight[i];
+	}
+}
+
+
+
+function onFilterProcess_FIR(e){
+	// console.log("onFilterProcess");
+	let outLeft = e.outputBuffer.getChannelData(0);
+	let outRight = e.outputBuffer.getChannelData(1);
+
+	let inLeft = e.inputBuffer.getChannelData(0);
+	let inRight = e.inputBuffer.getChannelData(1);
+
+	for (let i = 0; i < outLeft.length; i++) {
+		outLeft[i] = 0;//inLeft[i];
+		outRight[i] = 0;//inRight[i];
+	}
+
+	let fs = 44100;
+	let fe = 2000.0 / fs;
+	let fe1 = 500.0 / fs;
+	let fe2 = 10000.0 / fs;
+	let delta = 500.0 / fs;
+
+	// let J = Math.round(3.1/delta) - 1;
+	let J = Math.floor(3.1/delta + 0.5) - 1;
+
+	if (J % 2 == 1) J++;
+	// console.log("J = " + J);
+
+	let b = new Float32Array(J + 1);
+	let w = new Float32Array(J + 1);
+
+	hanning_window(w, J+1);
+	// FIR_HPF(fe, J, b, w);
+	FIR_BPF(fe1, fe2, J, b, w);
+
+	for (let n = 0; n < outLeft.length; n++){
+		for (let m = 0; m <= J; m++){
+			if(n - m >= 0){
+				outLeft[n] += b[m] * inLeft[n-m];
+				outRight[n] += b[m] * inRight[n-m];
+			}else{
+				outLeft[n] += b[m] * preLeft[inLeft.length + (n-m)];
+				outRight[n] += b[m] * preRight[inRight.length + (n-m)];
+			}
+		}
+	}
+
+	for (let i = 0; i < outLeft.length; i++){
+		preLeft[i] = inLeft[i];
+		preRight[i] = inRight[i];
+	}
+
+}
+
+function IIR_LPF(fc, Q, a, b){
+	fc = Math.tan(Math.PI*fc)/(2.0*Math.PI);
+
+	a[0] = 1.0 + 2.0*Math.PI*fc/Q + 4.0*Math.PI*Math.PI*fc*fc;
+	a[1] = (8.0*Math.PI*Math.PI*fc*fc-2.0) / a[0];
+	a[2] = (1.0 - 2.0*Math.PI*fc/Q + 4.0*Math.PI*Math.PI*fc*fc)/a[0];
+	b[0] = 4.0*Math.PI*Math.PI*fc*fc/a[0];
+	b[1] = 8.0*Math.PI*Math.PI*fc*fc/a[0];
+	b[2] = 4.0*Math.PI*Math.PI*fc*fc/a[0];
+
+	a[0] = 1.0;
+}
+
+function IIR_HPF(fc, Q, a, b){
+	fc = Math.tan(Math.PI * fc) / (2.0 * Math.PI);
+
+	a[0] = 1.0 + 2.0 * Math.PI * fc / Q + 4.0 * Math.PI * Math.PI * fc * fc;
+	a[1] = (8.0 * Math.PI * Math.PI * fc * fc - 2.0) / a[0];
+	a[2] = (1.0 - 2.0 * Math.PI * fc / Q + 4.0 * Math.PI * Math.PI * fc * fc) / a[0];
+	b[0] = 1.0 / a[0];
+	b[1] = -2.0 / a[0];
+	b[2] = 1.0 / a[0];
+
+	a[0] = 1.0;
+}
+
+function FIR_LPF(fe , J, b, w){
+	let m = 0;
+	let offset = 0;
+
+	offset = J / 2;
+	for (m = -J/2; m <= J; m++){
+		b[offset + m] = 2.0 * fe * sinc(2.0 * Math.PI * fe * m);
+	}
+
+	for (m = 0; m < J+1; m++){
+		b[m] *= w[m];
+	}
+}
+
+function FIR_HPF(fe, J, b, w){
+	let m = 0;
+	let offset = 0;
+
+	offset = J / 2;
+	for (m = -J/2; m <= J; m++){
+		b[offset + m] = sinc(Math.PI * m) - 2.0*fe*sinc(2.0*Math.PI * fe * m);
+	}
+
+	for (m = 0; m < J + 1 ; m++){
+		b[m] *= w[m];
+	}
+}
+
+function FIR_BPF(fe1, fe2, J, b, w){
+	let m = 0;
+	let offset = 0;
+
+	offset = J / 2;
+	for (m = -J / 2; m <= J; m++) {
+		b[offset + m] = 2.0 * fe2 * sinc(2.0*Math.PI * fe2 * m)
+					  - 2.0 * fe1 * sinc(2.0*Math.PI * fe1 * m);
+	}
+	for (m = 0; m < J + 1; m++) {
+		b[m] *= w[m];
+	}
+}
+
+function sinc(x){
+	if (x == 0.0){
+		return 1.0;
+	}else{
+		return Math.sin(x) / x;
+	}
+}
+
+function hanning_window(w, N){
+	if (N % 2 == 0){
+		for (let n = 0; n < N; n++){
+			w[n] = 0.5 - 0.5 * Math.cos(2.0 * Math.PI * n / N);
+		}
+	}else{
+		for (let n = 0; n < N; n++){
+			w[n] = 0.5 - 0.5 * Math.cos(2.0 * Math.PI * (n+0.5) / N);
+		}
+	}
+
+
+}
 
 function onAudioProcessOut(e){
 	// console.log("onAudioProcessOut");
@@ -3378,6 +3607,31 @@ function onSwitchToCenter() {
 		"cmd": "setABSwitchValue",
 		"value": mydata.abSwitchValue
 	});
+}
+
+function onFilterSliderChanged(e){
+	let val = $("#filterSlider").get(0).valueAsNumber;
+
+	if (val <= 0){
+		val += 1.0;	
+		let a = 100;
+		let b = Math.log2(22050/100.0);
+		let freq = a * Math.pow(2,b*val);
+		if (mydata.filterNodeLow){
+			mydata.filterNodeLow.frequency.value = freq;
+			mydata.filterNodeHigh.frequency.value = 0;
+			console.log("filter freq(low) = " + freq);
+		}
+	}else{
+		let a = 50;
+		let b = Math.log2(22050/2/50.0);
+		let freq = a * Math.pow(2,b*val);
+		if (mydata.filterNodeHigh) {
+			mydata.filterNodeHigh.frequency.value = freq;
+			mydata.filterNodeLow.frequency.value = 22050;
+			console.log("filter freq(high) = " + freq);
+		}		
+	}
 }
 
 
