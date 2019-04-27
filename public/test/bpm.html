@@ -1,0 +1,164 @@
+<html>
+
+<head>
+
+    <script type="text/javascript">
+
+        window.addEventListener("load", function () {
+
+            var fileElem = document.querySelector("#fileElem");
+            fileElem.addEventListener("change", function () {
+                let file = fileElem.files[0];
+                let fileReader = new FileReader();
+                fileReader.onload = fileLoaded;
+                fileReader.readAsArrayBuffer(file);
+            });
+        });
+
+        function fileLoaded(e) {
+            var fileContents = e.target.result;		//ArrayBuffer
+            console.log(fileContents.byteLength.toString() + "bytes readed");
+
+            audioContext = new AudioContext();
+            audioContext.decodeAudioData(fileContents)
+            .then(function (buf) {
+                let buffer = buf;				//AudioBuffer
+                console.log("decode audio data OK");
+                console.log(buffer);
+                test1(buffer);
+            }, function (e) {
+                console.log("decode audio data NG");
+                console.log(e);
+            });
+
+        }
+
+        function test1(buffer){
+            filtering(buffer);
+            // getPeaksAtThreshold(filtered.getChannelCount(0), 0.7);
+        }
+
+        function filtering(buffer){
+            let offlineContext = new OfflineAudioContext(2, buffer.length, 44100);
+            let source = offlineContext.createBufferSource();
+            source.buffer = buffer;
+
+            let lowpass = offlineContext.createBiquadFilter();
+            lowpass.type = "lowpass";
+            lowpass.frequency.value = 150;
+
+            source.connect(lowpass);
+            lowpass.connect(offlineContext.destination);
+
+            source.start(0);
+            offlineContext.startRendering();
+
+            offlineContext.oncomplete = offlineCompleted;
+        }
+
+        function offlineCompleted(e){
+
+            //Filtered buffer!
+            let filterdBuffer = e.renderedBuffer;
+            console.log("filterd : buffer = ");
+            console.log(filterdBuffer);
+
+            let context = new AudioContext();
+            let source = context.createBufferSource();
+            source.buffer = filterdBuffer;
+            source.connect(context.destination);
+            source.start(0);
+            context.resume();
+
+            let peaks = getPeaksAtThreashold2(filterdBuffer.getChannelData(0), 0.7);
+            let result = countIntervalsBetweenNearbyPeaks(peaks);
+
+            for (let i = 0; i < result.length; i++){
+                console.log("bpm : " + (60 / (result[i].interval/44100)*4) + ":"
+                    +result[i].count);
+            }
+            console.log(60 / (result[0].interval/44100) * 4);
+        }
+
+        function getPeaksAtThreashold(data, threshold){
+            let peaksArray = [];
+            let length = data.length;
+            for (let i = 0; i < length;){
+                if (Math.abs(data[i]) > threshold){
+                    peaksArray.push(i);
+                    i += 11025; //44100
+                }else{
+                    i++;
+                }
+            }
+
+            return peaksArray;
+        }
+
+        function getPeaksAtThreashold2(data, threshold){
+            let peaksArray = [];
+            for (let i = 0; i < data.length; i+=11025){
+                let maxI = 0;
+                let maxV = 0;
+                for (let j = 0; j < 11025; j++ ){
+                    let vol = Math.abs(data[i+j]);
+                    if (vol > maxV ){
+                        maxV = vol;
+                        maxI = i + j;
+                    }
+                }
+                peaksArray.push(maxI);
+            }
+            return peaksArray;
+        }
+
+        function countIntervalsBetweenNearbyPeaks(peaks){
+            let intervalCounts = [];
+            peaks.forEach(function(peak, index){
+                for (let i = 0 ; i < 10; i++){
+                    let interval = peaks[index + i + 1] - peak;
+                    let roundInterval = 100 * Math.round(interval/100);
+
+                    if (roundInterval < 0.01) {
+                        //console.log(roundInteval > 
+                        continue;
+                    }
+                    while((60 / (roundInterval / 44100) * 4) >= 180){
+                        roundInterval *= 2;
+                        // console.log("double" + roundInterval);
+                    }
+
+                    while ((60 / (roundInterval / 44100) * 4) <= 90) {
+                        roundInterval /= 2;
+                        // console.log("half" + roundInterval);
+                    }
+
+                    let foundInterval = intervalCounts.some(function(intervalCount){
+                        if (intervalCount.interval === roundInterval)
+                            return intervalCount.count++;
+                    });
+                    if (!foundInterval){
+                        intervalCounts.push({
+                            interval : roundInterval,
+                            count : 1
+                        });
+                    }
+                }
+            });
+            intervalCounts.sort(function(a,b){
+                return b.count - a.count;
+            });
+            return intervalCounts;
+        }
+
+    </script>
+
+    <title>BPM</title>
+</head>
+
+<body>
+    <input id="fileElem" type="file" value="load file" />
+
+</body>
+
+</html>
