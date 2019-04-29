@@ -1,0 +1,385 @@
+<html>
+
+<head>
+
+    <script type="text/javascript">
+        const RING_LENGTH = 44100 * 10;
+        let _ringLeft = new Float32Array(RING_LENGTH);
+        let _ringRight = new Float32Array(RING_LENGTH);
+        let _ringIndex = 0;
+        let _ringLen = 0;
+
+        let _preMsec = 0;
+
+        let _offlineContext = null;
+
+        let _inDevId = 0;
+        let _outDevId = 0;
+
+        window.addEventListener("load", function () {
+            var startButton = document.querySelector("#startButton");
+            startButton.addEventListener("click", function () {
+                start();
+            });
+        });
+
+        function start(){
+            navigator.mediaDevices.getUserMedia({audio:true, video:false})
+            .then(function(stream){
+                return getDeviceId();
+            }).then(function(){
+                return startEngine();
+            }).then(function(){
+                window.setInterval(timerFunc, 1000);
+            });
+        }
+
+        function timerFunc(){
+            console.log("timer!");
+            guessBPM();
+        }
+
+
+
+        function getDeviceId(){
+            return new Promise(function(resolve, reject){
+                navigator.mediaDevices.enumerateDevices()
+                .then(function(devices){
+                    let i = 0;
+                    let inDevFound = false;
+                    let outDevFound = false;
+
+                    console.log(devices);
+                    devices.forEach(function(d){
+                        if(d.kind == "audioinput"){
+                            if (d.label == "Background Music (Virtual)"){
+                                inDevFound = true;
+                                _inDevId = d.deviceId;
+                                console.log("Background Music device found");
+                            }
+                        }
+                        if (d.kind == "audiooutput"){
+                            if (d.label == "ヘッドフォン (Built-in)"){
+                                outDevFound = true;
+                                _outDevId = d.deviceId;
+                                console.log("Headphone device found");
+                            }
+                        }
+                    }); 
+
+                    if (inDevFound && outDevFound){
+                        resolve();
+                    }else{
+                        console.log("device error");
+                        reject();
+                    }
+                });
+            });
+        }
+
+        function startEngine(){
+            
+            let constrains = {
+                audio : {
+                    deviceId : {exact : _inDevId},
+                    sampleSize : 16,
+                    sampleRate : 44100,
+                    channelCount : 2,
+                    echoCancellation : false,
+                    autoGainControl : false,
+                    noiseSuppression : false
+                },
+                video : false
+            };
+
+            return new Promise(function(resolve, reject){
+                navigator.mediaDevices.getUserMedia(constrains)
+                .then(function (stream){
+                    let audioContext = new AudioContext();
+                    let source = audioContext.createMediaStreamSource(stream);
+                    let script = audioContext.createScriptProcessor(0,2,2);
+                    script.onaudioprocess = onAudioProcess;
+
+                    let dest = audioContext.createMediaStreamDestination();
+                    
+                    source.connect(script);
+                    script.connect(dest);
+
+                    let audio = new Audio();
+                    audio.srcObject = dest.stream;
+                    audio.setSinkId(_outDevId)
+                    .then(function(){
+                        audio.play();
+                        resolve();
+                    });
+                });
+            });
+        }
+
+
+
+        function onAudioProcess(e) {
+            // console.log("audio!");
+            let inLeft = e.inputBuffer.getChannelData(0);
+            let inRight = e.inputBuffer.getChannelData(1);
+
+            for (let i = 0; i < inLeft.length; i++) {
+                _ringLeft[_ringIndex] = inLeft[i];
+                _ringRight[_ringIndex] = inRight[i];
+
+                _ringIndex++;
+                if (_ringLen < RING_LENGTH) {
+                    _ringLen++;
+                } else {
+                    if (_ringIndex < RING_LENGTH) {
+
+                    } else {
+                        _ringIndex = 0;
+                    }
+                }
+            }
+
+            // console.log(inLeft.length + "copied, index = " +  _ringIndex +  ", ringLen =" +   _ringLen);
+
+            let outLeft = e.outputBuffer.getChannelData(0);
+            let outRight = e.outputBuffer.getChannelData(1);
+
+            for (let i = 0; i < outLeft.length; i++) {
+                outLeft[i] = inLeft[i];
+                outRight[i] = inRight[i];
+            }
+        }
+
+        // function playRing(){
+        //     let context = new AudioContext();
+        //     let buffer = context.createBuffer(2, _ringLen, 44100);
+        //     let left = buffer.getChannelData(0);
+        //     let right = buffer.getChannelData(1);
+
+        //     console.log("ringLen = " + _ringLen);
+
+        //     if (_ringLen == RING_LENGTH) {
+        //         for (let i = 0; i < (RING_LENGTH - _ringIndex); i++) {
+        //             left[i] = _ringLeft[_ringIndex + i];
+        //             right[i] = _ringRight[_ringIndex + i];
+        //         }
+        //         for (let i = 0; i < _ringIndex; i++) {
+        //             left[(RING_LENGTH - _ringIndex) + i] = _ringLeft[i];
+        //             right[(RING_LENGTH - _ringIndex) + i] = _ringRight[i];
+        //         }
+        //     } else {
+        //         for (let i = 0; i < _ringLen; i++) {
+        //             left[i] = _ringLeft[i];
+        //             right[i] = _ringRight[i];
+        //         }
+        //     }
+
+        //     let source = context.createBufferSource();
+        //     source.buffer = buffer;
+
+        //     let dest = context.createMediaStreamDestination();
+
+        //     source.connect(dest);
+        //     let audio = new Audio();
+        //     audio.srcObject = dest.stream;
+        //     audio.setSinkId(_outDevId)
+        //     .then(function () {
+        //         source.start(0);
+        //         audio.play();
+        //         console.log("ringplay start");
+        //     });            
+
+        // }
+
+        function guessBPM(){
+            _preMsec = performance.now();
+            
+
+            _offlineContext = new OfflineAudioContext(2, _ringLen, 44100);
+            let buffer = _offlineContext.createBuffer(2, _ringLen, 44100);
+
+            let left = buffer.getChannelData(0);
+            let right = buffer.getChannelData(1);
+
+            if (_ringLen == RING_LENGTH){
+                for (let i = 0; i < (RING_LENGTH - _ringIndex); i++){
+                    left[i] = _ringLeft[_ringIndex + i];
+                    right[i] = _ringRight[_ringIndex + i];
+                }
+                for (let i = 0; i < _ringIndex ; i++){
+                    left[(RING_LENGTH - _ringIndex) + i] = _ringLeft[i];
+                    right[(RING_LENGTH - _ringIndex) + i] = _ringRight[i];
+                }
+            }else{
+                for (let i = 0 ; i < _ringLen ; i++){
+                    left[i] = _ringLeft[i];
+                    right[i] = _ringRight[i];
+                }
+            }
+
+
+            let source = _offlineContext.createBufferSource();
+            source.buffer = buffer;
+
+            let lowpass = _offlineContext.createBiquadFilter();
+            lowpass.type = "lowpass";
+            lowpass.frequency.value = 150;
+
+            let highpass = _offlineContext.createBiquadFilter();
+            highpass.type = "highpass";
+            highpass.frequency.value = 100;
+
+            source.connect(lowpass);
+            lowpass.connect(highpass);
+            highpass.connect(_offlineContext.destination);
+
+            source.start(0);
+            _offlineContext.startRendering();
+
+            _offlineContext.oncomplete = offlineCompleted;
+        }
+
+        function offlineCompleted(e) {
+
+            //Filtered buffer
+            let filterdBuffer = e.renderedBuffer;
+            // console.log("filterd : buffer = ");
+            // console.log(filterdBuffer);
+
+            //play
+            // let context = new AudioContext();
+            // let source = context.createBufferSource();
+            // source.buffer = filterdBuffer;
+            // source.connect(context.destination);
+            // source.start(0);
+            // context.resume();
+
+            let peaks = getPeaksAtThreashold2(filterdBuffer.getChannelData(0), 0.7);
+            let result = countIntervalsBetweenNearbyPeaks(peaks);
+
+            // for (let i = 0; i < result.length; i++) {
+            //     console.log("bpm : " + (60 / (result[i].interval / 44100) * 4) + ":"
+            //         + result[i].count);
+            // }
+            // console.log(60 / (result[0].interval / 44100) * 4);
+
+            result = calcBPM(result);
+
+            for (let i = 0; i < 10; i++){
+                console.log(result[i].center);
+            }
+
+            console.log("takes : " + (performance.now() - _preMsec) + "[ms]");
+        }
+
+        function getPeaksAtThreashold2(data, threshold) {
+            let peaksArray = [];
+            for (let i = 0; i < data.length; i += 11025) {
+                let maxI = 0;
+                let maxV = 0;
+                for (let j = 0; j < 11025; j++) {
+                    let vol = Math.abs(data[i + j]);
+                    if (vol > maxV) {
+                        maxV = vol;
+                        maxI = i + j;
+                    }
+                }
+                peaksArray.push(maxI);
+            }
+            return peaksArray;
+        }
+
+        function countIntervalsBetweenNearbyPeaks(peaks) {
+            let intervalCounts = [];
+            peaks.forEach(function (peak, index) {
+                for (let i = 0; i < 20; i++) {
+                    if (index + i + 1 >= peaks.length) continue;
+
+                    let interval = peaks[index + i + 1] - peak;
+                    let roundInterval = 100 * Math.round(interval / 100);
+
+                    if (roundInterval < 0.01) {
+                        continue;
+                    }
+                    while ((60 / (roundInterval / 44100) * 4) >= 180) {
+                        roundInterval *= 2;
+                    }
+                    while ((60 / (roundInterval / 44100) * 4) <= 90) {
+                        roundInterval /= 2;
+                    }
+
+                    let foundInterval = intervalCounts.some(function (intervalCount) {
+                        if (intervalCount.interval === roundInterval){
+                            return intervalCount.count++;
+                        }
+                    });
+                    if (!foundInterval) {
+                        intervalCounts.push({
+                            interval: roundInterval,
+                            count: 1
+                        });
+                    }
+                }
+            });
+            intervalCounts.sort(function (a, b) {
+                return b.count - a.count;
+            });
+            return intervalCounts;
+        }
+
+        function calcBPM(intervalCounts){
+            let bpmCounts = [];
+            
+            for(let i = 0 ; i <  intervalCounts.length; i++){
+        
+                let interval = intervalCounts[i].interval;
+                let roundBPM = Math.round((60 / (interval/44100)*4));
+
+                let foundBPM = bpmCounts.some(function(bpmCount){
+                    if (bpmCount.bpm == roundBPM){
+                        bpmCounts.count += intervalCounts[i].count;
+                        bpmCount.intervals.push(intervalCounts[i]);
+                        return true;
+                    }
+                    return false;
+                });
+
+                if (!foundBPM){
+                    bpmCounts.push({
+                        bpm : roundBPM,
+                        count : intervalCounts[i].count,
+                        intervals : [intervalCounts[i]]
+                    });
+                }
+            }
+
+            bpmCounts.sort(function(a,b){
+                a.count - b.count; 
+            });
+
+            for (let i = 0 ; i < bpmCounts.length ; i++){
+
+                let sum = 0;
+                let count = 0;
+                let intervals = bpmCounts[i].intervals;
+                for (let j = 0; j < intervals.length; j++ ){
+                    let bpm = 60 / (intervals[j].interval / 44100) * 4;
+                    sum += bpm * intervals[j].count;
+                    count += intervals[j].count;
+                }
+                bpmCounts[i].center = sum/count;
+            }
+            return bpmCounts;
+        }
+
+    </script>
+
+    <title>autobeat</title>
+</head>
+
+<body>
+    <input type="button" id="startButton" value="start"/>
+
+</body>
+
+</html>
