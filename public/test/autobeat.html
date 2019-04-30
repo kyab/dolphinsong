@@ -36,7 +36,9 @@
 
         function timerFunc(){
             console.log("timer!");
+            // playRing();
             guessBPM();
+
         }
 
 
@@ -145,51 +147,51 @@
             let outRight = e.outputBuffer.getChannelData(1);
 
             for (let i = 0; i < outLeft.length; i++) {
-                outLeft[i] = inLeft[i];
-                outRight[i] = inRight[i];
+                outLeft[i] = 0;//inLeft[i];
+                outRight[i] = 0;//inRight[i];
             }
         }
 
-        // function playRing(){
-        //     let context = new AudioContext();
-        //     let buffer = context.createBuffer(2, _ringLen, 44100);
-        //     let left = buffer.getChannelData(0);
-        //     let right = buffer.getChannelData(1);
+        function playRing(){
+            let context = new AudioContext();
+            let buffer = context.createBuffer(2, _ringLen, 44100);
+            let left = buffer.getChannelData(0);
+            let right = buffer.getChannelData(1);
 
-        //     console.log("ringLen = " + _ringLen);
+            console.log("ringLen = " + _ringLen);
 
-        //     if (_ringLen == RING_LENGTH) {
-        //         for (let i = 0; i < (RING_LENGTH - _ringIndex); i++) {
-        //             left[i] = _ringLeft[_ringIndex + i];
-        //             right[i] = _ringRight[_ringIndex + i];
-        //         }
-        //         for (let i = 0; i < _ringIndex; i++) {
-        //             left[(RING_LENGTH - _ringIndex) + i] = _ringLeft[i];
-        //             right[(RING_LENGTH - _ringIndex) + i] = _ringRight[i];
-        //         }
-        //     } else {
-        //         for (let i = 0; i < _ringLen; i++) {
-        //             left[i] = _ringLeft[i];
-        //             right[i] = _ringRight[i];
-        //         }
-        //     }
+            if (_ringLen == RING_LENGTH) {
+                for (let i = 0; i < (RING_LENGTH - _ringIndex); i++) {
+                    left[i] = _ringLeft[_ringIndex + i];
+                    right[i] = _ringRight[_ringIndex + i];
+                }
+                for (let i = 0; i < _ringIndex; i++) {
+                    left[(RING_LENGTH - _ringIndex) + i] = _ringLeft[i];
+                    right[(RING_LENGTH - _ringIndex) + i] = _ringRight[i];
+                }
+            } else {
+                for (let i = 0; i < _ringLen; i++) {
+                    left[i] = _ringLeft[i];
+                    right[i] = _ringRight[i];
+                }
+            }
 
-        //     let source = context.createBufferSource();
-        //     source.buffer = buffer;
+            let source = context.createBufferSource();
+            source.buffer = buffer;
 
-        //     let dest = context.createMediaStreamDestination();
+            let dest = context.createMediaStreamDestination();
 
-        //     source.connect(dest);
-        //     let audio = new Audio();
-        //     audio.srcObject = dest.stream;
-        //     audio.setSinkId(_outDevId)
-        //     .then(function () {
-        //         source.start(0);
-        //         audio.play();
-        //         console.log("ringplay start");
-        //     });            
+            source.connect(dest);
+            let audio = new Audio();
+            audio.srcObject = dest.stream;
+            audio.setSinkId(_outDevId)
+            .then(function () {
+                source.start(0);
+                audio.play();
+                console.log("ringplay start");
+            });            
 
-        // }
+        }
 
         function guessBPM(){
             _preMsec = performance.now();
@@ -241,38 +243,21 @@
 
         function offlineCompleted(e) {
 
-            //Filtered buffer
             let filterdBuffer = e.renderedBuffer;
-            // console.log("filterd : buffer = ");
-            // console.log(filterdBuffer);
 
-            //play
-            // let context = new AudioContext();
-            // let source = context.createBufferSource();
-            // source.buffer = filterdBuffer;
-            // source.connect(context.destination);
-            // source.start(0);
-            // context.resume();
-
-            let peaks = getPeaksAtThreashold2(filterdBuffer.getChannelData(0), 0.7);
-            let result = countIntervalsBetweenNearbyPeaks(peaks);
-
-            // for (let i = 0; i < result.length; i++) {
-            //     console.log("bpm : " + (60 / (result[i].interval / 44100) * 4) + ":"
-            //         + result[i].count);
-            // }
-            // console.log(60 / (result[0].interval / 44100) * 4);
+            let peaks = getPeaks(filterdBuffer.getChannelData(0));
+            let result = countIntervalsBetweenPeaks(peaks);
 
             result = calcBPM(result);
 
             for (let i = 0; i < 10; i++){
-                console.log(result[i].center);
+                console.log(result[i].center + " : " + result[i].count);
             }
 
             console.log("takes : " + (performance.now() - _preMsec) + "[ms]");
         }
 
-        function getPeaksAtThreashold2(data, threshold) {
+        function getPeaks(data) {
             let peaksArray = [];
             for (let i = 0; i < data.length; i += 11025) {
                 let maxI = 0;
@@ -289,10 +274,10 @@
             return peaksArray;
         }
 
-        function countIntervalsBetweenNearbyPeaks(peaks) {
+        function countIntervalsBetweenPeaks(peaks) {
             let intervalCounts = [];
             peaks.forEach(function (peak, index) {
-                for (let i = 0; i < 20; i++) {
+                for (let i = 0; i < 10; i++) {
                     if (index + i + 1 >= peaks.length) continue;
 
                     let interval = peaks[index + i + 1] - peak;
@@ -310,7 +295,8 @@
 
                     let foundInterval = intervalCounts.some(function (intervalCount) {
                         if (intervalCount.interval === roundInterval){
-                            return intervalCount.count++;
+                            intervalCount.count++;
+                            return true;
                         }
                     });
                     if (!foundInterval) {
@@ -333,7 +319,9 @@
             for(let i = 0 ; i <  intervalCounts.length; i++){
         
                 let interval = intervalCounts[i].interval;
-                let roundBPM = Math.round((60 / (interval/44100)*4));
+                let bpm = 60 / (interval/44100) * 4;
+                let roundBPM = Math.round( bpm / 5 ) * 5;
+                // let roundBPM = Math.round((60 / (interval/44100)*4));
 
                 let foundBPM = bpmCounts.some(function(bpmCount){
                     if (bpmCount.bpm == roundBPM){
