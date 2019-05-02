@@ -41,8 +41,6 @@
 
         }
 
-
-
         function getDeviceId(){
             return new Promise(function(resolve, reject){
                 navigator.mediaDevices.enumerateDevices()
@@ -277,7 +275,7 @@
         function countIntervalsBetweenPeaks(peaks) {
             let intervalCounts = [];
             peaks.forEach(function (peak, index) {
-                for (let i = 0; i < 10; i++) {
+                for (let i = 0; i < 20; i++) {
                     if (index + i + 1 >= peaks.length) continue;
 
                     let interval = peaks[index + i + 1] - peak;

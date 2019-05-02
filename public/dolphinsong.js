@@ -78,6 +78,7 @@ mydata.vTrack = new MyTrack();
 mydata.tapTimes = new Array(8);
 mydata.bpm = 120.0;
 mydata.tapMaster = false;
+mydata.autoBPM = true;
 
 mydata.effectBypass = true;
 
@@ -371,6 +372,9 @@ window.addEventListener("load", function(){
 
 	const tapButton = document.querySelector("#tapButton");
 	tapButton.addEventListener("click", onTapClicked, false);
+
+	const autoBPMChk = document.querySelector("#autoBPMChk");
+	autoBPMChk.addEventListener("change", onAutoBPMChanged, false);
 
 	const tapMasterChk = document.querySelector("#tapMasterChk");
 	tapMasterChk.addEventListener("change", onMasterChanged, false);
@@ -789,6 +793,12 @@ function getMasterIndex(){
 	}
 	return index;
 
+}
+
+function onAutoBPMChanged(e){
+
+	const autoBPMChk = document.querySelector("#autoBPMChk");
+	mydata.autoBPM = autoBPMChk.checked;
 }
 
 function onMasterChanged(e){
@@ -1335,7 +1345,8 @@ function initMedia(){
 		// console.log("calling startOutEngine()");
 		// return startOutEngine();
 		editorStateChanged();
-		return startOutEngine();
+		startOutEngine();
+		startBeatDetectEngine();
 	});
 
 }
