@@ -1342,11 +1342,9 @@ function initMedia(){
 		return getInputDevice();
 	
 	}).then(function(){
-		// console.log("calling startOutEngine()");
-		// return startOutEngine();
 		editorStateChanged();
 		startOutEngine();
-		startBeatDetectEngine();
+		// startBeatDetectEngine();
 	});
 
 }
@@ -2811,7 +2809,6 @@ function loadSongByJSON(songJSON){
 			clearTrack(i);
 		}
 		if(tracks[i].speed != null){
-			// mydata.trackRatio[i] = tracks[i].speed;
 			mydata.tracks[i]._ratio = tracks[i].speed;
 			updateSpeedLabel(i);
 			mydata.mainNode.port.postMessage({
@@ -3507,22 +3504,6 @@ function onTTMouseup(e, tt, index, AorB) {
 			}
 		}
 	}
-
-
-		// }else{
-	// 	let AorB = null;
-
-	// 	if (tt == turnTableA){
-	// 		AorB = "A";
-	// 	}else if (tt == turnTableB){
-	// 		AorB = "B";
-	// 	}
-	// 	mydata.tracks.forEach(function(t){
-	// 		if (t.getABSwitch() == AorB){
-	// 			t.follow();
-	// 		}
-	// 	});
-	// }
 }
 
 function onAButtonClicked(e){

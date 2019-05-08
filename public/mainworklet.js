@@ -121,18 +121,7 @@ class MainProcessor extends AudioWorkletProcessor {
 
     process(inputs, outputs, parameters) {
 
-        // console.log(inputs);
-        // console.log("in process : " + outputs.length);
-        // console.log("in process2 : " + outputs[0].length);
-        // console.log("in process3 : " + outputs[0][0].length);
-
-        // return true;
-
-        // let input = inputs[0];
         let output = outputs[0];
-
-        // let inLeft = input[0];
-        // let inRight = input[1];
 
         let outLeft = output[0];
         let outRight = output[1];
