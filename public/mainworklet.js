@@ -120,7 +120,6 @@ class MainProcessor extends AudioWorkletProcessor {
     }
 
     process(inputs, outputs, parameters) {
-
         let output = outputs[0];
 
         let outLeft = output[0];
@@ -175,13 +174,26 @@ class MainProcessor extends AudioWorkletProcessor {
                     let y_l = linearInterporation(x0, y0[0], x1, y1[0], j * s);
                     let y_r = linearInterporation(x0, y0[1], x1, y1[1], j * s);
 
-                    outLeft[j] += y_l * gain;
-                    outRight[j] += y_r * gain;
+                    let valL = y_l * gain;
+                    let valR = y_r * gain;
+                    if (isNaN(valL)) {
+                        console.log("warning NaNL");
+                    }else{
+                        outLeft[j] += valL;
+                    }
+
+                    if (isNaN(valR)) {
+                        console.log("warning NaNR");
+                    }else{
+                        outRight[j] += valR;
+                    }
+
                 }
                 this._tracks[i].consume_scratch(Math.round(outLeft.length * s));
                 this._tracks[i].consume_backyard(outLeft.length);
             }
         }
+
 
         return true;
     }

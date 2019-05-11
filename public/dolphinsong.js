@@ -1344,7 +1344,7 @@ function initMedia(){
 	}).then(function(){
 		editorStateChanged();
 		startOutEngine();
-		// startBeatDetectEngine();
+		startBeatDetectEngine();
 	});
 
 }

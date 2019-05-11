@@ -704,9 +704,13 @@ ShadowTrack.prototype.getAt = function (offset) {
         }
         {
             let x = current_grain_start + current_x;
+            let valL = 0;
+            let valR = 0;
 
-            let valL = this._bufferLeft[x];
-            let valR = this._bufferRight[x];
+            if (0 <= x && x < this._bufferLeft.length){
+                valL = this._bufferLeft[x];
+                valR = this._bufferRight[x];
+            }
             if (current_x2 < 0) {
                 //no windowing for some beggining frames
             } else {
@@ -719,8 +723,14 @@ ShadowTrack.prototype.getAt = function (offset) {
 
         {
             let x2 = current_grain_start2 + current_x2;
-            let valL2 = this._bufferLeft[x2];
-            let valR2 = this._bufferRight[x2];
+            let valL2 = 0;
+            let valR2 = 0;
+
+            if (0 <= x2 && x2 < this._bufferLeft.length ){
+                valL2 = this._bufferLeft[x2];
+                valR2 = this._bufferRight[x2];
+            }
+
 
             valL2 = sinFadeWindow(fadeStartRate, current_x2 / GRAIN_SIZE, valL2);
             valR2 = sinFadeWindow(fadeStartRate, current_x2 / GRAIN_SIZE, valR2);
@@ -785,8 +795,13 @@ ShadowTrack.prototype.getAt = function (offset) {
         {
             let x = current_grain_start + current_x;
 
-            let valL = this._bufferLeft[x];
-            let valR = this._bufferRight[x];
+            let valL = 0;
+            let valR = 0;
+
+            if (0 <= x && x < this._bufferLeft.length) {
+                valL = this._bufferLeft[x];
+                valR = this._bufferRight[x];
+            }
             if (current_x2 < 0) {
                 //no windowing for some beggining frames
             } else {
@@ -800,8 +815,13 @@ ShadowTrack.prototype.getAt = function (offset) {
         {
             let x2 = current_grain_start2 + current_x2;
 
-            let valL2 = this._bufferLeft[x2];
-            let valR2 = this._bufferRight[x2];
+            let valL2 = 0;
+            let valR2 = 0;
+
+            if (0 <= x2 && x2 < this._bufferLeft.length) {
+                valL2 = this._bufferLeft[x2];
+                valR2 = this._bufferRight[x2];
+            }
 
             valL2 = sinFadeWindow(fadeStartRate, current_x2 / GRAIN_SIZE, valL2);
             valR2 = sinFadeWindow(fadeStartRate, current_x2 / GRAIN_SIZE, valR2);
@@ -825,6 +845,9 @@ ShadowTrack.prototype.getAt = function (offset) {
 
     ret[0] = retL * vol * volLeft;
     ret[1] = retR * vol * volRight;
+    if(isNaN(ret[0]) || isNaN(ret[1])){
+        console.log("warning getAt returns NaN");
+    }
     return ret;
 }
 
