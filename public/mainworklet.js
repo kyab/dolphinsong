@@ -29,7 +29,6 @@ class MainProcessor extends AudioWorkletProcessor {
     }
 
     onMessage(event) {
-;
         let m = event.data;
 
         switch (m.cmd) {
@@ -44,12 +43,24 @@ class MainProcessor extends AudioWorkletProcessor {
                 }
                 break;
 
+            case "setBufferStems":
+                {
+                    let index = m.index;
+                    let si = m.stemIndex;
+                    this._tracks[index].setBuffer(si, m.left, m.right);
+                }
+                break;
+
             case "setRatio":
                 this._tracks[m.index].setRatio(m.ratio);
                 break;
 
             case "setVolume":
                 this._tracks[m.index].setVolume(m.volume);
+                break;
+
+            case "setStemVolume":
+                this._tracks[m.index].setStemVolume(m.stemIndex, m.volume);
                 break;
 
             case "setPan":

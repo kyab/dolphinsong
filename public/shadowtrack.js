@@ -5,8 +5,8 @@ const GRAIN_SIZE = 6000;
 export function ShadowTrack() {
 
     console.log("ShadowTrack constructor");
-    this._bufferLeft = null;
-    this._bufferRight = null;
+    this._bufferLeft = new Array(5);
+    this._bufferRight = new Array(5);
     this._loaded = false;
     this._playing = false;
     this._ratio = 1;
@@ -15,6 +15,10 @@ export function ShadowTrack() {
     this._length = 0;
     this._master = false;
     this._volume = 1;
+    this._stemVolume = new Array(5);
+    for (let i = 0; i < 5; i++){
+        this._stemVolume[i] = 1.0;
+    }
     this._pan = 0;
     this._offset = 0;
     this._quantize = true;
@@ -56,11 +60,11 @@ export function ShadowTrack() {
         }
     }
 
-    this.setBuffer = function(left, right){
-        console.log("shadow::setBuffer");
+    this.setBuffer = function(si, left, right){
+        console.log("shadow::setBuffer for stemIndex : " , + si.toString());
         this._length = left.length;
-        this._bufferLeft = left;
-        this._bufferRight = right;
+        this._bufferLeft[si] = left;
+        this._bufferRight[si] = right;
 
         this._loaded = true;
     }
@@ -88,6 +92,10 @@ export function ShadowTrack() {
 
     this.setVolume = function (val) {
         this._volume = val;
+    }
+
+    this.setStemVolume = function (si, val){
+        this._stemVolume[si] = val;
     }
 
     this.setPan = function (val) {
@@ -120,6 +128,8 @@ export function ShadowTrack() {
             cs.current_grain_start2 = cs.current_grain_start + GRAIN_SIZE;
             cs.current_x2 = Math.round(GRAIN_SIZE * (ratio) * (-1));
         }
+
+        this.follow();
     }
 
     this.setMaster = function (isMaster) {
@@ -175,18 +185,18 @@ export function ShadowTrack() {
     this.loadSampleFromFile = function (file, name) {
         return new Promise(function (resolve, reject) {
             tryLoadSampleFromFileStandard(file)
+            .then(function (length) {
+                loadedFromFile(length, name);
+                resolve();
+            }, function (e) {
+                tryLoadSampleFromFileAAC(file)
                 .then(function (length) {
                     loadedFromFile(length, name);
                     resolve();
                 }, function (e) {
-                    tryLoadSampleFromFileAAC(file)
-                        .then(function (length) {
-                            loadedFromFile(length, name);
-                            resolve();
-                        }, function (e) {
-                            reject(e);
-                        });
-                });;
+                    reject(e);
+                });
+            });;
         });
     }
 
@@ -197,18 +207,18 @@ export function ShadowTrack() {
                 const fileContents = e.target.result;
                 const audioContextForDecode = new AudioContext();
                 audioContextForDecode.decodeAudioData(fileContents)
-                    .then(function (buf) {
-                        that._bufferLeft = buf.getChannelData(0);
-                        if (buf.numberOfChannels == 1) {
-                            that._bufferRight = buf.getChannelData(0);
-                        } else {
-                            that._bufferRight = buf.getChannelData(1);
-                        }
-                        audioContextForDecode.close();
-                        resolve(buf.length);
-                    }, function (e) {
-                        reject(e);
-                    });
+                .then(function (buf) {
+                    that._bufferLeft = buf.getChannelData(0);
+                    if (buf.numberOfChannels == 1) {
+                        that._bufferRight = buf.getChannelData(0);
+                    } else {
+                        that._bufferRight = buf.getChannelData(1);
+                    }
+                    audioContextForDecode.close();
+                    resolve(buf.length);
+                }, function (e) {
+                    reject(e);
+                });
             }
             fileReader.readAsArrayBuffer(blob);
         });
@@ -250,176 +260,174 @@ export function ShadowTrack() {
 
 
 
-    this.process = function (inBufL, inBufR, len) {
+    // this.process = function (inBufL, inBufR, len) {
 
-        console.log("shadow process");
-
-        let calcState = this._calcState;
-        let ratio = this._ratio;
+    //     let calcState = this._calcState;
+    //     let ratio = this._ratio;
 
 
-        if (ratio >= 1) {
-            for (let iX = 0; iX < len; iX++) {
+    //     if (ratio >= 1) {
+    //         for (let iX = 0; iX < len; iX++) {
 
-                //wait for time to come.
-                if (this._waitCount > 0) {
-                    this._waitCount--;
-                    continue;
-                }
+    //             //wait for time to come.
+    //             if (this._waitCount > 0) {
+    //                 this._waitCount--;
+    //                 continue;
+    //             }
 
-                const fadeStartRate = -1 / 2 * ratio + 1;
+    //             const fadeStartRate = -1 / 2 * ratio + 1;
 
-                if (calcState.current_x > grain_size * (1 + (ratio - 1) / 2)) {
-                    calcState.current_grain_start += grain_size;
-                    calcState.current_x = Math.round((grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1))
-                }
-                if (calcState.current_x2 > grain_size * (1 + (ratio - 1) / 2)) {
-                    calcState.current_grain_start2 += grain_size;
-                    calcState.current_x2 = Math.round((grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1));
-                }
-
-
-                {
-                    let x = calcState.current_grain_start + calcState.current_x;
-
-                    let valL = this._bufferLeft[x];
-                    let valR = this._bufferRight[x];
-                    if (calcState.current_x2 < 0) {
-                        //no windowing for some beggining frames
-                    } else {
-                        valL = sinFadeWindow(fadeStartRate, calcState.current_x / grain_size, valL);
-                        valR = sinFadeWindow(fadeStartRate, calcState.current_x / grain_size, valR);
-                    }
-                    calcState.stretchedLX[iX] = valL;
-                    calcState.stretchedRX[iX] = valR;
-                }
-
-                {
-                    let x2 = calcState.current_grain_start2 + calcState.current_x2;
-                    let valL2 = this._bufferLeft[x2];
-                    let valR2 = this._bufferRight[x2];
-
-                    valL2 = sinFadeWindow(fadeStartRate, calcState.current_x2 / grain_size, valL2);
-                    valR2 = sinFadeWindow(fadeStartRate, calcState.current_x2 / grain_size, valR2);
-                    calcState.stretchedLX[iX] += valL2;
-                    calcState.stretchedRX[iX] += valR2;
-                }
-                calcState.current_x++;
-                calcState.current_x2++;
-
-                let vol = this._volume;
-                let pan = this._pan;
-                let volLeft = 0;
-                let volRight = 0;
-                if (pan < 0) {
-                    volLeft = 1.0;
-                    volRight = pan + 1;
-                } else {
-                    volLeft = -1 * pan + 1;
-                    volRight = 1.0;
-                }
-
-                inBufL[iX] += calcState.stretchedLX[iX]
-                    * vol * volLeft;
-                inBufR[iX] += calcState.stretchedRX[iX]
-                    * vol * volRight;
+    //             if (calcState.current_x > grain_size * (1 + (ratio - 1) / 2)) {
+    //                 calcState.current_grain_start += grain_size;
+    //                 calcState.current_x = Math.round((grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1))
+    //             }
+    //             if (calcState.current_x2 > grain_size * (1 + (ratio - 1) / 2)) {
+    //                 calcState.current_grain_start2 += grain_size;
+    //                 calcState.current_x2 = Math.round((grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1));
+    //             }
 
 
-                this._currentFrame += 1 * 1 / ratio;
-                if (this._currentFrame > this._length) {
-                    this._currentFrame = 0;
-                    calcState.current_grain_start = 0;
-                    calcState.current_x = 0;
-                    calcState.current_grain_start2 = grain_size / 2;
-                    calcState.current_x2 = -1.0 * Math.round(grain_size / 2 * ratio);
-                    if (!this._loop) {
-                        this._playing = false;
-                        triggerStateChanged();
-                        break;
-                    }
-                }
+    //             {
+    //                 let x = calcState.current_grain_start + calcState.current_x;
 
-            }
-        } else {
-            for (let iX = 0; iX < len; iX++) {
+    //                 let valL = this._bufferLeft[x];
+    //                 let valR = this._bufferRight[x];
+    //                 if (calcState.current_x2 < 0) {
+    //                     //no windowing for some beggining frames
+    //                 } else {
+    //                     valL = sinFadeWindow(fadeStartRate, calcState.current_x / grain_size, valL);
+    //                     valR = sinFadeWindow(fadeStartRate, calcState.current_x / grain_size, valR);
+    //                 }
+    //                 calcState.stretchedLX[iX] = valL;
+    //                 calcState.stretchedRX[iX] = valR;
+    //             }
 
-                //wait for time to come.
-                if (this._waitCount > 0) {
-                    this._waitCount--;
-                    continue;
-                }
+    //             {
+    //                 let x2 = calcState.current_grain_start2 + calcState.current_x2;
+    //                 let valL2 = this._bufferLeft[x2];
+    //                 let valR2 = this._bufferRight[x2];
 
-                const fadeStartRate = 1 - ratio;
-                // const fadeStartRate = 0;
-                if (calcState.current_x > grain_size * (1 + ratio - 1 / 2)) {
-                    calcState.current_grain_start += grain_size * 2;
-                    calcState.current_x = Math.round(grain_size * (ratio - 1 / 2) * (-1));
-                }
-                if (calcState.current_x2 > grain_size * (1 + ratio - 1 / 2)) {
-                    calcState.current_grain_start2 += grain_size * 2;
-                    calcState.current_x2 = Math.round(grain_size * (ratio - 1 / 2) * (-1));
-                }
-                {
-                    let x = calcState.current_grain_start + calcState.current_x;
-                    let valL = this._bufferLeft[x];
-                    let valR = this._bufferRight[x];
-                    if (calcState.current_x2 < 0) {
-                        //no windowing for some beggining frames
-                    } else {
-                        valL = sinFadeWindow(fadeStartRate, calcState.current_x / grain_size, valL);
-                        valR = sinFadeWindow(fadeStartRate, calcState.current_x / grain_size, valR);
-                    }
-                    calcState.stretchedLX[iX] = valL;
-                    calcState.stretchedRX[iX] = valR;
-                }
-                {
-                    let x2 = calcState.current_grain_start2 + calcState.current_x2;
-                    let valL2 = this._bufferLeft[x2];
-                    let valR2 = this._bufferRight[x2];
+    //                 valL2 = sinFadeWindow(fadeStartRate, calcState.current_x2 / grain_size, valL2);
+    //                 valR2 = sinFadeWindow(fadeStartRate, calcState.current_x2 / grain_size, valR2);
+    //                 calcState.stretchedLX[iX] += valL2;
+    //                 calcState.stretchedRX[iX] += valR2;
+    //             }
+    //             calcState.current_x++;
+    //             calcState.current_x2++;
 
-                    valL2 = sinFadeWindow(fadeStartRate, calcState.current_x2 / grain_size, valL2);
-                    valR2 = sinFadeWindow(fadeStartRate, calcState.current_x2 / grain_size, valR2);
-                    calcState.stretchedLX[iX] += valL2;
-                    calcState.stretchedRX[iX] += valR2;
-                }
+    //             let vol = this._volume;
+    //             let pan = this._pan;
+    //             let volLeft = 0;
+    //             let volRight = 0;
+    //             if (pan < 0) {
+    //                 volLeft = 1.0;
+    //                 volRight = pan + 1;
+    //             } else {
+    //                 volLeft = -1 * pan + 1;
+    //                 volRight = 1.0;
+    //             }
 
-                calcState.current_x++;
-                calcState.current_x2++;
+    //             inBufL[iX] += calcState.stretchedLX[iX]
+    //                 * vol * volLeft;
+    //             inBufR[iX] += calcState.stretchedRX[iX]
+    //                 * vol * volRight;
 
-                let vol = this._volume;
-                let pan = this._pan;;
-                let volLeft = 0;
-                let volRight = 0;
-                if (pan < 0) {
-                    volLeft = 1.0;
-                    volRight = pan + 1;
-                } else {
-                    volLeft = -1 * pan + 1;
-                    volRight = 1.0;
-                }
 
-                inBufL[iX] += calcState.stretchedLX[iX]
-                    * vol * volLeft;
-                inBufR[iX] += calcState.stretchedRX[iX]
-                    * vol * volRight;
+    //             this._currentFrame += 1 * 1 / ratio;
+    //             if (this._currentFrame > this._length) {
+    //                 this._currentFrame = 0;
+    //                 calcState.current_grain_start = 0;
+    //                 calcState.current_x = 0;
+    //                 calcState.current_grain_start2 = grain_size / 2;
+    //                 calcState.current_x2 = -1.0 * Math.round(grain_size / 2 * ratio);
+    //                 if (!this._loop) {
+    //                     this._playing = false;
+    //                     triggerStateChanged();
+    //                     break;
+    //                 }
+    //             }
 
-                this._currentFrame += 1 * 1 / ratio;
-                if (this._currentFrame > this.length) {
-                    this._currentFrame = 0;
-                    calcState.current_grain_start = 0;
-                    calcState.current_x = 0;
-                    calcState.current_grain_start2 = grain_size;
-                    calcState.current_x2 = Math.round(grain_size * (ratio) * (-1));
+    //         }
+    //     } else {
+    //         for (let iX = 0; iX < len; iX++) {
 
-                    if (!this._loop) {
-                        this._playing = false;
-                        triggerStateChanged();
-                        break;
-                    }
-                }
-            }
-        }
-    }
+    //             //wait for time to come.
+    //             if (this._waitCount > 0) {
+    //                 this._waitCount--;
+    //                 continue;
+    //             }
+
+    //             const fadeStartRate = 1 - ratio;
+    //             // const fadeStartRate = 0;
+    //             if (calcState.current_x > grain_size * (1 + ratio - 1 / 2)) {
+    //                 calcState.current_grain_start += grain_size * 2;
+    //                 calcState.current_x = Math.round(grain_size * (ratio - 1 / 2) * (-1));
+    //             }
+    //             if (calcState.current_x2 > grain_size * (1 + ratio - 1 / 2)) {
+    //                 calcState.current_grain_start2 += grain_size * 2;
+    //                 calcState.current_x2 = Math.round(grain_size * (ratio - 1 / 2) * (-1));
+    //             }
+    //             {
+    //                 let x = calcState.current_grain_start + calcState.current_x;
+    //                 let valL = this._bufferLeft[x];
+    //                 let valR = this._bufferRight[x];
+    //                 if (calcState.current_x2 < 0) {
+    //                     //no windowing for some beggining frames
+    //                 } else {
+    //                     valL = sinFadeWindow(fadeStartRate, calcState.current_x / grain_size, valL);
+    //                     valR = sinFadeWindow(fadeStartRate, calcState.current_x / grain_size, valR);
+    //                 }
+    //                 calcState.stretchedLX[iX] = valL;
+    //                 calcState.stretchedRX[iX] = valR;
+    //             }
+    //             {
+    //                 let x2 = calcState.current_grain_start2 + calcState.current_x2;
+    //                 let valL2 = this._bufferLeft[x2];
+    //                 let valR2 = this._bufferRight[x2];
+
+    //                 valL2 = sinFadeWindow(fadeStartRate, calcState.current_x2 / grain_size, valL2);
+    //                 valR2 = sinFadeWindow(fadeStartRate, calcState.current_x2 / grain_size, valR2);
+    //                 calcState.stretchedLX[iX] += valL2;
+    //                 calcState.stretchedRX[iX] += valR2;
+    //             }
+
+    //             calcState.current_x++;
+    //             calcState.current_x2++;
+
+    //             let vol = this._volume;
+    //             let pan = this._pan;;
+    //             let volLeft = 0;
+    //             let volRight = 0;
+    //             if (pan < 0) {
+    //                 volLeft = 1.0;
+    //                 volRight = pan + 1;
+    //             } else {
+    //                 volLeft = -1 * pan + 1;
+    //                 volRight = 1.0;
+    //             }
+
+    //             inBufL[iX] += calcState.stretchedLX[iX]
+    //                 * vol * volLeft;
+    //             inBufR[iX] += calcState.stretchedRX[iX]
+    //                 * vol * volRight;
+
+    //             this._currentFrame += 1 * 1 / ratio;
+    //             if (this._currentFrame > this.length) {
+    //                 this._currentFrame = 0;
+    //                 calcState.current_grain_start = 0;
+    //                 calcState.current_x = 0;
+    //                 calcState.current_grain_start2 = grain_size;
+    //                 calcState.current_x2 = Math.round(grain_size * (ratio) * (-1));
+
+    //                 if (!this._loop) {
+    //                     this._playing = false;
+    //                     triggerStateChanged();
+    //                     break;
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
 
 
@@ -707,9 +715,13 @@ ShadowTrack.prototype.getAt = function (offset) {
             let valL = 0;
             let valR = 0;
 
-            if (0 <= x && x < this._bufferLeft.length){
-                valL = this._bufferLeft[x];
-                valR = this._bufferRight[x];
+            if (0 <= x && x < this._length){
+                for (let si = 0; si < 5; si++){
+                    valL += this._bufferLeft[si][x] * this._stemVolume[si];
+                    valR += this._bufferRight[si][x] * this._stemVolume[si];
+                }
+                // valL = this._bufferLeft[x];
+                // valR = this._bufferRight[x];
             }
             if (current_x2 < 0) {
                 //no windowing for some beggining frames
@@ -726,9 +738,11 @@ ShadowTrack.prototype.getAt = function (offset) {
             let valL2 = 0;
             let valR2 = 0;
 
-            if (0 <= x2 && x2 < this._bufferLeft.length ){
-                valL2 = this._bufferLeft[x2];
-                valR2 = this._bufferRight[x2];
+            if (0 <= x2 && x2 < this._length ){
+                for (let si = 0; si < 5; si++) {
+                    valL2 += this._bufferLeft[si][x2] * this._stemVolume[si];
+                    valR2 += this._bufferRight[si][x2] * this._stemVolume[si];
+                }
             }
 
 
@@ -798,9 +812,11 @@ ShadowTrack.prototype.getAt = function (offset) {
             let valL = 0;
             let valR = 0;
 
-            if (0 <= x && x < this._bufferLeft.length) {
-                valL = this._bufferLeft[x];
-                valR = this._bufferRight[x];
+            if (0 <= x && x < this._length) {
+                for (let si = 0; si < 5; si++) {
+                    valL += this._bufferLeft[si][x] * this._stemVolume[si];
+                    valR += this._bufferRight[si][x] * this._stemVolume[si];
+                }
             }
             if (current_x2 < 0) {
                 //no windowing for some beggining frames
@@ -818,9 +834,11 @@ ShadowTrack.prototype.getAt = function (offset) {
             let valL2 = 0;
             let valR2 = 0;
 
-            if (0 <= x2 && x2 < this._bufferLeft.length) {
-                valL2 = this._bufferLeft[x2];
-                valR2 = this._bufferRight[x2];
+            if (0 <= x2 && x2 < this._length) {
+                for (let si = 0; si < 5; si++) {
+                    valL2 += this._bufferLeft[si][x2] * this._stemVolume[si];
+                    valR2 += this._bufferRight[si][x2] * this._stemVolume[si];
+                }
             }
 
             valL2 = sinFadeWindow(fadeStartRate, current_x2 / GRAIN_SIZE, valL2);
@@ -846,167 +864,9 @@ ShadowTrack.prototype.getAt = function (offset) {
     ret[0] = retL * vol * volLeft;
     ret[1] = retR * vol * volRight;
     if(isNaN(ret[0]) || isNaN(ret[1])){
-        console.log("warning getAt returns NaN");
+        console.log("warning :getAt returns NaN");
     }
     return ret;
-}
-
-function stretch_continue3(index, inBufL, inBufR, len) {
-
-    let grain_size = GRAIN_SIZE;
-    let ratio = mydata.trackRatio[index];
-
-    if (ratio >= 1) {
-        for (let iX = 0; iX < len; iX++) {
-
-            //wait for time to come.
-            if (mydata.trackWaitCount[index] > 0) {
-                mydata.trackWaitCount[index]--;
-                continue;
-            }
-
-            const fadeStartRate = -1 / 2 * ratio + 1;
-
-            if (calcState.current_x[index] > grain_size * (1 + (ratio - 1) / 2)) {
-                calcState.current_grain_start[index] += grain_size;
-                calcState.current_x[index] = Math.round((grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1))
-            }
-            if (calcState.current_x2[index] > grain_size * (1 + (ratio - 1) / 2)) {
-                calcState.current_grain_start2[index] += grain_size;
-                calcState.current_x2[index] = Math.round((grain_size * (1 + (ratio - 1) / 2) - grain_size) * (-1));
-            }
-
-
-            {
-                let x = calcState.current_grain_start[index] + calcState.current_x[index];
-
-                let valL = mydata.trackBufferLeft[index][x];
-                let valR = mydata.trackBufferRight[index][x];
-                if (calcState.current_x2[index] < 0) {
-                    //no windowing for some beggining frames
-                } else {
-                    valL = sinFadeWindow(fadeStartRate, calcState.current_x[index] / grain_size, valL);
-                    valR = sinFadeWindow(fadeStartRate, calcState.current_x[index] / grain_size, valR);
-                }
-                calcState.stretchedLX[index][iX] = valL;
-                calcState.stretchedRX[index][iX] = valR;
-            }
-
-            {
-                let x2 = calcState.current_grain_start2[index] + calcState.current_x2[index];
-                let valL2 = mydata.trackBufferLeft[index][x2];
-                let valR2 = mydata.trackBufferRight[index][x2];
-
-                valL2 = sinFadeWindow(fadeStartRate, calcState.current_x2[index] / grain_size, valL2);
-                valR2 = sinFadeWindow(fadeStartRate, calcState.current_x2[index] / grain_size, valR2);
-                calcState.stretchedLX[index][iX] += valL2;
-                calcState.stretchedRX[index][iX] += valR2;
-            }
-            calcState.current_x[index]++;
-            calcState.current_x2[index]++;
-
-            let vol = mydata.trackVolume[index];
-            let pan = mydata.trackPan[index];
-            let volLeft = 0;
-            let volRight = 0;
-            if (pan < 0) {
-                volLeft = 1.0;
-                volRight = pan + 1;
-            } else {
-                volLeft = -1 * pan + 1;
-                volRight = 1.0;
-            }
-
-            inBufL[iX] += calcState.stretchedLX[index][iX]
-                * vol * volLeft;
-            inBufR[iX] += calcState.stretchedRX[index][iX]
-                * vol * volRight;
-
-
-            mydata.trackCurrentFrame[index] += 1 * 1 / ratio;
-            if (mydata.trackCurrentFrame[index] > mydata.trackLength[index]) {
-                mydata.trackCurrentFrame[index] = 0;
-                calcState.current_grain_start[index] = 0;
-                calcState.current_x[index] = 0;
-                calcState.current_grain_start2[index] = mydata.grain_size / 2;
-                calcState.current_x2[index] = -1.0 * Math.round(mydata.grain_size / 2 * mydata.trackRatio[index]);
-            }
-
-        }
-    } else {
-        for (let iX = 0; iX < len; iX++) {
-
-            //wait for time to come.
-            if (mydata.trackWaitCount[index] > 0) {
-                mydata.trackWaitCount[index]--;
-                continue;
-            }
-
-            const fadeStartRate = 1 - ratio;
-            // const fadeStartRate = 0;
-            if (calcState.current_x[index] > grain_size * (1 + ratio - 1 / 2)) {
-                calcState.current_grain_start[index] += grain_size * 2;
-                calcState.current_x[index] = Math.round(grain_size * (ratio - 1 / 2) * (-1));
-            }
-            if (calcState.current_x2[index] > grain_size * (1 + ratio - 1 / 2)) {
-                calcState.current_grain_start2[index] += grain_size * 2;
-                calcState.current_x2[index] = Math.round(grain_size * (ratio - 1 / 2) * (-1));
-            }
-            {
-                let x = calcState.current_grain_start[index] + calcState.current_x[index];
-                let valL = mydata.trackBufferLeft[index][x];
-                let valR = mydata.trackBufferRight[index][x];
-                if (calcState.current_x2[index] < 0) {
-                    //no windowing for some beggining frames
-                } else {
-                    valL = sinFadeWindow(fadeStartRate, calcState.current_x[index] / grain_size, valL);
-                    valR = sinFadeWindow(fadeStartRate, calcState.current_x[index] / grain_size, valR);
-                }
-                calcState.stretchedLX[index][iX] = valL;
-                calcState.stretchedRX[index][iX] = valR;
-            }
-            {
-                let x2 = calcState.current_grain_start2[index] + calcState.current_x2[index];
-                let valL2 = mydata.trackBufferLeft[index][x2];
-                let valR2 = mydata.trackBufferRight[index][x2];
-
-                valL2 = sinFadeWindow(fadeStartRate, calcState.current_x2[index] / grain_size, valL2);
-                valR2 = sinFadeWindow(fadeStartRate, calcState.current_x2[index] / grain_size, valR2);
-                calcState.stretchedLX[index][iX] += valL2;
-                calcState.stretchedRX[index][iX] += valR2;
-            }
-
-            calcState.current_x[index]++;
-            calcState.current_x2[index]++;
-
-            let vol = mydata.trackVolume[index];
-            let pan = mydata.trackPan[index];
-            let volLeft = 0;
-            let volRight = 0;
-            if (pan < 0) {
-                volLeft = 1.0;
-                volRight = pan + 1;
-            } else {
-                volLeft = -1 * pan + 1;
-                volRight = 1.0;
-            }
-
-            inBufL[iX] += calcState.stretchedLX[index][iX]
-                * vol * volLeft;
-            inBufR[iX] += calcState.stretchedRX[index][iX]
-                * vol * volRight;
-
-            mydata.trackCurrentFrame[index] += 1 * 1 / ratio;
-            if (mydata.trackCurrentFrame[index] > mydata.trackLength[index]) {
-                mydata.trackCurrentFrame[index] = 0;
-                calcState.current_grain_start[index] = 0;
-                calcState.current_x[index] = 0;
-                calcState.current_grain_start2[index] = grain_size;
-                calcState.current_x2[index] = Math.round(grain_size * (ratio) * (-1));
-            }
-
-        }
-    }
 }
 
 

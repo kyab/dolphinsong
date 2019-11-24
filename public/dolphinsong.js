@@ -224,6 +224,11 @@ window.addEventListener("load", function(){
 		b.addEventListener("drop" , onTrackDrop,false);
 	});
 
+	const playModeSelect = document.querySelectorAll(".playModeSelect");
+	playModeSelect.forEach(function(s){
+		s.addEventListener("change", onPlayModeChanged, false);
+	});
+
 	const ttButtons = document.querySelectorAll(".ttButton");
 	ttButtons.forEach(function(b){
 		b.addEventListener("click", onTTButtonClicked, false);
@@ -299,6 +304,23 @@ window.addEventListener("load", function(){
 	volumeResetButtons.forEach(function(b){
 		b.addEventListener("click", onVolumeResetClicked, false);
 	});
+
+	$(".stemVolumeButton").get().forEach(function(b){
+		b.addEventListener("click", onStemVolumeClicked, false);
+	});
+
+	const drumVolumeSliders = document.querySelectorAll(".stemVolSliderDrams");
+	drumVolumeSliders.forEach(function(s){
+		s.addEventListener("input", onDrumVolumeSliderChanged, false);
+	});
+
+	const drumVolumeResetButtons = document.querySelectorAll(".stemVolResetButtonDrams");
+	drumVolumeResetButtons.forEach(function(b){
+		b.addEventListener("click", onDrumVolumeResetClicked, false);
+	});
+
+
+
 
 	const pans = document.querySelectorAll(".pan");
 	pans.forEach(function(p){
@@ -433,6 +455,23 @@ function onVolumeResetClicked(e){
 	onVolumeChanged(index);
 }
 
+function onStemVolumeClicked(e){
+	let index = getIndexFromEvent(e, ".stemVolumeButton");
+	onStemVolume(index);
+}
+
+function onDrumVolumeSliderChanged(e){
+	let index = getIndexFromEvent(e, ".stemVolSliderDrams");
+	onDrumVolumeChanged(index);
+}
+
+function onDrumVolumeResetClicked(e) {
+	let index = getIndexFromEvent(e, ".stemVolResetButtonDrams");
+	document.querySelectorAll(".stemVolSliderDrams")[index].value = 100;
+	onDrumVolumeChanged(index);
+}
+
+
 function onPanSliderChanged(e){
 	let index = getIndexFromEvent(e, ".panSlider");
 	onPanChanged(index);
@@ -490,10 +529,19 @@ function onPlayButtonClicked(e){
 	onPlayStopTrack(index);
 }
 
+function onPlayModeChanged(e){
+	let index = getIndexFromEvent(e, ".playModeSelect");
+	let select = document.querySelectorAll(".playModeSelect")[index];
+	let mode = select.options[select.selectedIndex].text;
+	mydata.tracks[index].playMode = mode;
+	console.log(mode);
+}
+
 function onTTButtonClicked(e){
 	let index = getIndexFromEvent(e, ".ttButton");
 	onTT(index);
 }
+
 
 
 function onTrackDragover(e){
@@ -722,7 +770,7 @@ function sync(index){
 		break;
 	}
 
-	console.log("trackRatio for " + (index+1) + " = " + mydata.tracks[index]._ratio);
+	// console.log("trackRatio for " + (index+1) + " = " + mydata.tracks[index]._ratio);
 
 	mydata.mainNode.port.postMessage({
 		"cmd" : "setRatio",
@@ -875,6 +923,101 @@ function onVolumeChanged(index){
 	volumeLabel.innerText = roundedDb.toString() + "dB";
 }
 
+function onBassVolumeChanged(index) {
+	let s = $("#volumeSliderBass" + index.toString()).get(0);
+
+	let val = s.value;
+
+	let db = 20 * Math.log10(val / 100);
+	let roundedDb = Math.round(db * 100) / 100;
+
+	let si = STEM_INDEX_BASS;
+
+	mydata.mainNode.port.postMessage({
+		"cmd": "setStemVolume",
+		"index": index,
+		"stemIndex": si,
+		"volume": val / 100
+	});
+}
+
+
+function onDrumsVolumeChanged(index){
+	let s = $("#volumeSliderDrums" + index.toString()).get(0);
+
+	let val = s.value;
+
+	let db = 20 * Math.log10(val / 100);
+	let roundedDb = Math.round(db * 100) / 100;
+
+	let si = STEM_INDEX_DRUMS;
+
+	mydata.mainNode.port.postMessage({
+		"cmd": "setStemVolume",
+		"index": index,
+		"stemIndex": si,
+		"volume": val / 100
+	});
+}
+
+function onOtherVolumeChanged(index) {
+	let s = $("#volumeSliderOther" + index.toString()).get(0);
+
+	let val = s.value;
+
+	let db = 20 * Math.log10(val / 100);
+	let roundedDb = Math.round(db * 100) / 100;
+
+	let si = STEM_INDEX_OTHER;
+
+	mydata.mainNode.port.postMessage({
+		"cmd": "setStemVolume",
+		"index": index,
+		"stemIndex": si,
+		"volume": val / 100
+	});
+}
+
+function onPianoVolumeChanged(index) {
+	let s = $("#volumeSliderPiano" + index.toString()).get(0);
+
+	let val = s.value;
+
+	let db = 20 * Math.log10(val / 100);
+	let roundedDb = Math.round(db * 100) / 100;
+
+	let si = STEM_INDEX_PIANO;
+
+	mydata.mainNode.port.postMessage({
+		"cmd": "setStemVolume",
+		"index": index,
+		"stemIndex": si,
+		"volume": val / 100
+	});
+}
+
+
+
+
+function onVocalsVolumeChanged(index) {
+	let s = $("#volumeSliderVocals" + index.toString()).get(0);
+
+	let val = s.value;
+
+	let db = 20 * Math.log10(val / 100);
+	let roundedDb = Math.round(db * 100) / 100;
+
+	let si = STEM_INDEX_VOCALS;
+
+	mydata.mainNode.port.postMessage({
+		"cmd": "setStemVolume",
+		"index": index,
+		"stemIndex": si,
+		"volume": val / 100
+	});
+}
+
+
 function onPanChanged(index){
 	const panSlider = document.querySelectorAll(".panSlider")[index];
 	const panLabel = document.querySelectorAll(".panLabel")[index];
@@ -961,46 +1104,132 @@ function onLoadSampleFromFile(index, file){
 }
 
 function onLoadSampleFromList(index){
-	loadSample(index, mydata.soundList.selectedText());
+	loadSample2(index, mydata.soundList.selectedText());
 }
 
-function loadSample(index, soundName){
-	//get blob by ajax
-	var xhr = new XMLHttpRequest();	
-	xhr.open("GET", "/sound/" + soundName);
-	xhr.responseType = "blob";
-	xhr.onreadystatechange = function(){
-		if (this.readyState == 4 && this.status == 200){
-			done(this.response);
+// https://teratail.com/questions/75149
+function createLoaderPromise(index, soundName, stemName){
+	let p = new Promise(function(resolve, reject){
+		let xhr = new XMLHttpRequest();
+		xhr.open("GET", "/sound/" + soundName + "/" + stemName);
+		xhr.responseType = "blob";
+		xhr.onreadystatechange = function(){
+			if (this.readyState == 4 && this.status == 200) {
+				resolve(this.response);
+			}			
+		};
+		xhr.send();
+	});
+	return p;
+}
+
+function loadSample2(index, soundName){
+	let promises = [];
+	promises[0] = createLoaderPromise(index, soundName, "bass");
+	promises[1] = createLoaderPromise(index, soundName, "drums");
+	promises[2] = createLoaderPromise(index, soundName, "other");
+	promises[3] = createLoaderPromise(index, soundName, "piano");
+	promises[4] = createLoaderPromise(index, soundName, "vocals");
+
+	Promise.all(promises).then(function(responses){
+		console.log("all stems downloaded");
+		console.log(responses);
+		onSampleDownloaded(index, responses[0], soundName, "bass");
+		onSampleDownloaded(index, responses[1], soundName, "drums");
+		onSampleDownloaded(index, responses[2], soundName, "other");
+		onSampleDownloaded(index, responses[3], soundName, "piano");
+		onSampleDownloaded(index, responses[4], soundName, "vocals");
+	});
+}
+
+function onSampleDownloaded(index, blob, soundName, stemName){
+
+	let si = 0;
+	switch (stemName) {
+		case "bass":
+			si = STEM_INDEX_BASS;
+			break;
+		case "drums":
+			si = STEM_INDEX_DRUMS;
+			break;
+		case "other":
+			si = STEM_INDEX_OTHER;
+			break;
+		case "piano":
+			si = STEM_INDEX_PIANO;
+			break;
+		case "vocals":
+			si = STEM_INDEX_VOCALS;
+			break;
+	}
+
+	console.log("onSampleDownloaded, " + si.toString());
+
+	mydata.tracks[index].loadSampleFromFile(blob, soundName, si)
+	.then(function () {
+		
+		let titles = document.querySelectorAll(".title");
+		titles[index].innerText = soundName;
+		{
+			if (!mydata.mainNode) return;
+
+			let m = {
+				"cmd": "setBufferStems",
+				"index": index,
+				"stemIndex" : si,
+				"left": mydata.tracks[index]._bufferLeft[si],
+				"right": mydata.tracks[index]._bufferRight[si]
+			};
+			let t = [
+				mydata.tracks[index]._bufferLeft[si].buffer,
+				mydata.tracks[index]._bufferRight[si].buffer
+			];
+
+			mydata.mainNode.port.postMessage(m, t);
 		}
-	}
-
-	//read and done;
-	var done = function(blob){
-		mydata.tracks[index].loadSampleFromFile(blob, soundName)
-		.then(function(){
-			let titles = document.querySelectorAll(".title");
-			titles[index].innerText = soundName;
-			{
-				if (!mydata.mainNode) return;
-
-				let m = {
-					"cmd" : "setBuffer",
-					"index" : index,
-					"left" : mydata.tracks[index]._bufferLeft,
-					"right" : mydata.tracks[index]._bufferRight
-				};
-				let t = [
-					mydata.tracks[index]._bufferLeft.buffer,
-					mydata.tracks[index]._bufferRight.buffer
-				];
-
-				mydata.mainNode.port.postMessage(m, t);
-			}
-		});
-	}
-	xhr.send();
+	});
 }
+
+
+// function loadSample(index, soundName){
+// 	//get blob by ajax
+// 	var xhr = new XMLHttpRequest();	
+// 	xhr.open("GET", "/sound/" + soundName + "/drams");
+// 	xhr.responseType = "blob";
+// 	xhr.onreadystatechange = function(){
+// 		if (this.readyState == 4 && this.status == 200){
+// 			console.log("soundName : " + soundName);
+// 			done(this.response);
+// 		}
+// 	}
+
+
+// 	//read and done;
+// 	var done = function(blob){
+// 		mydata.tracks[index].loadSampleFromFile(blob, soundName)
+// 		.then(function(){
+// 			let titles = document.querySelectorAll(".title");
+// 			titles[index].innerText = soundName;
+// 			{
+// 				if (!mydata.mainNode) return;
+
+// 				let m = {
+// 					"cmd" : "setBuffer",
+// 					"index" : index,
+// 					"left" : mydata.tracks[index]._bufferLeft,
+// 					"right" : mydata.tracks[index]._bufferRight
+// 				};
+// 				let t = [
+// 					mydata.tracks[index]._bufferLeft.buffer,
+// 					mydata.tracks[index]._bufferRight.buffer
+// 				];
+
+// 				mydata.mainNode.port.postMessage(m, t);
+// 			}
+// 		});
+// 	}
+// 	xhr.send();
+// }
 
 
 
@@ -1206,7 +1435,6 @@ function onPlayStopTrack(index){
 		masterTrack = mydata.tracks[masterIndex];
 	}
 
-	// mydata.tracks[index].playStop(masterTrack);
 	{
 		if (!mydata.mainNode) return;
 		let m = {
@@ -1515,8 +1743,7 @@ function startEditorEngine() {
 
 function startOutEngine(){
 	audioContext2 = new AudioContext({latencyHint:0});
-	// var scriptSource = audioContext2.createScriptProcessor(256/*latency*/,2,2);
-	// scriptSource.onaudioprocess = onAudioProcessOut;
+
 	var dest = audioContext2.createMediaStreamDestination();
 	
 	audioContext2.audioWorklet.addModule("mainworklet.js")
@@ -1525,36 +1752,6 @@ function startOutEngine(){
 			outputChannelCount:[2]
 		});
 		let mainNode = mydata.mainNode;
-
-		// // scriptSource.connect(dest);
-		// {
-		// 	let tuna = new Tuna(audioContext2);
-		// 	mydata.phaser = new tuna.Phaser({
-		// 		rate: 1.2,                     //0.01 to 8 is a decent range, but higher values are possible
-		// 		depth: 0.3,                    //0 to 1
-		// 		feedback: 0.8,                 //0 to 1+
-		// 		stereoPhase: 30,               //0 to 180
-		// 		baseModulationFrequency: 700,  //500 to 1500
-		// 		bypass: 1
-		// 	});
-		// 	scriptSource.connect(mydata.phaser);
-		// 	mydata.phaser.connect(mainNode);
-		// 	mainNode.connect(dest);
-		// 	// mainNode.port.postMessage("foo");
-		// }
-		// scriptSource.connect(mainNode);
-
-		// let filter = audioContext2.createScriptProcessor(1024,2,2);
-		// filter.onaudioprocess = onFilterProcess;
-		// mainNode.connect(filter);
-		// filter.connect(dest);
-
-		// let base = audioContext2.createBiquadFilter();
-		// base.type = "highshelf";
-		// base.frequency.value = 500;
-		// base.gain.value = 18;
-		// mainNode.connect(base);
-		// base.connect(dest);
 
 		mydata.filterNodeLow = audioContext2.createBiquadFilter();
 		mydata.filterNodeLow.type = "lowpass";
@@ -1570,8 +1767,6 @@ function startOutEngine(){
 		mydata.filterNodeLow.connect(mydata.filterNodeHigh);
 		mydata.filterNodeHigh.connect(dest);
 
-
-		// mainNode.connect(dest);
 
 		audioElem2 = new Audio();
 		audioElem2.srcObject = dest.stream;
@@ -1855,93 +2050,93 @@ function hanning_window(w, N){
 
 }
 
-function onAudioProcessOut(e){
-	// console.log("onAudioProcessOut");
-	let outLeft = e.outputBuffer.getChannelData(0);
-	let outRight = e.outputBuffer.getChannelData(1);
+// function onAudioProcessOut(e){
+// 	// console.log("onAudioProcessOut");
+// 	let outLeft = e.outputBuffer.getChannelData(0);
+// 	let outRight = e.outputBuffer.getChannelData(1);
 	
-	if (mydata.playing){
-		for (let i = 0 ; i < outLeft.length; i++){
-			outLeft[i] = audioBufferLeft[mydata.currentFramePlay];
-			outRight[i] = audioBufferRight[mydata.currentFramePlay];
-			mydata.currentFramePlay++;
+// 	if (mydata.playing){
+// 		for (let i = 0 ; i < outLeft.length; i++){
+// 			outLeft[i] = audioBufferLeft[mydata.currentFramePlay];
+// 			outRight[i] = audioBufferRight[mydata.currentFramePlay];
+// 			mydata.currentFramePlay++;
 
-			if (mydata.selected){
-				if (mydata.currentFramePlay > mydata.selectEndFrame){
-					mydata.currentFramePlay = mydata.selectStartFrame;
-				}					
-			}else{
-				if (mydata.currentFramePlay > mydata.currentFrame){
-					mydata.playing = false;
-					redrawCanvas();
-					// playStateChanged();
+// 			if (mydata.selected){
+// 				if (mydata.currentFramePlay > mydata.selectEndFrame){
+// 					mydata.currentFramePlay = mydata.selectStartFrame;
+// 				}					
+// 			}else{
+// 				if (mydata.currentFramePlay > mydata.currentFrame){
+// 					mydata.playing = false;
+// 					redrawCanvas();
+// 					// playStateChanged();
 
-					break;
-				}
-			}
+// 					break;
+// 				}
+// 			}
 
-		}
-	}else{
-		for (let i = 0 ; i < outLeft.length; i++){
-			outLeft[i] = 0;
-			outRight[i] = 0;
-		}
-	}
+// 		}
+// 	}else{
+// 		for (let i = 0 ; i < outLeft.length; i++){
+// 			outLeft[i] = 0;
+// 			outRight[i] = 0;
+// 		}
+// 	}
 
 
-	for (let i = 0; i < TRACK_NUM; i++) {
+// 	for (let i = 0; i < TRACK_NUM; i++) {
 
-		let speed = turnTables[i].speed;
-		let speedA = turnTableA.speed;
-		let speedB = turnTableB.speed;
+// 		let speed = turnTables[i].speed;
+// 		let speedA = turnTableA.speed;
+// 		let speedB = turnTableB.speed;
 
-		if (mydata.tracks[i].isPlaying()) {
+// 		if (mydata.tracks[i].isPlaying()) {
 			
-			let s = 1.0;
-			let gain = 1.0;
-			let AorB = mydata.tracks[i].getABSwitch();
-			if (AorB == "A"){
-				s = speedA;
-				if (mydata.abSwitchValue >= 0){
-					gain = - mydata.abSwitchValue + 1.0;
-				}else{
-					gain = 1.0;
-				}
-			}else if (AorB == "B"){
-				s = speedB;
-				if (mydata.abSwitchValue <=0){
-					gain = mydata.abSwitchValue + 1.0;
-				}else{
-					gain = 1.0;
-				}
-			}else{
-				s = speed;
-				gain = 1.0;
-			}
+// 			let s = 1.0;
+// 			let gain = 1.0;
+// 			let AorB = mydata.tracks[i].getABSwitch();
+// 			if (AorB == "A"){
+// 				s = speedA;
+// 				if (mydata.abSwitchValue >= 0){
+// 					gain = - mydata.abSwitchValue + 1.0;
+// 				}else{
+// 					gain = 1.0;
+// 				}
+// 			}else if (AorB == "B"){
+// 				s = speedB;
+// 				if (mydata.abSwitchValue <=0){
+// 					gain = mydata.abSwitchValue + 1.0;
+// 				}else{
+// 					gain = 1.0;
+// 				}
+// 			}else{
+// 				s = speed;
+// 				gain = 1.0;
+// 			}
 
 
-			for (let j = 0; j < outLeft.length; j++) {
-				let x0 = Math.floor(j * s);
-				let x1 = Math.ceil(j * s);
-				let y0 = mydata.tracks[i].getAt(x0);
-				let y1 = mydata.tracks[i].getAt(x1);
+// 			for (let j = 0; j < outLeft.length; j++) {
+// 				let x0 = Math.floor(j * s);
+// 				let x1 = Math.ceil(j * s);
+// 				let y0 = mydata.tracks[i].getAt(x0);
+// 				let y1 = mydata.tracks[i].getAt(x1);
 
-				let y_l = linearInterporation(x0, y0[0], x1, y1[0], j*s);
-				let y_r = linearInterporation(x0, y0[1], x1, y1[1], j*s);
+// 				let y_l = linearInterporation(x0, y0[0], x1, y1[0], j*s);
+// 				let y_r = linearInterporation(x0, y0[1], x1, y1[1], j*s);
 
-				outLeft[j] += y_l*gain;
-				outRight[j] += y_r*gain;
-			}
-			mydata.tracks[i].consume_scratch(Math.round(outLeft.length * s));
-			mydata.tracks[i].consume_backyard(outLeft.length);
-		}
-	}
+// 				outLeft[j] += y_l*gain;
+// 				outRight[j] += y_r*gain;
+// 			}
+// 			mydata.tracks[i].consume_scratch(Math.round(outLeft.length * s));
+// 			mydata.tracks[i].consume_backyard(outLeft.length);
+// 		}
+// 	}
 
-	if (mydata.vTrack.isPlaying()){
-		mydata.vTrack.process(outLeft, outRight, outLeft.length);
-	}
+// 	if (mydata.vTrack.isPlaying()){
+// 		mydata.vTrack.process(outLeft, outRight, outLeft.length);
+// 	}
 
-}
+// }
 
 function linearInterporation(x0, y0, x1, y1, x){
 	if (x0 == x1){return y0;}
@@ -1951,33 +2146,7 @@ function linearInterporation(x0, y0, x1, y1, x){
 	return y;
 }
 
-// function writeWithRatio(outLeft, outRight, ratio){
 
-// 	let toSamples = outLeft.length;
-// 	let count = 0;
-// 	let startPoint = mydata.tempRead;
-// 	for (let targetSample = 0; targetSample < toSamples; targetSample++){
-// 		let x0 = Math.floor(targetSample*ratio);
-// 		let x1 = Math.ceil(targetSample*ratio);
-		
-// 		let y0 = mydata.tempBufferL[startPoint + x0];
-// 		let y1 = mydata.tempBufferL[startPoint + x1];
-
-// 		let val = (y0 + y1)/2;
-
-// 		outLeft[targetSample] = val;
-// 		outRight[targetSample] = val;
-// 	}
-// 	mydata.tempRead += Math.round(toSamples * ratio);
-// }
-
-// function pushTo(left, right){
-// 	for (let i = 0 ; i < left.length; i++){
-// 		mydata.tempBufferL[mydata.tempWrite + i] = left[i];
-// 		mydata.tempBufferR[mydata.tempWrite + i] = right[i];
-// 	}
-// 	mydata.tempWrite += left.length;
-// }
 
 function startRecord(){
 	mydata.currentFrame = 0;
@@ -2163,6 +2332,13 @@ function onLevelChanged(){
 }
 
 document.onkeydown = function (e){
+
+	if (e.target == $("#upfilename").get(0)) {
+		// console.log("break");
+		return;
+	}
+
+
 	switch(e.keyCode){
 	case 77 /*m*/:
 		{
@@ -2279,6 +2455,12 @@ document.onkeydown = function (e){
 }
 
 document.onkeyup = function (e){
+	if (e.target == $("#upfilename").get(0)) {
+		// console.log("break");
+		return;
+	}
+
+
 	switch(e.keyCode){
 	case 90 /*z*/:
 		e.stopPropagation();
@@ -2626,7 +2808,7 @@ function createWAVBlob(){
 function exportWAV(){
 	var blob = createWAVBlob();
 	var a = document.createElement("a");
-	a.download = "sample.wav";
+	a.download = "editor.wav";
 	a.href = window.URL.createObjectURL(blob);
 	a.click();
 }
@@ -2635,8 +2817,27 @@ function uploadWAV(){
 	var blob = createWAVBlob();
 	var formData = new FormData();
 	formData.append("upfile", blob);
-	formData.append("fname","anything.wav" );
+	let fileName = null;
 
+	//ask user for filename
+	$("#uploadDialog").dialog({
+		modal:true,
+		title:"Input file name",
+		buttons : { 
+			"Upload" : function(){
+				fileName = $("#upfilename").val();
+				$(this).dialog("close");
+				formData.append("fname", fileName);
+				uploadWAV_upload(formData);
+			},
+			"Cancel" : function(){
+				$(this).dialog("close");
+			}
+		}
+	});
+}
+
+function uploadWAV_upload(formData){
 	$.ajax("./uploadblob", {
 		method:"POST",
 		data:formData,
@@ -2644,6 +2845,7 @@ function uploadWAV(){
 		processData : false,
 		complete : function(data) {
 			console.log("upload done(blob)");
+			mydata.soundList.reload();
 			console.log(data);
 		}
 	});
@@ -2904,8 +3106,11 @@ function soundDeleteClicked(){
 	});
 }
 
+mydata.lastClockSec= 0;
 
+// http://www2.odn.ne.jp/~cbu69490/MIDI/MIDIlect/MIDIlect3.html
 function onMIDIMessage(e){
+	// console.log(e);
 	let first = e.data[0] >> 4;
 	let second = e.data[1];
 	let third = e.data[2];
@@ -2932,6 +3137,31 @@ function onMIDIMessage(e){
 			onControlChange(controlNumber, value, e.timeStamp/1000.0);
 		}
 		break;
+
+	case 0x0f:
+		if (e.data[0] == 0xf8){	//MIDI clock
+			if (mydata.lastClockSec == 0){
+				mydata.lastClockSec = e.timeStamp;
+			}else{
+				let duration = e.timeStamp - mydata.lastClockSec;
+				mydata.lastClockSec = e.timeStamp;
+				duration *= 24;
+				let bps = 1 / duration;
+				let bpm = bps * 60 * 1000;
+				
+				console.log("bpm(by MIDI clock) = " + bpm.toString());
+
+				//test
+				mydata.bpm = bpm;
+				sync(0);
+
+			}
+			//console.log("MIDI clock received : " + e.timeStamp.toString());
+		}
+		break;
+
+	default:
+		console.log(e);
 	}
 }
 
@@ -3195,6 +3425,73 @@ function onEffectBypassChanged(e){
 	}
 }
 
+function onStemVolume(index){
+
+	const elem = $(".stemVolDrams").get(index);
+	const h = 200;
+	const w = elem.clientWidth;
+
+	let iframeLink = '<iframe src="./stemControl" ';
+	iframeLink += 'width=' + w.toString() + ' ';
+	iframeLink += 'height=' + h.toString() + ' ';
+	iframeLink += '/>';
+
+	let content = '<div>';
+	content += '<input type="range" class="volumeSliderBass" id="volumeSliderBass'+index.toString() + '"min="0" max="200" value="100" step="1" />'
+	content += '<input type="range" class="volumeSliderDrums" id="volumeSliderDrums' + index.toString() + '"min="0" max="200" value="100" step="1" />'
+	content += '<input type="range" class="volumeSliderOther" id="volumeSliderOther' + index.toString() + '"min="0" max="200" value="100" step="1" />'
+	content += '<input type="range" class="volumeSliderPiano" id="volumeSliderPiano' + index.toString() + '"min="0" max="200" value="100" step="1" />'
+	content += '<input type="range" class="volumeSliderVocals" id="volumeSliderVocals'+index.toString() + '"min="0" max="200" value="100" step="1" />'
+	content += '</div>';
+
+
+	$.jsPanel({
+		position : {
+			my : "center-top",
+			at : "center-bottom",
+			of :elem,
+			offsetY : 1
+		},
+		panelSize : {width : w, height:h},
+		headerControls: {
+			controls : "closeonly"
+		},
+		headerTitle : "",
+		resizable : false,
+		content: content,
+		callback : function () { stemPanelLoaded(index);}
+	});
+}
+
+function stemPanelLoaded(index){
+	let elem = null;
+	elem = $("#volumeSliderBass"+index.toString()).get(0);
+	elem.addEventListener("input", function(e){
+		onBassVolumeChanged(index);
+	});
+
+	elem = $("#volumeSliderDrums" + index.toString()).get(0);
+	elem.addEventListener("input", function(e){
+		onDrumsVolumeChanged(index);
+	});
+
+	elem = $("#volumeSliderOther" + index.toString()).get(0);
+	elem.addEventListener("input", function (e) {
+		onOtherVolumeChanged(index);
+	});
+
+	elem = $("#volumeSliderPiano" + index.toString()).get(0);
+	elem.addEventListener("input", function (e) {
+		onPianoVolumeChanged(index);
+	});
+
+	elem = $("#volumeSliderVocals" + index.toString()).get(0);
+	elem.addEventListener("input", function (e) {
+		onVocalsVolumeChanged(index);
+	});
+
+}
+
 
 function onTT(index){
 	console.log("onTT index = " + index.toString());
@@ -3229,7 +3526,7 @@ function onABTT(AorB){
 			resize : function(){ ttResized(turnTable);}
 		},
 		onclosed: function() {ttClosed(turnTable);}
-	})
+	});
 }
 
 function ttLoaded(index, AorB){

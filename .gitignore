@@ -4,6 +4,12 @@ vender/bundle/
 Gemfile.lock
 vendor/
 dolphinsong.db
+pretrained_models/
 .env
+.vscode
+data/__sounds
+data/__splitted
+data/sounds_back_20191118
+myspleeter/output
 
 

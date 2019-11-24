@@ -321,6 +321,18 @@ body{
 		</tr>	
 		<tr>
 			<% @track_num.times do |n| %>
+			<td class="playMode" dropzone="copy">
+				<select class="playModeSelect">
+					<option>toggle</option>
+					<option>push</option>
+					<option>shot</option>
+					<option>oneshot</option>
+				</select>
+			</td>
+			<% end %>
+		</tr>
+		<tr>
+			<% @track_num.times do |n| %>
 			<td class="ttControl" dropzone="copy">
 				A
 				<input type="checkbox" class="Achk"></input>
@@ -364,6 +376,16 @@ body{
 			</td>
 			<% end %>
 
+		</tr>
+		<tr>
+			<% @track_num.times do |n| %>
+			<td class="stemVolDrams" title="drums">
+				<input type="range" class="stemVolSliderDrams" min = "0" max="200" value="100" step="1"/>
+				<output class="stemVolLabelDrams">0.0dB</output>
+				<input type="button" class="stemVolResetButtonDrams" value="rst"/>
+				<input type="button" class="stemVolumeButton" value="stem"/>
+			</td>
+			<% end %>
 		</tr>
 		<tr>
 			<% @track_num.times do |n| %>
@@ -425,6 +447,11 @@ body{
 	<canvas id="canvas2" dropzone="copy"></canvas>
 	<canvas id="rulerCanvas"></canvas>
 </div>
+
+<div id="uploadDialog" style="display:none;">
+	<input type="text" id="upfilename" value=".wav"/>
+</div>
+
 	<!-- <div id="phaser">
 		<input type="checkbox" id="effectBypassChk" checked>bypass effect(phaser)</input>
 	</div> -->
@@ -433,7 +460,7 @@ body{
 	<script src="jquery.cookie-1.4.1.min.js"></script>
 <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
 <script type="text/javascript"
-	src="https://cdnjs.cloudflare.com/ajax/libs/jspanel3/3.11.0/jquery.jspanel-compiled.js"></script>
+	src="https://cdnjs.cloudflare.com/ajax/libs/jspanel3/3.11.2/jquery.jspanel-compiled.js"></script>
 
 
 	<script src="aurora.js"></script>

@@ -4,6 +4,8 @@ require "json"
 require "sinatra/activerecord"
 require "dotenv"
 require "./model.rb"
+require "httpclient"
+require "uri"
 
 require "omniauth-twitter"
 
@@ -136,6 +138,22 @@ class DolphinSong < Sinatra::Base
 		erb :dolphinsong
 	end
 
+	get "/daw" do
+		erb :daw
+	end
+
+	get "/daw2" do
+		erb :daw2
+	end
+
+	get "/daw3" do
+		erb :daw3
+	end
+
+	get "/stemControl" do
+		erb :stemControl
+	end
+
 	#testing erb
 	get "/testerb" do
 		@foo = "hoge"
@@ -185,6 +203,24 @@ class DolphinSong < Sinatra::Base
 		sound.filename = @filename
 		sound.save	
 
+		puts "separating to stems by myspleeter service"
+
+		#step1 : add 1sec silent to head 
+		#ffmpeg -i WARGNER.wav -af "adelay=1s|1s" -c:v copy WAGNER_prefixed.wav
+		
+		#step2 : spleeter it.
+		client = HTTPClient.new()
+		url = "http://localhost:8080/separate/" + @filename
+		url = URI.escape(url)
+		puts "requesting to " + url
+		response = client.get(url)
+		puts "response.status = " + response.status.to_s
+		puts "response : " + response.body
+
+		#step1 : trim 1sec from head.
+		#ffmpeg -i drums.wav  -af "atrim=1" -c:v copy drums_split.wav
+		#
+
 		content_type :json
 		filelist
 
@@ -198,8 +234,19 @@ class DolphinSong < Sinatra::Base
 		File.open(save_path , "wb") do |f|
 			f.write params[:upfile][:tempfile].read
 		end
+
+		puts "separating to stems by myspleeter service"
+
+		client = HTTPClient.new()
+		url = "http://localhost:8080/separate/" + @filename
+		puts "requesting to " + url
+		response = client.get(url)
+		puts "response.status = " + response.status.to_s
+		puts "response : " + response.body
+
 		content_type :json
 		filelist
+
 	end
 
 	post "/uploadsong" do
@@ -247,8 +294,25 @@ class DolphinSong < Sinatra::Base
 		"ok"
 	end
 
+	# get "/sound/:file" do
+	# 	send_file "data/sounds/#{params[:file]}"
+	# end
+
 	get "/sound/:file" do
-		send_file "data/sounds/#{params[:file]}"
+		puts "hi #{params[:file]}"
+		name = File.basename(params[:file], ".*")
+		path = "data/sounds/stems/#{name}/drums.wav"
+		send_file path
+	end
+
+	get "/sound/:file/:stem" do
+		puts "hi #{params[:file]}, #{params[:stem]}"
+		name = File.basename(params[:file], ".*")
+		stem = params[:stem]
+		path = "data/sounds/stems/#{name}/#{stem}.wav"
+		puts "path = " + path
+		send_file path
+
 	end
 
 	get "/song/:file" do

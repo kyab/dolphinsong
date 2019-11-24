@@ -74,6 +74,8 @@ function onAudioProcessBeatDetect(e){
 }
 
 function detectBPM(){
+
+    if (!mydata.autoBPM) return;
     let offlineContext = new OfflineAudioContext(2, _ringLen, 44100);
     let buffer = offlineContext.createBuffer(2, _ringLen, 44100);
 
@@ -127,9 +129,9 @@ function offlineCompletedBeatDetect(e){
 
     if(result.length == 0 ) return;
 
-    for (let i = 0; i < 1; i++) {
-        console.log(result[i].center + " : " + result[i].count);
-    }
+    // for (let i = 0; i < 1; i++) {
+    //     console.log(result[i].center + " : " + result[i].count);
+    // }
 
     if(mydata.autoBPM){
         mydata.bpm = result[0].center;

@@ -16,6 +16,7 @@ gem "rake"
 gem "irb"
 gem "rb-readline"
 gem "dotenv"
+gem "httpclient"
 
 gem "omniauth"
 gem "omniauth-twitter"
