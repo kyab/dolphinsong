@@ -427,6 +427,12 @@ window.addEventListener("load", function(){
 	$("#filterSlider").on("input", onFilterSliderChanged);
 
 
+	mydata.long = new LongWave(document.querySelector("#longPlayerCanvas"));
+	$("#longPlayPauseButton").on("click",function(e){
+		mydata.long.togglePlay();
+	});
+
+
 	initMedia();
 	initMIDI();
 
@@ -1801,6 +1807,7 @@ function onAudioProcess(e) {
     	}
 	}
 	
+	//loop editor
 	if (mydata.playing) {
 		for (let i = 0; i < outLeft.length; i++) {
 			outLeft[i] += audioBufferLeft[mydata.currentFramePlay];
@@ -1847,7 +1854,10 @@ function onAudioProcess(e) {
 			mydata.needsRedrawWave = true;
 
 		}
-    }
+	}
+	
+	//long
+	mydata.long.processAudio(outLeft, outRight, outLeft.length);
 };
 
 let preInLeft = new Float32Array(1024);
@@ -2050,93 +2060,6 @@ function hanning_window(w, N){
 
 }
 
-// function onAudioProcessOut(e){
-// 	// console.log("onAudioProcessOut");
-// 	let outLeft = e.outputBuffer.getChannelData(0);
-// 	let outRight = e.outputBuffer.getChannelData(1);
-	
-// 	if (mydata.playing){
-// 		for (let i = 0 ; i < outLeft.length; i++){
-// 			outLeft[i] = audioBufferLeft[mydata.currentFramePlay];
-// 			outRight[i] = audioBufferRight[mydata.currentFramePlay];
-// 			mydata.currentFramePlay++;
-
-// 			if (mydata.selected){
-// 				if (mydata.currentFramePlay > mydata.selectEndFrame){
-// 					mydata.currentFramePlay = mydata.selectStartFrame;
-// 				}					
-// 			}else{
-// 				if (mydata.currentFramePlay > mydata.currentFrame){
-// 					mydata.playing = false;
-// 					redrawCanvas();
-// 					// playStateChanged();
-
-// 					break;
-// 				}
-// 			}
-
-// 		}
-// 	}else{
-// 		for (let i = 0 ; i < outLeft.length; i++){
-// 			outLeft[i] = 0;
-// 			outRight[i] = 0;
-// 		}
-// 	}
-
-
-// 	for (let i = 0; i < TRACK_NUM; i++) {
-
-// 		let speed = turnTables[i].speed;
-// 		let speedA = turnTableA.speed;
-// 		let speedB = turnTableB.speed;
-
-// 		if (mydata.tracks[i].isPlaying()) {
-			
-// 			let s = 1.0;
-// 			let gain = 1.0;
-// 			let AorB = mydata.tracks[i].getABSwitch();
-// 			if (AorB == "A"){
-// 				s = speedA;
-// 				if (mydata.abSwitchValue >= 0){
-// 					gain = - mydata.abSwitchValue + 1.0;
-// 				}else{
-// 					gain = 1.0;
-// 				}
-// 			}else if (AorB == "B"){
-// 				s = speedB;
-// 				if (mydata.abSwitchValue <=0){
-// 					gain = mydata.abSwitchValue + 1.0;
-// 				}else{
-// 					gain = 1.0;
-// 				}
-// 			}else{
-// 				s = speed;
-// 				gain = 1.0;
-// 			}
-
-
-// 			for (let j = 0; j < outLeft.length; j++) {
-// 				let x0 = Math.floor(j * s);
-// 				let x1 = Math.ceil(j * s);
-// 				let y0 = mydata.tracks[i].getAt(x0);
-// 				let y1 = mydata.tracks[i].getAt(x1);
-
-// 				let y_l = linearInterporation(x0, y0[0], x1, y1[0], j*s);
-// 				let y_r = linearInterporation(x0, y0[1], x1, y1[1], j*s);
-
-// 				outLeft[j] += y_l*gain;
-// 				outRight[j] += y_r*gain;
-// 			}
-// 			mydata.tracks[i].consume_scratch(Math.round(outLeft.length * s));
-// 			mydata.tracks[i].consume_backyard(outLeft.length);
-// 		}
-// 	}
-
-// 	if (mydata.vTrack.isPlaying()){
-// 		mydata.vTrack.process(outLeft, outRight, outLeft.length);
-// 	}
-
-// }
 
 function linearInterporation(x0, y0, x1, y1, x){
 	if (x0 == x1){return y0;}
@@ -2712,6 +2635,7 @@ function onCanvasScroll(e){
 
 	if (Math.abs(e.wheelDeltaY) > Math.abs(e.wheelDeltaX)){
 
+		//zoon in/out
 		const deltaY = e.wheelDeltaY;
     	const canvas = document.querySelector("#canvas2");
       	const w = canvas.width
@@ -2734,6 +2658,8 @@ function onCanvasScroll(e){
 		mydata.needsRedrawWave = true;
 		redrawCanvas();
 	}else{
+
+		//horizontal scroll
 		const deltaX = -e.wheelDeltaX;
 		const prevStart = mydata.viewStartFrame;
 		const prevEnd = mydata.viewEndFrame;
@@ -3576,6 +3502,7 @@ function ttLoaded(index, AorB){
 		}
 		ttDraw(turnTable);
 	}, 10);
+
 }
 
 function ttResized(tt) {

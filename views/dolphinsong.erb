@@ -240,6 +240,14 @@ body{
 	cursor : grab;
 }
 
+#mainPlayer{
+	display: inline-block;
+	text-align: center;
+	width:600px;
+	/* background-color: rgb(100, 100, 228); */
+	overflow: auto;
+}
+
 
 </style>
 <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css" />
@@ -286,7 +294,18 @@ body{
 	</div>
 </div>
 
+
+
 <div id="main">
+<div id="mainPlayer">
+	<input id="longMasterCheck" type="checkbox">master</input>
+	<input id="longPlayPauseButton" type="button" value="play/pause"></input>
+	<input id="longPlayerLoopButton" type="button" value="loop"></input>
+	<div>
+		<canvas  dropzone="copy" width="600px" height="200px" id="longPlayerCanvas"></canvas>
+	</div>
+
+</div>
 <div id="songControl">
 	<input id="songLoadButton" type="button" value="&#x27a1;loadsong" />
 	<input id="songTitle" type="text" value="song1" />
@@ -469,7 +488,9 @@ body{
 	<script src="tuna-min.js"></script>
 	<script src="track.js"></script>
 	<script src="sidebar.js"></script>
+	<script src="dolphinsong2.js"></script>
 	<script src="dolphinsong.js"></script>
+
 	<script src="beatdetect.js"></script>
 </body>
 </html>
