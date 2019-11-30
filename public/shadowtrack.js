@@ -182,81 +182,81 @@ export function ShadowTrack() {
         that._loaded = true;
     }
 
-    this.loadSampleFromFile = function (file, name) {
-        return new Promise(function (resolve, reject) {
-            tryLoadSampleFromFileStandard(file)
-            .then(function (length) {
-                loadedFromFile(length, name);
-                resolve();
-            }, function (e) {
-                tryLoadSampleFromFileAAC(file)
-                .then(function (length) {
-                    loadedFromFile(length, name);
-                    resolve();
-                }, function (e) {
-                    reject(e);
-                });
-            });;
-        });
-    }
+    // this.loadSampleFromFile = function (file, name) {
+    //     return new Promise(function (resolve, reject) {
+    //         tryLoadSampleFromFileStandard(file)
+    //         .then(function (length) {
+    //             loadedFromFile(length, name);
+    //             resolve();
+    //         }, function (e) {
+    //             tryLoadSampleFromFileAAC(file)
+    //             .then(function (length) {
+    //                 loadedFromFile(length, name);
+    //                 resolve();
+    //             }, function (e) {
+    //                 reject(e);
+    //             });
+    //         });;
+    //     });
+    // }
 
-    function tryLoadSampleFromFileStandard(blob) {
-        return new Promise(function (resolve, reject) {
-            const fileReader = new FileReader();
-            fileReader.onload = function (e) {
-                const fileContents = e.target.result;
-                const audioContextForDecode = new AudioContext();
-                audioContextForDecode.decodeAudioData(fileContents)
-                .then(function (buf) {
-                    that._bufferLeft = buf.getChannelData(0);
-                    if (buf.numberOfChannels == 1) {
-                        that._bufferRight = buf.getChannelData(0);
-                    } else {
-                        that._bufferRight = buf.getChannelData(1);
-                    }
-                    audioContextForDecode.close();
-                    resolve(buf.length);
-                }, function (e) {
-                    reject(e);
-                });
-            }
-            fileReader.readAsArrayBuffer(blob);
-        });
-    }
+    // function tryLoadSampleFromFileStandard(blob) {
+    //     return new Promise(function (resolve, reject) {
+    //         const fileReader = new FileReader();
+    //         fileReader.onload = function (e) {
+    //             const fileContents = e.target.result;
+    //             const audioContextForDecode = new AudioContext();
+    //             audioContextForDecode.decodeAudioData(fileContents)
+    //             .then(function (buf) {
+    //                 that._bufferLeft = buf.getChannelData(0);
+    //                 if (buf.numberOfChannels == 1) {
+    //                     that._bufferRight = buf.getChannelData(0);
+    //                 } else {
+    //                     that._bufferRight = buf.getChannelData(1);
+    //                 }
+    //                 audioContextForDecode.close();
+    //                 resolve(buf.length);
+    //             }, function (e) {
+    //                 reject(e);
+    //             });
+    //         }
+    //         fileReader.readAsArrayBuffer(blob);
+    //     });
+    // }
 
-    function tryLoadSampleFromFileAAC(blob) {
-        return new Promise(function (resolve, reject) {
-            let asset = AV.Asset.fromFile(blob);
-            asset.on("error", function (e) {
-                reject(e);
-            });
+    // function tryLoadSampleFromFileAAC(blob) {
+    //     return new Promise(function (resolve, reject) {
+    //         let asset = AV.Asset.fromFile(blob);
+    //         asset.on("error", function (e) {
+    //             reject(e);
+    //         });
 
-            asset.get("duration", function (duration) {
-                console.log("duration = " + duration);
+    //         asset.get("duration", function (duration) {
+    //             console.log("duration = " + duration);
 
-                const fileReader = new FileReader();
-                fileReader.onload = function (e) {
-                    // let fileContents = e.target.result;
-                    // let view = new DataView(fileContents);
+    //             const fileReader = new FileReader();
+    //             fileReader.onload = function (e) {
+    //                 // let fileContents = e.target.result;
+    //                 // let view = new DataView(fileContents);
 
-                    // let encodingDelay = getEncodingDelayForCAF(view);
+    //                 // let encodingDelay = getEncodingDelayForCAF(view);
 
-                    asset.decodeToBuffer(function (buffer) {
-                        that._bufferLeft = new Float32Array(buffer.length / 2);
-                        that._bufferRight = new Float32Array(buffer.length / 2);
-                        for (let i = 0; i < buffer.length / 2; i++) {
-                            that._bufferLeft[i] = buffer[i * 2];
-                            that._bufferRight[i] = buffer[i * 2 + 1];
-                        }
-                        console.log("samples = " + buffer.length / 2);
-                        resolve(buffer.length / 2);
-                    });
-                }
-                fileReader.readAsArrayBuffer(blob);	//somehow this required
+    //                 asset.decodeToBuffer(function (buffer) {
+    //                     that._bufferLeft = new Float32Array(buffer.length / 2);
+    //                     that._bufferRight = new Float32Array(buffer.length / 2);
+    //                     for (let i = 0; i < buffer.length / 2; i++) {
+    //                         that._bufferLeft[i] = buffer[i * 2];
+    //                         that._bufferRight[i] = buffer[i * 2 + 1];
+    //                     }
+    //                     console.log("samples = " + buffer.length / 2);
+    //                     resolve(buffer.length / 2);
+    //                 });
+    //             }
+    //             fileReader.readAsArrayBuffer(blob);	//somehow this required
 
-            });
-        });
-    }
+    //         });
+    //     });
+    // }
 
 
 

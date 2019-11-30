@@ -43,7 +43,7 @@ class LongWave{
         const rect = e.target.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const w = this.elem.width;
-        const framePerPixel = this.bufferLeft.length/w/this.viewRate;
+        const framePerPixel = (this.viewEndFrame - this.viewStartFrame) / w;
 
         if(!e.shiftKey){
             this.selectStartFrame = Math.round(this.viewStartFrame + framePerPixel*x);
@@ -54,6 +54,43 @@ class LongWave{
 
             this.dragging = true;
             this.redraw();
+        } else {
+            const pointedFrame = Math.round(this.viewStartFrame + framePerPixel * x);
+            if (this.selected) {
+                if (pointedFrame < this.selectStartFrame) {
+                    this.shiftDraggingForLeft = true;
+                    this.selectStartFrame = pointedFrame;
+                    // this.playStartFrame = pointedFrame;
+                } else if (this.selectEndFrame < pointedFrame) {
+                    this.shiftDraggingForLeft = false;
+                    this.selectEndFrame = pointedFrame;
+                } else {
+                    //between start and end. move nearest
+                    if ((pointedFrame - this.selectStartFrame) < (this.selectEndFrame - pointedFrame)) {
+                        this.shiftDraggingForLeft = true;
+                        this.selectStartFrame = pointedFrame;
+                        // this.playStartFrame = pointedFrame;
+                    } else {
+                        this.shiftDraggingForLeft = false;
+                        this.selectEndFrame = pointedFrame;
+                        // this.shiftDragStartFromLeft = false;
+                    }
+                }
+            } else {
+                if (this.playStartFrame < pointedFrame) {
+                    this.selectStartFrame = this.playStartFrame;
+                    this.selectEndFrame = pointedFrame;
+                    this.shiftDraggingForLeft = false;
+                } else {
+                    this.selectStartFrame = pointedFrame;
+                    this.selectEndFrame = this.playStartFrame;
+                    this.playStartFrame = this.selectStartFrame;
+                    this.shiftDraggingForLeft = true;
+                }
+                this.selected = true;
+            }
+            this.shiftDragging = true;
+            this.redraw();
         }
     }
 
@@ -61,7 +98,7 @@ class LongWave{
         const rect = e.target.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const w = this.elem.width;
-        const framePerPixel = this.bufferLeft.length / w / this.viewRate;
+        const framePerPixel = (this.viewEndFrame - this.viewStartFrame) / w;
         const pointedFrame = Math.round(this.viewStartFrame + framePerPixel*x);
         
         if (!e.shiftKey){
@@ -83,14 +120,24 @@ class LongWave{
                 this.playStartFrame = this.selectStartFrame;
             }
             this.redraw();            
+        }else{
+            if(!this.shiftDragging) return;
+            if (this.selected){
+                if (this.shiftDraggingForLeft){
+                    this.selectStartFrame = pointedFrame;
+                }else{
+                    this.selectEndFrame = pointedFrame;
+                }
+            }
         }
+        this.redraw();
     }
 
     onMouseup(e){
         const rect = e.target.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const w = this.elem.width;
-        const framePerPixel = this.bufferLeft.length / w / this.viewRate;
+        const framePerPixel = (this.viewEndFrame - this.viewStartFrame) / w;
         const pointedFrame = Math.round(this.viewStartFrame + framePerPixel * x);
 
         if (!e.shiftKey) {
@@ -112,6 +159,16 @@ class LongWave{
                 this.selected = false;
                 this.playStartFrame = this.selectStartFrame;
             }
+            this.redraw();
+        }else{
+            if (this.selected){
+                if(this.shiftDraggingForLeft){
+                    this.selectStartFrame = pointedFrame;
+                }else{
+                    this.selectEndFrame = pointedFrame;
+                }
+            }
+            this.shiftDragging = false;
             this.redraw();
         }
     }
@@ -324,11 +381,37 @@ class LongWave{
             c.rect(from , 180, to-from , 20);
             c.fill();
         }
+
+
+        //draw play start cursor
+        {
+            let x = (this.playStartFrame - this.viewStartFrame) / framePerPixel;
+
+            c.beginPath();
+            c.strokeStyle = "blue";
+            c.moveTo(x, 0);
+            c.lineTo(x, 180);
+            c.stroke();           
+        }
+        
+        //draw current position cursor
+        {
+            let x = (this.currentPlayFrame - this.viewStartFrame) / framePerPixel;
+
+            c.beginPath();
+            c.strokeStyle="yellow";
+            c.moveTo( x, 0);
+            c.lineTo( x, 180);
+            c.stroke();
+        }
     }
 
     togglePlay(){
         if (!this.playing){
             this.playing = true;
+            if(this.looping){
+                this.currentPlayFrame = this.playStartFrame;
+            }
         }else{
             this.playing = false;
         }
@@ -349,10 +432,25 @@ class LongWave{
             left[i] += this.bufferLeft[this.currentPlayFrame];
             right[i] += this.bufferRight[this.currentPlayFrame];
             this.currentPlayFrame++;
-            if (this.currentPlayFrame >= this.bufferLeft.length){
-                this.currentPlayFrame = 0;
+            if(this.looping){
+                if(this.selected){
+                    if (this.currentPlayFrame >= this.selectEndFrame) {
+                        this.currentPlayFrame = this.selectStartFrame;
+                    }         
+                }else{
+                    if (this.currentPlayFrame >= this.bufferLeft.length) {
+                        this.currentPlayFrame = this.playStartFrame;
+                    }                     
+                }
+            }else{
+
+                if (this.currentPlayFrame >= this.bufferLeft.length) {
+                    this.currentPlayFrame = 0;
+                }     
             }
         }
+
+        this.redraw();
     
     }
 

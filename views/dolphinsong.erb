@@ -216,18 +216,6 @@ body{
 	cursor: default;
 }
 
-/* #con{
-    width:100%;
-    height:100%;
-    background-color: gray;
-}
-
-#tt{
-    width:100%;
-    height:100%;
-	cursor : grab;
-} */
-
 .ttContents{
 	width : 100%;
 	height : 100%;
@@ -279,9 +267,9 @@ body{
 	</div>
 	<div id="soundListContainer">
 		<div id="soundList" dropzone="copy" tabindex="-1">
-			<% @files.each do |filename| %>
+			<!-- <% @files.each do |filename| %>
 				<div class="soundItem" draggable="true"><%=filename%></div>
-			<% end %>
+			<% end %> -->
 		</div>
 		<!-- <label id="soundUploadButtonLabel" for="soundUploadButton">
 			upload
@@ -300,7 +288,7 @@ body{
 <div id="mainPlayer">
 	<input id="longMasterCheck" type="checkbox">master</input>
 	<input id="longPlayPauseButton" type="button" value="play/pause"></input>
-	<input id="longPlayerLoopButton" type="button" value="loop"></input>
+	<input id="longPlayLoopChk" type="checkbox"> loop </input>
 	<div>
 		<canvas  dropzone="copy" width="600px" height="200px" id="longPlayerCanvas"></canvas>
 	</div>

@@ -10,17 +10,6 @@ function MyListBox(element, itemClass, ajaxUrl) {
 
     this._target.addEventListener("keydown", onKeyDown);
 
-    var items = this._target.querySelectorAll("." + this._itemClass);
-    items.forEach(function (item) {
-        item.addEventListener("click", itemClicked);
-
-        item.addEventListener("dragstart", function (e) {
-            console.log("dragstart");
-            e.dataTransfer.setData("text", item.innerText);
-            e.stopPropagation();
-        });
-    });
-
     this.selectedIndex = function () {
         return this._selectedIndex;
     }
@@ -53,7 +42,9 @@ function MyListBox(element, itemClass, ajaxUrl) {
                 //re-register handlers
                 var items = that._target.querySelectorAll("." + that._itemClass);
                 items.forEach(function (item) {
-                    item.addEventListener("click", itemClicked);
+                    // item.addEventListener("click", itemClicked);
+                    item.addEventListener("mousedown", itemMousedown);
+                    item.addEventListener("dblclick", itemDblckick);
                     item.addEventListener("dragstart", function (e) {
                         console.log("dragstart");
                         e.dataTransfer.setData("text", item.innerText);
@@ -127,44 +118,20 @@ function MyListBox(element, itemClass, ajaxUrl) {
         }
     }
 
-    var clicked = false;
-
-    function itemClicked(e) {
-
-        if(clicked){
-            //double click
-            clicked = false;
-
-            let items = that._target.querySelectorAll("." + that._itemClass);
-            let item = e.target;
-            for (let i = 0; i < items.length; i++) {
-                if (item == items[i]) {
-                    that._selectedIndex = i;
-                }
+    function itemMousedown(e){
+        let items = that._target.querySelectorAll("." + that._itemClass);
+        let item = e.target;
+        for (let i = 0; i < items.length; i++) {
+            if (item == items[i]) {
+                that._selectedIndex = i;
             }
-            selectChanged();
-
-            if (that.onDblClick){
-                that.onDblClick(that);
-            }
-            return;
         }
+        selectChanged();   
+        if (that.onClick) that.onClick(that);     
+    }
 
-        clicked = true;
-        setTimeout(function(){
-            if (clicked){
-                //single click
-                let items = that._target.querySelectorAll("." + that._itemClass);
-                let item = e.target;
-                for (let i = 0; i < items.length; i++) {
-                    if (item == items[i]) {
-                        that._selectedIndex = i;
-                    }
-                }
-                selectChanged();
-                clicked = false;
-                if (that.onClick) that.onClick(that);
-            }
-        },200);
+    function itemDblckick(e){
+        console.log("itemDblckick");
+
     }
 }

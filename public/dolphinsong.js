@@ -58,10 +58,10 @@ for (let i=0;i<TRACK_NUM;i++){
 	mydata.trackWaitCount[i] = 0;
 }
 
-mydata.tempBufferL = new Float32Array(44100*60*10);
-mydata.tempBufferR = new Float32Array(44100*60*10);
-mydata.tempRead = 0;
-mydata.tempWrite = 0;
+// mydata.tempBufferL = new Float32Array(44100*60*10);
+// mydata.tempBufferR = new Float32Array(44100*60*10);
+// mydata.tempRead = 0;
+// mydata.tempWrite = 0;
 
 mydata.isEditorActive = false;
 mydata.isPlayerActive = false;
@@ -80,6 +80,8 @@ mydata.bpm = 120.0;
 mydata.tapMaster = false;
 mydata.autoBPM = true;
 
+mydata.longMaster = false;
+
 mydata.effectBypass = true;
 
 mydata.abSwitchValue = 0.0;
@@ -95,30 +97,30 @@ var audioBufferLeft = new Float32Array(44100*60*10);
 var audioBufferRight = new Float32Array(44100*60*10);
 
 
-var calcState = {};
-calcState.start = 0;
-calcState.end = 3000;
-calcState.i = 0;
-calcState.currentFrame = 0;
+// var calcState = {};
+// calcState.start = 0;
+// calcState.end = 3000;
+// calcState.i = 0;
+// calcState.currentFrame = 0;
 
-calcState.stretchedLX = new Array(TRACK_NUM);
-calcState.stretchedRX = new Array(TRACK_NUM);
-calcState.current_grain_start = new Array(TRACK_NUM);
-calcState.current_x = new Array(TRACK_NUM);
-calcState.current_grain_start2 = new Array(TRACK_NUM);
-calcState.current_x2 = new Array(TRACK_NUM);
-calcState.current_grain_start_scratch = new Array(TRACK_NUM);
-calcState.current_x_scratch = new Array(TRACK_NUM);
-calcState.current_grain_start2_scratch = new Array(TRACK_NUM);
-calcState.current_x2_scratch = new Array(TRACK_NUM);
-for (let i = 0; i < TRACK_NUM; i++){
-	calcState.stretchedLX[i] = new Float32Array(44100*60);
-	calcState.stretchedRX[i] = new Float32Array(44100*60);
-	calcState.current_grain_start[i] = 0;
-	calcState.current_x[i] = 0;
-	calcState.current_grain_start2[i] = mydata.grain_size / 2;
-	calcState.current_x2[i] = -1.0 * Math.round(mydata.grain_size/2*mydata.trackRatio[i]);
-}
+// calcState.stretchedLX = new Array(TRACK_NUM);
+// calcState.stretchedRX = new Array(TRACK_NUM);
+// calcState.current_grain_start = new Array(TRACK_NUM);
+// calcState.current_x = new Array(TRACK_NUM);
+// calcState.current_grain_start2 = new Array(TRACK_NUM);
+// calcState.current_x2 = new Array(TRACK_NUM);
+// calcState.current_grain_start_scratch = new Array(TRACK_NUM);
+// calcState.current_x_scratch = new Array(TRACK_NUM);
+// calcState.current_grain_start2_scratch = new Array(TRACK_NUM);
+// calcState.current_x2_scratch = new Array(TRACK_NUM);
+// for (let i = 0; i < TRACK_NUM; i++){
+// 	calcState.stretchedLX[i] = new Float32Array(44100*60);
+// 	calcState.stretchedRX[i] = new Float32Array(44100*60);
+// 	calcState.current_grain_start[i] = 0;
+// 	calcState.current_x[i] = 0;
+// 	calcState.current_grain_start2[i] = mydata.grain_size / 2;
+// 	calcState.current_x2[i] = -1.0 * Math.round(mydata.grain_size/2*mydata.trackRatio[i]);
+// }
 
 const RPS = -33.3 / 60 * (Math.PI * 2);
 let turnTable = {
@@ -431,6 +433,10 @@ window.addEventListener("load", function(){
 	$("#longPlayPauseButton").on("click",function(e){
 		mydata.long.togglePlay();
 	});
+	$("#longPlayLoopChk").on("change",function(e){
+		mydata.long.toggleLoop();
+	});
+	$("#longMasterCheck").on("change", onMasterChanged);
 
 
 	initMedia();
@@ -583,7 +589,7 @@ function onTrackDrop(e){
 		onLoadSampleFromFile(index, file);
 	}else{
 		console.log("dropped from list");
-		loadSample(index, e.dataTransfer.getData("text"));
+		loadSample2(index, e.dataTransfer.getData("text"));
 	}
 }
 
@@ -747,7 +753,7 @@ function sync(index){
 	let masterIndex = getMasterIndex();
 
 	if (masterIndex == -1) return;	//no master
-	if (masterIndex != 99){
+	if (masterIndex != 99 && masterIndex != 98){
 		if (!mydata.tracks[masterIndex]._loaded) return;
 	}
 	if (!mydata.tracks[index]._loaded) return;
@@ -758,6 +764,13 @@ function sync(index){
 	if (masterIndex == 99){
 		masterRatio = 1.0;
 		masterLength = 60 / mydata.bpm * 44100;
+	}else if (masterIndex == 98){
+		masterRatio = 1.0;
+		if(mydata.long.selected){
+			masterLength = mydata.long.selectEndFrame - mydata.long.selectStartFrame;
+		}else{
+			masterLength = mydata.long.bufferLeft.length;
+		}
 	}else{
 		masterRatio = mydata.tracks[masterIndex]._ratio;
 		masterLength = mydata.tracks[masterIndex]._length;
@@ -838,6 +851,8 @@ function getMasterIndex(){
 	let index = -1;
 	
 	if (mydata.tapMaster) return 99;
+	if (mydata.longMaster) return 98;
+	
 
 	for (let i = 0; i < mydata.tracks.length; i++){
 		if (mydata.tracks[i].isMaster()){
@@ -858,10 +873,12 @@ function onAutoBPMChanged(e){
 function onMasterChanged(e){
 
 	const tapMasterChk = document.querySelector("#tapMasterChk");
+	const longMasterChk = document.querySelector("#longMasterCheck");
 	const masterChks = document.querySelectorAll(".masterChk");
 
 	let checkBox = e.currentTarget;
 	let index = getIndexFromEvent(e, ".masterChk");
+
 	if (checkBox.checked){
 		for (let i = 0; i < masterChks.length; i++){
 			if (i != index){
@@ -872,14 +889,24 @@ function onMasterChanged(e){
 
 		if (checkBox == tapMasterChk){
 			mydata.tapMaster = true;
+			mydata.longMaster = false;
+			longMasterChk.checked = false;
+		}else if (checkBox == longMasterChk){
+			mydata.longMaster = true;
+			mydata.tapMaster = false;
+			tapMasterChk.checked = false;
 		}else{
 			tapMasterChk.checked = false;
 			mydata.tapMaster = false;
+			longMasterChk.checked = false;
+			mydata.longMaster = false;
 			mydata.tracks[index].setMaster(true);
 		}
 	}else{
 		if (checkBox == tapMasterChk){
 			mydata.tapMaster = false;
+		}else if (chekBox == longMasterChk){
+			mydata.longMaster = false;
 		}else{
 			mydata.tracks[index].setMaster(false);
 		}
@@ -1001,9 +1028,6 @@ function onPianoVolumeChanged(index) {
 		"volume": val / 100
 	});
 }
-
-
-
 
 function onVocalsVolumeChanged(index) {
 	let s = $("#volumeSliderVocals" + index.toString()).get(0);
@@ -1195,47 +1219,6 @@ function onSampleDownloaded(index, blob, soundName, stemName){
 		}
 	});
 }
-
-
-// function loadSample(index, soundName){
-// 	//get blob by ajax
-// 	var xhr = new XMLHttpRequest();	
-// 	xhr.open("GET", "/sound/" + soundName + "/drams");
-// 	xhr.responseType = "blob";
-// 	xhr.onreadystatechange = function(){
-// 		if (this.readyState == 4 && this.status == 200){
-// 			console.log("soundName : " + soundName);
-// 			done(this.response);
-// 		}
-// 	}
-
-
-// 	//read and done;
-// 	var done = function(blob){
-// 		mydata.tracks[index].loadSampleFromFile(blob, soundName)
-// 		.then(function(){
-// 			let titles = document.querySelectorAll(".title");
-// 			titles[index].innerText = soundName;
-// 			{
-// 				if (!mydata.mainNode) return;
-
-// 				let m = {
-// 					"cmd" : "setBuffer",
-// 					"index" : index,
-// 					"left" : mydata.tracks[index]._bufferLeft,
-// 					"right" : mydata.tracks[index]._bufferRight
-// 				};
-// 				let t = [
-// 					mydata.tracks[index]._bufferLeft.buffer,
-// 					mydata.tracks[index]._bufferRight.buffer
-// 				];
-
-// 				mydata.mainNode.port.postMessage(m, t);
-// 			}
-// 		});
-// 	}
-// 	xhr.send();
-// }
 
 
 
@@ -1433,7 +1416,7 @@ function onPlayStopTrack(index){
 
 	let masterTrack = null;
 	
-	if (masterIndex == 99){
+	if (masterIndex == 99 || masterIndex ==98){
 		masterTrack = null;
 	}else if(masterIndex == -1){
 		masterTrack = null;
@@ -2372,6 +2355,12 @@ document.onkeydown = function (e){
 			onSwitchToB();
 		}
 		break;
+
+	case 80: /*p*/
+		e.stopPropagation();
+		e.preventDefault();
+		mydata.long.togglePlay();
+		
 	}
 
 
@@ -2778,9 +2767,7 @@ function uploadWAV_upload(formData){
 }
 
 function onSoundListClick(){
-	console.log("single click");
 	$("#soundDeleteButton").get(0).disabled = false;
-	// mydata.vTrack.pause();
 	toShadow2();
 }
 
@@ -2932,7 +2919,7 @@ function loadSongByJSON(songJSON){
 	let tracks = songJSON.tracks;
 	for (let i = 0; i < tracks.length ; i++){
 		if (tracks[i].name != "----"){ 
-			loadSample(i, tracks[i].name);
+			loadSample2(i, tracks[i].name);
 		}else{
 			clearTrack(i);
 		}
