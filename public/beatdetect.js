@@ -45,6 +45,8 @@ function startBeatDetectEngine(){
 
 function onAudioProcessBeatDetect(e){
 
+    if (!mydata.autoBPM) return;
+
     let inLeft = e.inputBuffer.getChannelData(0);
     let inRight = e.inputBuffer.getChannelData(1);
 
@@ -128,10 +130,6 @@ function offlineCompletedBeatDetect(e){
     result = calcBPM(result);
 
     if(result.length == 0 ) return;
-
-    // for (let i = 0; i < 1; i++) {
-    //     console.log(result[i].center + " : " + result[i].count);
-    // }
 
     if(mydata.autoBPM){
         mydata.bpm = result[0].center;

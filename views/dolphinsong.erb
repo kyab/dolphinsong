@@ -257,7 +257,7 @@ body{
 </div>
 <div id="sidebar">
 	<input id="tapButton" type="button" value="TAP"/>
-	<input id="autoBPMChk" type="checkbox" checked>auto</input>
+	<input id="autoBPMChk" type="checkbox">auto</input>
 	<span id="bpmLabel">120.0</span>
 	<input id="tapMasterChk" type="checkbox">master</input>
 
@@ -285,7 +285,7 @@ body{
 
 
 <div id="main">
-<div id="mainPlayer">
+<div id="mainPlayer" style="display:none;">
 	<input id="longMasterCheck" type="checkbox">master</input>
 	<input id="longPlayPauseButton" type="button" value="play/pause"></input>
 	<input id="longPlayLoopChk" type="checkbox"> loop </input>
@@ -435,6 +435,7 @@ body{
 			</div>
 			<input id="chkLevel" type="checkbox" checked onclick="onLevelChanged();" />
 			<input id="chkMonitor" type="checkbox" value="true" onclick="onMonitorChanged();">monitor[m]</input>
+			<input id="chkEditorMaster" type="checkbox" value="false">master</input>
 			Out:
 			<select id="selectOutputDevices"></select>
 		</div>
@@ -474,8 +475,10 @@ body{
 	<script src="aac.js"></script>
 	<!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/xsound@latest/build/xsound.min.js"></script> -->
 	<script src="tuna-min.js"></script>
+	<script src="myutility.js"></script>
 	<script src="track.js"></script>
 	<script src="sidebar.js"></script>
+	<script src="editor.js"></script>
 	<script src="dolphinsong2.js"></script>
 	<script src="dolphinsong.js"></script>
 

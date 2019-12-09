@@ -14,7 +14,7 @@ def hello(name):
 @route("/separate/<filename>")
 def separate(filename):
     global separator
-    infile = "../data/sounds/" + filename
+    infile = "../data/sounds/" + filename + "_prefixed.wav"
     out = "../data/sounds/stems/" + os.path.splitext(filename)[0]
     print("separating:" + infile + " to " + out)
     separator.separate_to_file(infile, out)

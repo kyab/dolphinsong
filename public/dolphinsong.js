@@ -11,63 +11,59 @@ mydata.currentFramePlay = 0;
 
 mydata.recording = false;
 mydata.playing = false;
-mydata.outAudio = null;
+// mydata.outAudio = null;
 
 mydata.needsRedrawWave = false;
 
-mydata.dragging = false;
-mydata.shiftDragging = false;
+// mydata.dragging = false;
+// mydata.shiftDragging = false;
 
-mydata.viewStartFrame = 0;
-mydata.viewEndFrame = 0;
-mydata.viewCenterFrame = 0;
-mydata.viewRate = 1.0;
+// mydata.viewStartFrame = 0;
+// mydata.viewEndFrame = 0;
+// mydata.viewCenterFrame = 0;
+// mydata.viewRate = 1.0;
 mydata.selectStartFrame = 0;
 mydata.selectEndFrame = 0 ;
 mydata.selected = false;
 mydata.selectDragStartFrame = 0;
 mydata.shiftDraggingForLeft = false;
 
-mydata.trackLoaded = new Array(TRACK_NUM);
+// mydata.trackLoaded = new Array(TRACK_NUM);
 
-mydata.trackBufferLeft = new Array(TRACK_NUM);
-mydata.trackBufferRight = new Array(TRACK_NUM);
-mydata.trackPlaying = new Array(TRACK_NUM);
-mydata.trackCurrentFrame = new Array(TRACK_NUM);
-mydata.trackCurrentFrame_scratch = new Array(TRACK_NUM);
-mydata.trackLength = new Array(TRACK_NUM);
-mydata.trackRatio = new Array(TRACK_NUM);
-mydata.trackMaster = new Array(TRACK_NUM);
-mydata.trackVolume = new Array(TRACK_NUM);
-mydata.trackPan = new Array(TRACK_NUM);
-mydata.trackOffset = new Array(TRACK_NUM);
-mydata.trackQuantize = new Array(TRACK_NUM);
-mydata.trackWaitCount = new Array(TRACK_NUM);
-for (let i=0;i<TRACK_NUM;i++){
-	mydata.trackLoaded[i] = false;
-	mydata.trackPlaying[i] = false;
-	mydata.trackRatio[i] = 1;
-	mydata.trackCurrentFrame[i] = 0;
-	mydata.trackCurrentFrame_scratch[i] = 0;
-	mydata.trackLength[i] = 0;
-	mydata.trackMaster[i] = false;
-	mydata.trackVolume[i] = 1;
-	mydata.trackPan[i] = 0;
-	mydata.trackOffset[i] = 0;
-	mydata.trackQuantize[i] = true;
-	mydata.trackWaitCount[i] = 0;
-}
+// mydata.trackBufferLeft = new Array(TRACK_NUM);
+// mydata.trackBufferRight = new Array(TRACK_NUM);
+// mydata.trackPlaying = new Array(TRACK_NUM);
+// mydata.trackCurrentFrame = new Array(TRACK_NUM);
+// mydata.trackCurrentFrame_scratch = new Array(TRACK_NUM);
+// mydata.trackLength = new Array(TRACK_NUM);
+// mydata.trackRatio = new Array(TRACK_NUM);
+// mydata.trackMaster = new Array(TRACK_NUM);
+// mydata.trackVolume = new Array(TRACK_NUM);
+// mydata.trackPan = new Array(TRACK_NUM);
+// mydata.trackOffset = new Array(TRACK_NUM);
+// mydata.trackQuantize = new Array(TRACK_NUM);
+// mydata.trackWaitCount = new Array(TRACK_NUM);
+// for (let i=0;i<TRACK_NUM;i++){
+// 	mydata.trackLoaded[i] = false;
+// 	mydata.trackPlaying[i] = false;
+// 	mydata.trackRatio[i] = 1;
+// 	mydata.trackCurrentFrame[i] = 0;
+// 	mydata.trackCurrentFrame_scratch[i] = 0;
+// 	mydata.trackLength[i] = 0;
+// 	mydata.trackMaster[i] = false;
+// 	mydata.trackVolume[i] = 1;
+// 	mydata.trackPan[i] = 0;
+// 	mydata.trackOffset[i] = 0;
+// 	mydata.trackQuantize[i] = true;
+// 	mydata.trackWaitCount[i] = 0;
+// }
 
-// mydata.tempBufferL = new Float32Array(44100*60*10);
-// mydata.tempBufferR = new Float32Array(44100*60*10);
-// mydata.tempRead = 0;
-// mydata.tempWrite = 0;
 
 mydata.isEditorActive = false;
-mydata.isPlayerActive = false;
+// mydata.isPlayerActive = false;
 mydata.timer = null;
 
-mydata.grain_size = 6000;
+// mydata.grain_size = 6000;
 
 mydata.tracks = new Array(TRACK_NUM);
 for (let i=0;i<TRACK_NUM;i++){
@@ -78,16 +74,16 @@ mydata.vTrack = new MyTrack();
 mydata.tapTimes = new Array(8);
 mydata.bpm = 120.0;
 mydata.tapMaster = false;
-mydata.autoBPM = true;
+mydata.autoBPM = false;
 
-mydata.longMaster = false;
+mydata.editorMaster = false;
 
 mydata.effectBypass = true;
 
 mydata.abSwitchValue = 0.0;
 
 var audioContext;
-var audioContext2;
+var audioContext2 = null;
 
 var audioElem;
 var audioElem2;
@@ -159,7 +155,7 @@ var turnTableB = {};
 })
 
 window.addEventListener("resize", function(e){
-	onResize();
+	mydata.editor.onResize();
 });
 
 function onResize(){
@@ -185,14 +181,17 @@ function onResize(){
 window.addEventListener("load", function(){
 
 
-	let canvas2 = document.querySelector("#canvas2");
-	canvas2.addEventListener("mousedown", onCanvasMousedown, false);
-	canvas2.addEventListener("mousemove", onCanvasMousemove, false);
-	canvas2.addEventListener("mouseup", onCanvasMouseup, false);
+	// let canvas2 = document.querySelector("#canvas2");
+	// canvas2.addEventListener("mousedown", onCanvasMousedown, false);
+	// canvas2.addEventListener("mousemove", onCanvasMousemove, false);
+	// canvas2.addEventListener("mouseup", onCanvasMouseup, false);
 
-	canvas2.addEventListener("wheel", onCanvasScroll, false);
+	// canvas2.addEventListener("wheel", onCanvasScroll, false);
 
-	onResize();
+	// onResize();
+
+	mydata.editor = new Editor(document.querySelector("#canvas2"));
+	mydata.editor.onResize();
 
 	const loadButtons = document.querySelectorAll(".loadButton");
 	loadButtons.forEach(function(b){
@@ -372,11 +371,11 @@ window.addEventListener("load", function(){
 	});
 
 
-	canvas2.addEventListener("dragover", function(e){
-		e.preventDefault();
-		e.dataTransfer.dropEffect = "copy";
-	});
-	canvas2.addEventListener("drop", onEditorDrop, false);
+	// canvas2.addEventListener("dragover", function(e){
+	// 	e.preventDefault();
+	// 	e.dataTransfer.dropEffect = "copy";
+	// });
+	// canvas2.addEventListener("drop", onEditorDrop, false);
 
 	const soundList = document.querySelector("#soundList");
 	soundList.addEventListener("dragover", onSoundListDragOver, false);
@@ -428,15 +427,7 @@ window.addEventListener("load", function(){
 
 	$("#filterSlider").on("input", onFilterSliderChanged);
 
-
-	mydata.long = new LongWave(document.querySelector("#longPlayerCanvas"));
-	$("#longPlayPauseButton").on("click",function(e){
-		mydata.long.togglePlay();
-	});
-	$("#longPlayLoopChk").on("change",function(e){
-		mydata.long.toggleLoop();
-	});
-	$("#longMasterCheck").on("change", onMasterChanged);
+	$("#chkEditorMaster").on("change", onMasterChanged);
 
 
 	initMedia();
@@ -589,7 +580,11 @@ function onTrackDrop(e){
 		onLoadSampleFromFile(index, file);
 	}else{
 		console.log("dropped from list");
-		loadSample2(index, e.dataTransfer.getData("text"));
+		loadSample2(mydata.tracks[index], index,  e.dataTransfer.getData("text"))
+		.then(function(){
+			let titles = document.querySelectorAll(".title");
+			titles[index].innerText = mydata.soundList.selectedText();			
+		});
 	}
 }
 
@@ -736,12 +731,12 @@ function onSoundListDrop(e){
 	
 }
 
-function onEditorDrop(e){
-	e.preventDefault();
+// function onEditorDrop(e){
+// 	e.preventDefault();
 
-	const file = e.dataTransfer.files[0];
-	onEditorLoadSampleFromFile(file);
-}
+// 	const file = e.dataTransfer.files[0];
+// 	onEditorLoadSampleFromFile(file);
+// }
 
 function onSyncClick(e){
 
@@ -766,10 +761,10 @@ function sync(index){
 		masterLength = 60 / mydata.bpm * 44100;
 	}else if (masterIndex == 98){
 		masterRatio = 1.0;
-		if(mydata.long.selected){
-			masterLength = mydata.long.selectEndFrame - mydata.long.selectStartFrame;
+		if(mydata.editor.selected){
+			masterLength = mydata.editor.selectEndFrame - mydata.editor.selectStartFrame;
 		}else{
-			masterLength = mydata.long.bufferLeft.length;
+			masterLength = mydata.editor.currentFrame;
 		}
 	}else{
 		masterRatio = mydata.tracks[masterIndex]._ratio;
@@ -847,11 +842,12 @@ function onDoubleSpeedClick(e){
 
 
 //return 99 if tap is master
+//return 98 if editor is master
 function getMasterIndex(){
 	let index = -1;
 	
 	if (mydata.tapMaster) return 99;
-	if (mydata.longMaster) return 98;
+	if (mydata.editorMaster) return 98;
 	
 
 	for (let i = 0; i < mydata.tracks.length; i++){
@@ -873,7 +869,7 @@ function onAutoBPMChanged(e){
 function onMasterChanged(e){
 
 	const tapMasterChk = document.querySelector("#tapMasterChk");
-	const longMasterChk = document.querySelector("#longMasterCheck");
+	const editorMasterChk = document.querySelector("#chkEditorMaster");
 	const masterChks = document.querySelectorAll(".masterChk");
 
 	let checkBox = e.currentTarget;
@@ -889,24 +885,24 @@ function onMasterChanged(e){
 
 		if (checkBox == tapMasterChk){
 			mydata.tapMaster = true;
-			mydata.longMaster = false;
-			longMasterChk.checked = false;
-		}else if (checkBox == longMasterChk){
-			mydata.longMaster = true;
+			mydata.editorMaster = false;
+			editorMasterChk.checked = false;
+		} else if (checkBox == editorMasterChk){
+			mydata.editorMaster = true;
 			mydata.tapMaster = false;
 			tapMasterChk.checked = false;
 		}else{
 			tapMasterChk.checked = false;
 			mydata.tapMaster = false;
-			longMasterChk.checked = false;
-			mydata.longMaster = false;
+			editorMasterChk.checked = false;
+			mydata.editorMaster = false;
 			mydata.tracks[index].setMaster(true);
 		}
 	}else{
 		if (checkBox == tapMasterChk){
 			mydata.tapMaster = false;
-		}else if (chekBox == longMasterChk){
-			mydata.longMaster = false;
+		} else if (checkBox == editorMasterChk){
+			mydata.editorMaster = false;
 		}else{
 			mydata.tracks[index].setMaster(false);
 		}
@@ -1083,7 +1079,7 @@ function onOffsetChanged(index){
 
 
 function onLoadSample(index){
-	console.log("loading sample from editor for track:" + (index+1));
+	console.log("loading sample from editor to track:" + (index+1));
 
 	mydata.tracks[index].loadSampleFromBuffer(
 		audioBufferLeft, audioBufferRight, mydata.selectStartFrame, mydata.selectEndFrame);
@@ -1110,8 +1106,12 @@ function onLoadSample(index){
 }
 
 function onLoadSampleFromFile(index, file){
-	mydata.tracks[index].loadSampleFromFile(file, file.name)
-	.then(function(){
+	// mydata.tracks[index].loadSampleFromFile(file, file.name)
+	MyUtility.loadFromBlob(file)
+	.then(function(b){
+		mydata.tracks[index]._bufferLeft = b.left;
+		mydata.tracks[index]._bufferRight = b.right;
+
 		let titles = document.querySelectorAll(".title");
 		titles[index].innerText = file.name;
 		{
@@ -1134,11 +1134,15 @@ function onLoadSampleFromFile(index, file){
 }
 
 function onLoadSampleFromList(index){
-	loadSample2(index, mydata.soundList.selectedText());
+	loadSample2(mydata.tracks[index], index, mydata.soundList.selectedText())
+	.then(function(){
+		let titles = document.querySelectorAll(".title");
+		titles[index].innerText = mydata.soundList.selectedText();
+	});
 }
 
 // https://teratail.com/questions/75149
-function createLoaderPromise(index, soundName, stemName){
+function createLoaderPromise(soundName, stemName){
 	let p = new Promise(function(resolve, reject){
 		let xhr = new XMLHttpRequest();
 		xhr.open("GET", "/sound/" + soundName + "/" + stemName);
@@ -1153,26 +1157,31 @@ function createLoaderPromise(index, soundName, stemName){
 	return p;
 }
 
-function loadSample2(index, soundName){
+function loadSample2(track, index, soundName, isVirtual){
 	let promises = [];
-	promises[0] = createLoaderPromise(index, soundName, "bass");
-	promises[1] = createLoaderPromise(index, soundName, "drums");
-	promises[2] = createLoaderPromise(index, soundName, "other");
-	promises[3] = createLoaderPromise(index, soundName, "piano");
-	promises[4] = createLoaderPromise(index, soundName, "vocals");
+	promises[0] = createLoaderPromise(soundName, "bass");
+	promises[1] = createLoaderPromise(soundName, "drums");
+	promises[2] = createLoaderPromise(soundName, "other");
+	promises[3] = createLoaderPromise(soundName, "piano");
+	promises[4] = createLoaderPromise(soundName, "vocals");
 
-	Promise.all(promises).then(function(responses){
-		console.log("all stems downloaded");
-		console.log(responses);
-		onSampleDownloaded(index, responses[0], soundName, "bass");
-		onSampleDownloaded(index, responses[1], soundName, "drums");
-		onSampleDownloaded(index, responses[2], soundName, "other");
-		onSampleDownloaded(index, responses[3], soundName, "piano");
-		onSampleDownloaded(index, responses[4], soundName, "vocals");
+	return new Promise(function(resolve, reject){
+		Promise.all(promises).then(function(responses){
+			console.log("all stems downloaded");
+			console.log(responses);
+			promises[0] = onSampleDownloaded(track, index, responses[0], soundName, "bass");
+			promises[1] = onSampleDownloaded(track, index, responses[1], soundName, "drums");
+			promises[2] = onSampleDownloaded(track, index, responses[2], soundName, "other");
+			promises[3] = onSampleDownloaded(track, index, responses[3], soundName, "piano");
+			promises[4] = onSampleDownloaded(track, index, responses[4], soundName, "vocals");
+			Promise.all(promises).then(function(){
+				resolve();
+			});
+		});
 	});
 }
 
-function onSampleDownloaded(index, blob, soundName, stemName){
+function onSampleDownloaded(track, index, blob, soundName, stemName){
 
 	let si = 0;
 	switch (stemName) {
@@ -1195,28 +1204,36 @@ function onSampleDownloaded(index, blob, soundName, stemName){
 
 	console.log("onSampleDownloaded, " + si.toString());
 
-	mydata.tracks[index].loadSampleFromFile(blob, soundName, si)
-	.then(function () {
+	return new Promise(function(resolve, reject){
 		
-		let titles = document.querySelectorAll(".title");
-		titles[index].innerText = soundName;
-		{
+		// track.loadSampleFromFile(blob, soundName, si)
+		MyUtility.loadFromBlob(blob)
+		.then(function(b){
+			track._bufferLeft[si] = b.left;
+			track._bufferRight[si] = b.right;
+			track._currentFrame = 0;
+			track._length = b.left.length;
+			track._plaing = false;
+			track._loaded = true;
+
 			if (!mydata.mainNode) return;
 
 			let m = {
 				"cmd": "setBufferStems",
 				"index": index,
-				"stemIndex" : si,
-				"left": mydata.tracks[index]._bufferLeft[si],
-				"right": mydata.tracks[index]._bufferRight[si]
+				"stemIndex": si,
+				"left": track._bufferLeft[si],
+				"right": track._bufferRight[si]
 			};
+
 			let t = [
-				mydata.tracks[index]._bufferLeft[si].buffer,
-				mydata.tracks[index]._bufferRight[si].buffer
+				track._bufferLeft[si].buffer,
+				track._bufferRight[si].buffer
 			];
 
 			mydata.mainNode.port.postMessage(m, t);
-		}
+			resolve();
+		});
 	});
 }
 
@@ -1311,105 +1328,6 @@ function getEncodingDelayForCAF(view){
 }
 
 
-
-function onEditorLoadSampleFromFile(blob){
-	tryEditorLoadSampleFromFileStandard(blob)
-	.then(function(length){
-		console.log("success Standard");
-		editorLoaded(length);
-	},function(e){
-		console.log("decode error(Standard) : " + e);
-		tryEditorLoadSampleFromFileAAC(blob)
-		.then(function(length){
-			console.log("success AAC");
-			editorLoaded(length);
-		},function(e){
-			console.log("decode error(AAC) : " + e);
-		});
-	});
-}
-
-function editorLoaded(length){
-	mydata.currentFrame = length;
-	mydata.viewStartFrame = 0;
-	mydata.viewEndFrame = mydata.currentFrame;
-	mydata.viewRate = 1.0;
-	mydata.recording = false;
-	mydata.playing = false
-
-	mydata.selectStartFrame = 0;
-	mydata.selectEndFrame = mydata.currentFrame;
-	mydata.selected = true;
-	mydata.playStartFrame = 0;
-	mydata.needsRedrawWave = true;
-
-	redrawCanvas();
-}
-
-function tryEditorLoadSampleFromFileStandard(blob){
-
-	return new Promise(function(resolve, reject){
-		const fileReader = new FileReader();
-		fileReader.onload = function(e){
-			const fileContents = e.target.result;
-			let audioContextForDecode = new AudioContext();
-			audioContextForDecode.decodeAudioData(fileContents)
-			.then(function(buf){
-				for (let i = 0; i < buf.length; i++){
-					audioBufferLeft[i] = buf.getChannelData(0)[i];
-					if (buf.numberOfChannels == 1){
-						audioBufferRight[i] = buf.getChannelData(0)[i];
-					}else{
-						audioBufferRight[i] = buf.getChannelData(1)[i];
-					}
-				}
-				audioContextForDecode.close();				
-				resolve(buf.length);
-
-			}, function(e){
-				reject(e);
-			});
-			
-		}
-		fileReader.readAsArrayBuffer(blob);
-	});
-}
-
-
-function tryEditorLoadSampleFromFileAAC(blob){
-
-	//use aac.js/aurora.js to decode caf(AAC compressed Apple Loops)
-	return new Promise(function(resolve, reject){
-		let asset = AV.Asset.fromFile(blob);
-		asset.on("error", function(e){
-			reject(e);
-		});
-		asset.get("duration", function(duration){
-			console.log("duration = " + duration);
-
-			const fileReader = new FileReader();
-			fileReader.onload = function(e){
-				// let fileContents = e.target.result;
-				// let view = new DataView(fileContents);
-
-				// let encodingDelay = getEncodingDelayForCAF(view);
-
-				asset.decodeToBuffer(function(buffer){
-
-					for (let i = 0; i < buffer.length/2; i++){
-						audioBufferLeft[i]  = buffer[i*2];
-						audioBufferRight[i] = buffer[i*2+1];
-					}
-					console.log("samples = " + buffer.length / 2);
-					resolve(buffer.length/2);
-				});
-			}
-
-			fileReader.readAsArrayBuffer(blob);	//somehow this required
-		});
-	});
-}
-
 function onPlayStopTrack(index){
 
 	let masterIndex = getMasterIndex();
@@ -1424,6 +1342,9 @@ function onPlayStopTrack(index){
 		masterTrack = mydata.tracks[masterIndex];
 	}
 
+	mydata.tracks[index].togglePlay();
+	onMainEngineStateChanged();
+
 	{
 		if (!mydata.mainNode) return;
 		let m = {
@@ -1436,44 +1357,34 @@ function onPlayStopTrack(index){
 
 }
 
-
-function playStateChanged(){
-
-	startStopTimer();
-
+function onMainEngineStateChanged(){
 	let shouldStop = true;
-	if (mydata.playing){
-		shouldStop = false
-	}
-	for (let i=0; i < TRACK_NUM; i++){
-		if (mydata.tracks[i]._loaded && mydata.tracks[i].isPlaying()){
-			shouldStop = false;
-		}
-	}
 
 	if (mydata.vTrack.isPlaying()){
 		shouldStop = false;
 	}
 
-	if (shouldStop && audioContext2){
-		if (audioContext2){
-			audioContext2.suspend();
-			audioContext2.close();
-			audioContext2 = null;
-			audioElem2.pause();
-			audioElem2 = null;
-			console.log("audioEngine stopped");
+	for (let i = 0 ; i < TRACK_NUM ; i++){
+		if (mydata.tracks[i].isPlaying()){
+			shouldStop = false;
 		}
-		mydata.isPlayerActive = false;
-		return;
 	}
-
-	if (!shouldStop && (audioContext2==null)) {
-		console.log("now start engine");
-		startOutEngine();
+	if (shouldStop){
+		// audioContext2.suspend();
+		// audioElem2.pause();
+		
+		console.log("AudioEngine(main) paused");
+	}else{
+		
+		
+		// audioElem2.play();
+		// audioContext2.resume();
+		console.log("AudioEngine(main) resumed");
 	}
 
 }
+
+
 
 function editorStateChanged(){
 	startStopTimer();
@@ -1491,6 +1402,7 @@ function editorStateChanged(){
 
 	if(shouldStop && mydata.isEditorActive){
 		if (audioContext){
+			audioContext.suspend();
 			audioContext.close();
 			audioContext = null;
 			audioElem.pause();
@@ -1528,7 +1440,7 @@ function startStopTimer(){
 	if (!shouldStop && (mydata.timer==null)){
 		mydata.timer = setInterval(function(){
 			redrawCanvas();
-		},50);
+		},100);
 	}
 }
 
@@ -1560,8 +1472,8 @@ function initMedia(){
 	
 	}).then(function(){
 		editorStateChanged();
-		startOutEngine();
-		startBeatDetectEngine();
+		createMainEngine();
+		// startBeatDetectEngine();
 	});
 
 }
@@ -1668,7 +1580,7 @@ function outputDeviceChanged(){
 		audioElem2 = null;
 		console.log("PlayerEngine stopped");
 	}
-	mydata.isPlayerActive = false;
+	// mydata.isPlayerActive = false;
 
 	let list = document.querySelector("#selectOutputDevices");
 	mydata.outDevId = list.options[list.selectedIndex].value;
@@ -1706,13 +1618,13 @@ function startEditorEngine() {
 	// navigator.mediaDevices.getUserMedia({audio:true, video:false})
 	navigator.mediaDevices.getUserMedia(constrains)
 	.then(function (stream) {
-		audioContext = new AudioContext();
+		audioContext = new AudioContext({latencyHint:"balanced"});
 
-		var mediastreamsource = audioContext.createMediaStreamSource(stream);
-		var scriptProcessor = audioContext.createScriptProcessor(0, 2, 2);
+		let mediastreamsource = audioContext.createMediaStreamSource(stream);
+		let scriptProcessor = audioContext.createScriptProcessor(0, 2, 2);
 		scriptProcessor.onaudioprocess = onAudioProcess;
 
-		var dest = audioContext.createMediaStreamDestination();
+		let dest = audioContext.createMediaStreamDestination();
 
 		mediastreamsource.connect(scriptProcessor);
 		scriptProcessor.connect(dest);
@@ -1725,15 +1637,15 @@ function startEditorEngine() {
 		})
 		.then(function(){
 			mydata.isEditorActive = true;
-			console.log("EditorEngine started");
+			console.log("EditorEngine created. with baseLatency:" + audioContext.baseLatency.toString());
 		});
 	});
 }
 
-function startOutEngine(){
+function createMainEngine(){
 	audioContext2 = new AudioContext({latencyHint:0});
 
-	var dest = audioContext2.createMediaStreamDestination();
+	mydata.dest = audioContext2.createMediaStreamDestination();
 	
 	audioContext2.audioWorklet.addModule("mainworklet.js")
 	.then(function(){
@@ -1754,16 +1666,15 @@ function startOutEngine(){
 
 		mainNode.connect(mydata.filterNodeLow);
 		mydata.filterNodeLow.connect(mydata.filterNodeHigh);
-		mydata.filterNodeHigh.connect(dest);
+		mydata.filterNodeHigh.connect(mydata.dest);
 
 
 		audioElem2 = new Audio();
-		audioElem2.srcObject = dest.stream;
+		audioElem2.srcObject = mydata.dest.stream;
 		audioElem2.setSinkId(mydata.outDevId);
 		audioElem2.play();
-		mydata.isPlayerActive = true;
 
-		console.log("OutEngine started. with baseLatency:" + audioContext2.baseLatency.toString());
+		console.log("MainEngine created. with baseLatency:" + audioContext2.baseLatency.toString());
 	});
 }
 
@@ -1776,14 +1687,16 @@ function onAudioProcess(e) {
 	const len = inbuf.getChannelData(0).length;
 	const outLeft = outbuf.getChannelData(0);
 	const outRight = outbuf.getChannelData(1);
+	const inLeft = inbuf.getChannelData(0);
+	const inRight = inbuf.getChannelData(1);
 
 	//monitor
 	if (mydata.monitor){
-    	for (let i=0; i < inbuf.getChannelData(0).length; i++){
-    		outbuf.getChannelData(0)[i] = inbuf.getChannelData(0)[i];
-    		outbuf.getChannelData(1)[i] = inbuf.getChannelData(1)[i];
-    	}
+		outbuf.copyToChannel(inLeft, 0);
+		outbuf.copyToChannel(inRight, 1);
+
     } else {
+
     	for (let i=0; i < len; i++){
     		outLeft[i] = 0;
     		outRight[i] = 0;
@@ -1791,56 +1704,56 @@ function onAudioProcess(e) {
 	}
 	
 	//loop editor
-	if (mydata.playing) {
-		for (let i = 0; i < outLeft.length; i++) {
-			outLeft[i] += audioBufferLeft[mydata.currentFramePlay];
-			outRight[i] += audioBufferRight[mydata.currentFramePlay];
-			mydata.currentFramePlay++;
+	// if (mydata.playing) {
+	// 	for (let i = 0; i < outLeft.length; i++) {
+	// 		outLeft[i] += audioBufferLeft[mydata.currentFramePlay];
+	// 		outRight[i] += audioBufferRight[mydata.currentFramePlay];
+	// 		mydata.currentFramePlay++;
 
-			if (mydata.selected) {
-				if (mydata.currentFramePlay > mydata.selectEndFrame) {
-					mydata.currentFramePlay = mydata.selectStartFrame;
-				}
-			} else {
-				if (mydata.currentFramePlay > mydata.currentFrame) {
-					mydata.playing = false;
-					redrawCanvas();
-					// playStateChanged();
-					break;
-				}
-			}
+	// 		if (mydata.selected) {
+	// 			if (mydata.currentFramePlay > mydata.selectEndFrame) {
+	// 				mydata.currentFramePlay = mydata.selectStartFrame;
+	// 			}
+	// 		} else {
+	// 			if (mydata.currentFramePlay > mydata.currentFrame) {
+	// 				mydata.playing = false;
+	// 				redrawCanvas();
+	// 				// playStateChanged();
+	// 				break;
+	// 			}
+	// 		}
 
-		}
-	}
+	// 	}
+	// }
 
 	//level monitor
 	if (mydata.level){
 		//input level calc
 		let level = 0.0;
-		for (let i = 0; i < inbuf.getChannelData(0).length; i++){
-			let valL = Math.abs(inbuf.getChannelData(0)[i]);
+		for (let i = 0; i < len; i++){
+			let valL = Math.abs(inLeft[i]);
 			if (valL > level) level = valL;
-			let valR = Math.abs(inbuf.getChannelData(1)[i]);
+			let valR = Math.abs(inRight[i]);
 			if (valR > level) level = valR;
 		}
 		mydata.inputLevel = level;
 	}
 
 	//recording 
-    if (mydata.recording){
-    	for (let i=0; i < inbuf.getChannelData(0).length; i++){
-	    	audioBufferLeft[mydata.currentFrame] = inbuf.getChannelData(0)[i];
-			audioBufferRight[mydata.currentFrame] = inbuf.getChannelData(1)[i];
-			mydata.currentFrame++;
-			mydata.viewEndFrame++;
-			mydata.viewRate = 1.0;
-			mydata.needsRedrawWave = true;
+    // if (mydata.recording){
+    // 	for (let i=0; i < inbuf.getChannelData(0).length; i++){
+	//     	audioBufferLeft[mydata.currentFrame] = inbuf.getChannelData(0)[i];
+	// 		audioBufferRight[mydata.currentFrame] = inbuf.getChannelData(1)[i];
+	// 		mydata.currentFrame++;
+	// 		mydata.viewEndFrame++;
+	// 		mydata.viewRate = 1.0;
+	// 		mydata.needsRedrawWave = true;
 
-		}
-	}
+	// 	}
+	// }
+
+	mydata.editor.processAudio(inLeft, inRight, outLeft, outRight, outLeft.length);
 	
-	//long
-	mydata.long.processAudio(outLeft, outRight, outLeft.length);
 };
 
 let preInLeft = new Float32Array(1024);
@@ -2055,46 +1968,50 @@ function linearInterporation(x0, y0, x1, y1, x){
 
 
 function startRecord(){
-	mydata.currentFrame = 0;
-	mydata.viewStartFrame = 0;
-	mydata.viewEndFrame = 0;
-	mydata.playStartFrame = 0;
-	mydata.viewRate = 1.0;
-	mydata.recording = true;
+	mydata.editor.startRecord();
+	// mydata.currentFrame = 0;
+	// mydata.viewStartFrame = 0;
+	// mydata.viewEndFrame = 0;
+	// mydata.playStartFrame = 0;
+	// mydata.viewRate = 1.0;
+	// mydata.recording = true;
 
-	mydata.selectStartFrame = 0;
-	mydata.selectEndFrame = 0;
-	mydata.playStartFrame = 0;
+	// mydata.selectStartFrame = 0;
+	// mydata.selectEndFrame = 0;
+	// mydata.playStartFrame = 0;
 
-	mydata.needsRedrawWave = true;
-	redrawCanvas();
+	// mydata.needsRedrawWave = true;
+	// redrawCanvas();
 
-	editorStateChanged();
+	// editorStateChanged();
 }
 
 function stopRecord(){
-	mydata.recording = false;
-	mydata.needsRedrawWave = true;
-	redrawCanvas();
-	editorStateChanged();
+	mydata.editor.stopRecord();
+	// mydata.recording = false;
+	// mydata.needsRedrawWave = true;
+	// redrawCanvas();
+	// editorStateChanged();
 
 }
 
 function startPlay(){
-	if(mydata.selected){
-		mydata.currentFramePlay = mydata.selectStartFrame;
-	}else{
+	mydata.editor.startPlay();
+	// mydata.editor.startPlay();
+	// if(mydata.selected){
+	// 	mydata.currentFramePlay = mydata.selectStartFrame;
+	// }else{
 
-		mydata.currentFramePlay = mydata.playStartFrame;
-	}
-	//playStateChanged();
-	mydata.playing = true;	
-	// playStateChanged();
+	// 	mydata.currentFramePlay = mydata.playStartFrame;
+	// }
+	// //playStateChanged();
+	// mydata.playing = true;	
+	// // playStateChanged();
 }
 
 function stopPlay(){
-
-	mydata.playing = false;
+	mydata.editor.stopPlay();
+	// mydata.playing = false;ty
 	// playStateCh	anged();
 }
 
@@ -2123,103 +2040,103 @@ function redrawCanvas(){
 
 	drawInputLevel();
 
-	const canvas = document.querySelector("#canvas");
+	// const canvas = document.querySelector("#canvas");
 
-	const w = canvas.clientWidth;
-	const h = canvas.clientHeight;
+	// const w = canvas.clientWidth;
+	// const h = canvas.clientHeight;
 
-	let c = canvas.getContext('2d');
+	// let c = canvas.getContext('2d');
 	
-	if (mydata.needsRedrawWave){
+	// if (mydata.needsRedrawWave){
 
-		c.clearRect(0,0,w,h);
+	// 	c.clearRect(0,0,w,h);
 
-		c.beginPath();
-		c.fillStyle = "black";
-		c.rect(0,0,w,h);
-		c.fill();
+	// 	c.beginPath();
+	// 	c.fillStyle = "black";
+	// 	c.rect(0,0,w,h);
+	// 	c.fill();
 
-		//optimization 2
-		const framePerPixel = (mydata.viewEndFrame - mydata.viewStartFrame) / w ;
+	// 	//optimization 2
+	// 	const framePerPixel = (mydata.viewEndFrame - mydata.viewStartFrame) / w ;
 		
-		for (let i = 0; i < w; i++){
-			let from = Math.floor(i * framePerPixel);
-			let to = Math.floor(from + framePerPixel);
-			if (to > mydata.viewEndFrame) to = mydata.viewEndFrame;
-			let max = 0;
+	// 	for (let i = 0; i < w; i++){
+	// 		let from = Math.floor(i * framePerPixel);
+	// 		let to = Math.floor(from + framePerPixel);
+	// 		if (to > mydata.viewEndFrame) to = mydata.viewEndFrame;
+	// 		let max = 0;
 
-			for(let j = from; j < to; j += Math.ceil((framePerPixel)/100)){
-				let s = Math.abs(audioBufferLeft[j + mydata.viewStartFrame]);
-				s += Math.abs(audioBufferRight[j + mydata.viewStartFrame]);
-				s /= 2;
-				if (s > max) max = s;
-			}
+	// 		for(let j = from; j < to; j += Math.ceil((framePerPixel)/100)){
+	// 			let s = Math.abs(audioBufferLeft[j + mydata.viewStartFrame]);
+	// 			s += Math.abs(audioBufferRight[j + mydata.viewStartFrame]);
+	// 			s /= 2;
+	// 			if (s > max) max = s;
+	// 		}
 
-			if (max <= 0) { //no sound
-				max = 0.002;
-			}
+	// 		if (max <= 0) { //no sound
+	// 			max = 0.002;
+	// 		}
 
-			c.beginPath();
-			c.strokeStyle = "lightgreen";
-			c.moveTo(i, h/2 - max*h/2);
-			c.lineTo(i, h/2 + max*h/2);
-			c.stroke();
-		}	
-	}
-	mydata.needsRedrawWave = false;
+	// 		c.beginPath();
+	// 		c.strokeStyle = "lightgreen";
+	// 		c.moveTo(i, h/2 - max*h/2);
+	// 		c.lineTo(i, h/2 + max*h/2);
+	// 		c.stroke();
+	// 	}	
+	// }
+	// mydata.needsRedrawWave = false;
 
 
-	c = document.querySelector("#canvas2").getContext('2d');
-	c.clearRect(0,0,w,h);
-	const framePerPixel = mydata.currentFrame / w/mydata.viewRate;
+	// c = document.querySelector("#canvas2").getContext('2d');
+	// c.clearRect(0,0,w,h);
+	// const framePerPixel = mydata.currentFrame / w/mydata.viewRate;
 
-	//selection
-	if (mydata.selected){
-		c.beginPath();
-		c.fillStyle ="rgb(123,123,123,0.6)";
+	// //selection
+	// if (mydata.selected){
+	// 	c.beginPath();
+	// 	c.fillStyle ="rgb(123,123,123,0.6)";
 
 		
-		let from = (mydata.selectStartFrame - mydata.viewStartFrame) / framePerPixel;
-		let to = (mydata.selectEndFrame - mydata.viewStartFrame) / framePerPixel;
-		c.rect(from, 0, to - from, h);
-		c.fill();
-	}
+	// 	let from = (mydata.selectStartFrame - mydata.viewStartFrame) / framePerPixel;
+	// 	let to = (mydata.selectEndFrame - mydata.viewStartFrame) / framePerPixel;
+	// 	c.rect(from, 0, to - from, h);
+	// 	c.fill();
+	// }
 
 
-	//start cursor
-	c.beginPath();
-	c.strokeStype = "blue";
-	c.setLineDash([2, 1]);
-	let x = (mydata.playStartFrame - mydata.viewStartFrame) / framePerPixel;
-	c.moveTo(x,0);
-	c.lineTo(x, h);
-	c.stroke();
+	// //start cursor
+	// c.beginPath();
+	// c.strokeStype = "blue";
+	// c.setLineDash([2, 1]);
+	// let x = (mydata.playStartFrame - mydata.viewStartFrame) / framePerPixel;
+	// c.moveTo(x,0);
+	// c.lineTo(x, h);
+	// c.stroke();
 
-	//play cursor
-	c.beginPath();
-	c.strokeStyle = "white";
-	c.setLineDash([]);
-	x = (mydata.currentFramePlay - mydata.viewStartFrame) / framePerPixel;
-	c.moveTo(x ,0);
-	c.lineTo(x, h);
-	c.stroke();
+	// //play cursor
+	// c.beginPath();
+	// c.strokeStyle = "white";
+	// c.setLineDash([]);
+	// x = (mydata.currentFramePlay - mydata.viewStartFrame) / framePerPixel;
+	// c.moveTo(x ,0);
+	// c.lineTo(x, h);
+	// c.stroke();
 
-	{
-		let rulerCanvas = document.querySelector("#rulerCanvas");
-		let w = rulerCanvas.width;
-		let h = rulerCanvas.height;
-		c = rulerCanvas.getContext("2d");
-		c.clearRect(0,0,w,h);
+	// {
+	// 	let rulerCanvas = document.querySelector("#rulerCanvas");
+	// 	let w = rulerCanvas.width;
+	// 	let h = rulerCanvas.height;
+	// 	c = rulerCanvas.getContext("2d");
+	// 	c.clearRect(0,0,w,h);
 
-		c.beginPath();
-		c.fillStyle = "lightgray";
-		c.rect(0, 0, w, h);
-		c.fill();
+	// 	c.beginPath();
+	// 	c.fillStyle = "lightgray";
+	// 	c.rect(0, 0, w, h);
+	// 	c.fill();
 
-		c.font = "1em 'ＭＳ Ｐゴシック'"
-		c.fillStyle = "black";
-		// c.fillText("123456789", w/2,h);
-	}
+	// 	c.font = "1em 'ＭＳ Ｐゴシック'"
+	// 	c.fillStyle = "black";
+	// 	// c.fillText("123456789", w/2,h);
+	// }
 	
 }
 
@@ -2262,11 +2179,7 @@ document.onkeydown = function (e){
 		{
 			e.stopPropagation();
 			e.preventDefault();
-			if (mydata.playing){
-				stopPlay();
-			}else{
-				startPlay();
-			}
+			mydata.editor.togglePlay();
 		}
 		break;
 	case 39 /*right */:
@@ -2402,278 +2315,281 @@ document.onkeyup = function (e){
 	}
 }
 function onRight(){
-	const w = document.querySelector("#canvas2").width;
-	const framePerPixel = mydata.currentFrame/w/mydata.viewRate;
+	mydata.editor.right();
 
-	if(mydata.selected){
-		//move start to right
-		mydata.selectStartFrame += Math.round(framePerPixel*2);
-		mydata.playStartFrame = mydata.selectStartFrame;
-	}else{
-		//move playStart to right
-		mydata.playStartFrame += Math.round(framePerPixel*2);
-	}
-	redrawCanvas();
+	// const w = document.querySelector("#canvas2").width;
+	// const framePerPixel = mydata.currentFrame/w/mydata.viewRate;
+
+	// if(mydata.selected){
+	// 	//move start to right
+	// 	mydata.selectStartFrame += Math.round(framePerPixel*2);
+	// 	mydata.playStartFrame = mydata.selectStartFrame;
+	// }else{
+	// 	//move playStart to right
+	// 	mydata.playStartFrame += Math.round(framePerPixel*2);
+	// }
+	// redrawCanvas();
 }
 function onLeft(){
-	const w = document.querySelector("#canvas2").width;
-	const framePerPixel = mydata.currentFrame/w/mydata.viewRate;	
+	mydata.editor.left();
+	// const w = document.querySelector("#canvas2").width;
+	// const framePerPixel = mydata.currentFrame/w/mydata.viewRate;	
 
-	if(mydata.selected){
-		//move start to left
-		mydata.selectStartFrame -= Math.round(framePerPixel*2);
-		mydata.playStartFrame = mydata.selectStartFrame;
-	}else{
-		mydata.playStartFrame -= Math.round(framePerPixel*2);
-	}
-	redrawCanvas();
+	// if(mydata.selected){
+	// 	//move start to left
+	// 	mydata.selectStartFrame -= Math.round(framePerPixel*2);
+	// 	mydata.playStartFrame = mydata.selectStartFrame;
+	// }else{
+	// 	mydata.playStartFrame -= Math.round(framePerPixel*2);
+	// }
+	// redrawCanvas();
 
 }
 function onRightWithShift(){
-	const w = document.querySelector("#canvas2").width;
-	const framePerPixel = mydata.currentFrame/w/mydata.viewRate;	
+	mydata.editor.rightWithShift();
+	// const w = document.querySelector("#canvas2").width;
+	// const framePerPixel = mydata.currentFrame/w/mydata.viewRate;	
 
-	if (mydata.selected){
-		//move end to right
-		mydata.selectEndFrame += Math.round(framePerPixel*2);
-	}else{
-		//starting select to right
-		mydata.selected = true;
-		mydata.selectStartFrame = mydata.playStartFrame;
-		mydata.selectEndFrame = mydata.selectStartFrame + Math.round(framePerPixel*2);
-	}	
-	redrawCanvas();
+	// if (mydata.selected){
+	// 	//move end to right
+	// 	mydata.selectEndFrame += Math.round(framePerPixel*2);
+	// }else{
+	// 	//starting select to right
+	// 	mydata.selected = true;
+	// 	mydata.selectStartFrame = mydata.playStartFrame;
+	// 	mydata.selectEndFrame = mydata.selectStartFrame + Math.round(framePerPixel*2);
+	// }	
+	// redrawCanvas();
 }
 
 function onLeftWithShift(){
-	const w = document.querySelector("#canvas2").width;
-	const framePerPixel = mydata.currentFrame/w/mydata.viewRate;	
+	mydata.editor.leftWithShift();
+	// const w = document.querySelector("#canvas2").width;
+	// const framePerPixel = mydata.currentFrame/w/mydata.viewRate;	
 
-	if (mydata.selected){
-		//move end to left
-		mydata.selectEndFrame -= Math.round(framePerPixel*2);
-	}else{
-		//starting select to left
-		mydata.selected = true;
-		mydata.selectEndFrame = mydata.playStartFrame;
-		mydata.selectStartFrame = mydata.selectEndFrame - Math.round(framePerPixel*2);
-	}	
-	redrawCanvas();
-
-
+	// if (mydata.selected){
+	// 	//move end to left
+	// 	mydata.selectEndFrame -= Math.round(framePerPixel*2);
+	// }else{
+	// 	//starting select to left
+	// 	mydata.selected = true;
+	// 	mydata.selectEndFrame = mydata.playStartFrame;
+	// 	mydata.selectStartFrame = mydata.selectEndFrame - Math.round(framePerPixel*2);
+	// }	
+	// redrawCanvas();
 }
 
 
-function onCanvasMousedown(e){
+// function onCanvasMousedown(e){
 
-    const rect = e.target.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const canvas = document.querySelector("#canvas2");
-    const w = canvas.width;
-	const framePerPixel = (mydata.currentFrame)/w/mydata.viewRate;
+//     const rect = e.target.getBoundingClientRect();
+//     const x = e.clientX - rect.left;
+//     const canvas = document.querySelector("#canvas2");
+//     const w = canvas.width;
+// 	const framePerPixel = (mydata.currentFrame)/w/mydata.viewRate;
 
-	if (!e.shiftKey){
-    	mydata.selectStartFrame = Math.round(mydata.viewStartFrame + framePerPixel*x);
-    	mydata.selectEndFrame = mydata.selectStartFrame;
-    	mydata.selectDragStartFrame = mydata.selectStartFrame;
-    	mydata.selected = false;
-    	mydata.playStartFrame = mydata.selectDragStartFrame;
+// 	if (!e.shiftKey){
+//     	mydata.selectStartFrame = Math.round(mydata.viewStartFrame + framePerPixel*x);
+//     	mydata.selectEndFrame = mydata.selectStartFrame;
+//     	mydata.selectDragStartFrame = mydata.selectStartFrame;
+//     	mydata.selected = false;
+//     	mydata.playStartFrame = mydata.selectDragStartFrame;
 
-		mydata.dragging = true;		
-		redrawCanvas();
-	}else{
-		const pointedFrame = Math.round(mydata.viewStartFrame + framePerPixel*x);
-		if(mydata.selected){
-			if (pointedFrame < mydata.selectStartFrame){
-				mydata.shiftDraggingForLeft = true;
-				mydata.selectStartFrame = pointedFrame;
-				mydata.playStartFrame = pointedFrame;
-			}else if (mydata.selectEndFrame < pointedFrame){
-				mydata.shiftDraggingForLeft = false;
-				mydata.selectEndFrame = pointedFrame;
-			}else{
-				//between start and end. move nearest
-				if((pointedFrame - mydata.selectStartFrame) < (mydata.selectEndFrame - pointedFrame)){
-					mydata.shiftDraggingForLeft = true;
-					mydata.selectStartFrame = pointedFrame;
-					mydata.playStartFrame = pointedFrame;
+// 		mydata.dragging = true;		
+// 		redrawCanvas();
+// 	}else{
+// 		const pointedFrame = Math.round(mydata.viewStartFrame + framePerPixel*x);
+// 		if(mydata.selected){
+// 			if (pointedFrame < mydata.selectStartFrame){
+// 				mydata.shiftDraggingForLeft = true;
+// 				mydata.selectStartFrame = pointedFrame;
+// 				mydata.playStartFrame = pointedFrame;
+// 			}else if (mydata.selectEndFrame < pointedFrame){
+// 				mydata.shiftDraggingForLeft = false;
+// 				mydata.selectEndFrame = pointedFrame;
+// 			}else{
+// 				//between start and end. move nearest
+// 				if((pointedFrame - mydata.selectStartFrame) < (mydata.selectEndFrame - pointedFrame)){
+// 					mydata.shiftDraggingForLeft = true;
+// 					mydata.selectStartFrame = pointedFrame;
+// 					mydata.playStartFrame = pointedFrame;
 					
-				}else{
-					mydata.shiftDraggingForLeft = false;
-					mydata.selectEndFrame = pointedFrame;
-					mydata.shiftDragStartFromLeft = false;
-				}
-			}
-		}else{
-			if (mydata.playStartFrame < pointedFrame){
-				mydata.selectStartFrame = mydata.playStartFrame;
-				mydata.selectEndFrame = pointedFrame;
-				mydata.shiftDraggingForLeft = false;
-			}else{
-				mydata.selectStartFrame = pointedFrame;
-				mydata.selectEndFrame = mydata.playStartFrame;
-				mydata.playStartFrame = mydata.selectStartFrame;
-				mydata.shiftDraggingForLeft = true;
-			}
-			mydata.selected = true;
-		}
-		mydata.shiftDragging = true;
-		redrawCanvas();
-	}
-}
+// 				}else{
+// 					mydata.shiftDraggingForLeft = false;
+// 					mydata.selectEndFrame = pointedFrame;
+// 					mydata.shiftDragStartFromLeft = false;
+// 				}
+// 			}
+// 		}else{
+// 			if (mydata.playStartFrame < pointedFrame){
+// 				mydata.selectStartFrame = mydata.playStartFrame;
+// 				mydata.selectEndFrame = pointedFrame;
+// 				mydata.shiftDraggingForLeft = false;
+// 			}else{
+// 				mydata.selectStartFrame = pointedFrame;
+// 				mydata.selectEndFrame = mydata.playStartFrame;
+// 				mydata.playStartFrame = mydata.selectStartFrame;
+// 				mydata.shiftDraggingForLeft = true;
+// 			}
+// 			mydata.selected = true;
+// 		}
+// 		mydata.shiftDragging = true;
+// 		redrawCanvas();
+// 	}
+// }
 
-function onCanvasMousemove(e){
+// function onCanvasMousemove(e){
 
-	const rect = e.target.getBoundingClientRect();
-	const x = e.clientX - rect.left;
-	const canvas = document.querySelector("#canvas2");
-	const w = canvas.width;
-	const framePerPixel = (mydata.currentFrame)/w/mydata.viewRate;
-	const pointedFrame = Math.round(mydata.viewStartFrame + framePerPixel*x);
+// 	const rect = e.target.getBoundingClientRect();
+// 	const x = e.clientX - rect.left;
+// 	const canvas = document.querySelector("#canvas2");
+// 	const w = canvas.width;
+// 	const framePerPixel = (mydata.currentFrame)/w/mydata.viewRate;
+// 	const pointedFrame = Math.round(mydata.viewStartFrame + framePerPixel*x);
 
-	if (!e.shiftKey){
-		if (!mydata.dragging) return;
-		if (pointedFrame < mydata.selectDragStartFrame){
-			mydata.selectStartFrame = pointedFrame;
-			mydata.selectEndFrame = mydata.selectDragStartFrame;
-			mydata.playStartFrame = pointedFrame;
-		}else{
-			mydata.selectStartFrame = mydata.selectDragStartFrame;
-			mydata.selectEndFrame = pointedFrame;
-			mydata.playStartFrame = mydata.selectStartFrame;
-		}
+// 	if (!e.shiftKey){
+// 		if (!mydata.dragging) return;
+// 		if (pointedFrame < mydata.selectDragStartFrame){
+// 			mydata.selectStartFrame = pointedFrame;
+// 			mydata.selectEndFrame = mydata.selectDragStartFrame;
+// 			mydata.playStartFrame = pointedFrame;
+// 		}else{
+// 			mydata.selectStartFrame = mydata.selectDragStartFrame;
+// 			mydata.selectEndFrame = pointedFrame;
+// 			mydata.playStartFrame = mydata.selectStartFrame;
+// 		}
 
-		if (mydata.selectEndFrame - mydata.selectStartFrame > 1){
-			mydata.selected = true;
-		}else{
-			mydata.selected = false;
-			mydata.playStartFrame = mydata.selectStartFrame;
-		}
-		redrawCanvas();
-	}else{
-		if (!mydata.shiftDragging) return;
-		if(mydata.selected){
-			if(mydata.shiftDraggingForLeft){
-				mydata.selectStartFrame = pointedFrame;
-				mydata.playStartFrame = pointedFrame;
-			}else{
-				mydata.selectEndFrame = pointedFrame;
-			}
+// 		if (mydata.selectEndFrame - mydata.selectStartFrame > 1){
+// 			mydata.selected = true;
+// 		}else{
+// 			mydata.selected = false;
+// 			mydata.playStartFrame = mydata.selectStartFrame;
+// 		}
+// 		redrawCanvas();
+// 	}else{
+// 		if (!mydata.shiftDragging) return;
+// 		if(mydata.selected){
+// 			if(mydata.shiftDraggingForLeft){
+// 				mydata.selectStartFrame = pointedFrame;
+// 				mydata.playStartFrame = pointedFrame;
+// 			}else{
+// 				mydata.selectEndFrame = pointedFrame;
+// 			}
 			
-		}else{
-			//not come here
-			console.log("something wrong");
-		}
-		redrawCanvas();
-	}
+// 		}else{
+// 			//not come here
+// 			console.log("something wrong");
+// 		}
+// 		redrawCanvas();
+// 	}
 
 	
-}
+// }
+// // 
 
+// function onCanvasMouseup(e){
 
-function onCanvasMouseup(e){
+// 	const rect = e.target.getBoundingClientRect();
+// 	const x = e.clientX - rect.left;
+// 	const canvas = document.querySelector("#canvas2");
+// 	const w = canvas.width;
+// 	const framePerPixel = (mydata.currentFrame)/w/mydata.viewRate;
+// 	const pointedFrame = Math.round(mydata.viewStartFrame + framePerPixel*x);
 
-	const rect = e.target.getBoundingClientRect();
-	const x = e.clientX - rect.left;
-	const canvas = document.querySelector("#canvas2");
-	const w = canvas.width;
-	const framePerPixel = (mydata.currentFrame)/w/mydata.viewRate;
-	const pointedFrame = Math.round(mydata.viewStartFrame + framePerPixel*x);
+// 	if(!e.shiftKey){
+// 		if (pointedFrame < mydata.selectDragStartFrame){
+// 			mydata.selectStartFrame = pointedFrame;
+// 			mydata.selectEndFrame = mydata.selectDragStartFrame;
+// 			mydata.playStartFrame = pointedFrame;
+// 		}else{
+// 			mydata.selectStartFrame = mydata.selectDragStartFrame;
+// 			mydata.selectEndFrame = pointedFrame;
+// 			mydata.playStartFrame = mydata.selectStartFrame;
+// 		}
 
-	if(!e.shiftKey){
-		if (pointedFrame < mydata.selectDragStartFrame){
-			mydata.selectStartFrame = pointedFrame;
-			mydata.selectEndFrame = mydata.selectDragStartFrame;
-			mydata.playStartFrame = pointedFrame;
-		}else{
-			mydata.selectStartFrame = mydata.selectDragStartFrame;
-			mydata.selectEndFrame = pointedFrame;
-			mydata.playStartFrame = mydata.selectStartFrame;
-		}
+// 		if (mydata.selectEndFrame - mydata.selectStartFrame > 1){
+// 			mydata.selected = true;
+// 		}else{
+// 			mydata.selected = false;
+// 			mydata.playStartFrame = mydata.selectStartFrame;
+// 		}
 
-		if (mydata.selectEndFrame - mydata.selectStartFrame > 1){
-			mydata.selected = true;
-		}else{
-			mydata.selected = false;
-			mydata.playStartFrame = mydata.selectStartFrame;
-		}
-
-		mydata.dragging = false;
-		redrawCanvas();
-	}else{
-		if(mydata.selected){
-			if(mydata.shiftDraggingForLeft){
-				mydata.selectStartFrame = pointedFrame;
-				mydata.playStartFrame = pointedFrame;
-			}else{
-				mydata.selectEndFrame = pointedFrame;
-			}
+// 		mydata.dragging = false;
+// 		redrawCanvas();
+// 	}else{
+// 		if(mydata.selected){
+// 			if(mydata.shiftDraggingForLeft){
+// 				mydata.selectStartFrame = pointedFrame;
+// 				mydata.playStartFrame = pointedFrame;
+// 			}else{
+// 				mydata.selectEndFrame = pointedFrame;
+// 			}
 			
-		}else{
-			//not come here
-			console.log("something wrong");
-		}
-		mydata.shiftDragging = false;
-		redrawCanvas();
-	}	
-}
+// 		}else{
+// 			//not come here
+// 			console.log("something wrong");
+// 		}
+// 		mydata.shiftDragging = false;
+// 		redrawCanvas();
+// 	}	
+// }
 
-function onCanvasScroll(e){
-	e.preventDefault();
-	// console.log(e);
+// function onCanvasScroll(e){
+// 	e.preventDefault();
+// 	// console.log(e);
 
-	if (Math.abs(e.wheelDeltaY) > Math.abs(e.wheelDeltaX)){
+// 	if (Math.abs(e.wheelDeltaY) > Math.abs(e.wheelDeltaX)){
 
-		//zoon in/out
-		const deltaY = e.wheelDeltaY;
-    	const canvas = document.querySelector("#canvas2");
-      	const w = canvas.width
-		const viewGravcenterRatio = /*e.offsetX*/(e.clientX-e.currentTarget.getBoundingClientRect().left) / w;
-		let viewGravcenterFrame = Math.round(mydata.viewStartFrame
-									+ viewGravcenterRatio * (mydata.viewEndFrame - mydata.viewStartFrame));
+// 		//zoon in/out
+// 		const deltaY = e.wheelDeltaY;
+//     	const canvas = document.querySelector("#canvas2");
+//       	const w = canvas.width
+// 		const viewGravcenterRatio = /*e.offsetX*/(e.clientX-e.currentTarget.getBoundingClientRect().left) / w;
+// 		let viewGravcenterFrame = Math.round(mydata.viewStartFrame
+// 									+ viewGravcenterRatio * (mydata.viewEndFrame - mydata.viewStartFrame));
 
-		mydata.viewRate += 0.005 * deltaY;
-		if (mydata.viewRate < 1.0) mydata.viewRate = 1.0;
+// 		mydata.viewRate += 0.005 * deltaY;
+// 		if (mydata.viewRate < 1.0) mydata.viewRate = 1.0;
 
-		if (mydata.viewRate == 1.0){
-			mydata.viewStartFrame = 0;
-			mydata.viewEndFrame = mydata.currentFrame;
-		}else{
-			const framePerPixel = (mydata.currentFrame)/w/mydata.viewRate;
-			mydata.viewStartFrame = Math.round(viewGravcenterFrame - framePerPixel * viewGravcenterRatio * w);
-			mydata.viewEndFrame = Math.round(viewGravcenterFrame + framePerPixel * (1 - viewGravcenterRatio) * w);
-		}
+// 		if (mydata.viewRate == 1.0){
+// 			mydata.viewStartFrame = 0;
+// 			mydata.viewEndFrame = mydata.currentFrame;
+// 		}else{
+// 			const framePerPixel = (mydata.currentFrame)/w/mydata.viewRate;
+// 			mydata.viewStartFrame = Math.round(viewGravcenterFrame - framePerPixel * viewGravcenterRatio * w);
+// 			mydata.viewEndFrame = Math.round(viewGravcenterFrame + framePerPixel * (1 - viewGravcenterRatio) * w);
+// 		}
 
-		mydata.needsRedrawWave = true;
-		redrawCanvas();
-	}else{
+// 		mydata.needsRedrawWave = true;
+// 		redrawCanvas();
+// 	}else{
 
-		//horizontal scroll
-		const deltaX = -e.wheelDeltaX;
-		const prevStart = mydata.viewStartFrame;
-		const prevEnd = mydata.viewEndFrame;
-		mydata.viewStartFrame += Math.round(deltaX/mydata.viewRate*120);
-		mydata.viewEndFrame += Math.round(deltaX/mydata.viewRate*120);
+// 		//horizontal scroll
+// 		const deltaX = -e.wheelDeltaX;
+// 		const prevStart = mydata.viewStartFrame;
+// 		const prevEnd = mydata.viewEndFrame;
+// 		mydata.viewStartFrame += Math.round(deltaX/mydata.viewRate*120);
+// 		mydata.viewEndFrame += Math.round(deltaX/mydata.viewRate*120);
 
-		if(mydata.viewStartFrame < 0){
-			mydata.viewStartFrame = 0;
-			mydata.viewEndFrame = mydata.viewStartFrame + (prevEnd - prevStart);
-		}
-		if(mydata.viewEndFrame > mydata.currentFrame){
-			mydata.viewEndFrame = mydata.currentFrame;
-			mydata.viewStartFrame = mydata.viewEndFrame - (prevEnd - prevStart);
-		}
-		mydata.needsRedrawWave = true;
-		redrawCanvas();
-	}
+// 		if(mydata.viewStartFrame < 0){
+// 			mydata.viewStartFrame = 0;
+// 			mydata.viewEndFrame = mydata.viewStartFrame + (prevEnd - prevStart);
+// 		}
+// 		if(mydata.viewEndFrame > mydata.currentFrame){
+// 			mydata.viewEndFrame = mydata.currentFrame;
+// 			mydata.viewStartFrame = mydata.viewEndFrame - (prevEnd - prevStart);
+// 		}
+// 		mydata.needsRedrawWave = true;
+// 		redrawCanvas();
+// 	}
 
-}
+// }
 
 //https://qiita.com/HirokiTanaka/items/56f80844f9a32020ee3b
 //https://github.com/mattdiamond/Recorderjs/blob/master/lib/recorder.js
 function createWAVBlob(){
 
-	let sampleNum = mydata.selectEndFrame - mydata.selectStartFrame;
+	let sampleNum = mydata.editor.selectEndFrame - mydata.editor.selectStartFrame;
 
 	function encodeWAV(){
 		var buffer = new ArrayBuffer(44 + sampleNum*4 );
@@ -2687,10 +2603,10 @@ function createWAVBlob(){
 
 		function floatTo16BitPCM(output, offset){
 			for (var i = 0; i < sampleNum ;i++,offset+=4){
-				var sL = Math.max(-1, Math.min(1, audioBufferLeft[mydata.selectStartFrame+i]));
+				var sL = Math.max(-1, Math.min(1, mydata.editor.bufferLeft[mydata.editor.selectStartFrame+i]));
 				output.setInt16(offset, sL < 0 ? sL*0x8000: sL*0x7FFF, true);
 			
-				var sR = Math.max(-1, Math.min(1, audioBufferRight[mydata.selectStartFrame+i]));
+				var sR = Math.max(-1, Math.min(1, mydata.editor.bufferRight[mydata.editor.selectStartFrame+i]));
 				output.setInt16(offset+2, sR < 0 ? sR*0x8000: sR*0x7FFF, true);
 			}
 		}
@@ -2768,59 +2684,64 @@ function uploadWAV_upload(formData){
 
 function onSoundListClick(){
 	$("#soundDeleteButton").get(0).disabled = false;
-	toShadow2();
+	
+	if (mydata.vTrack.isPlaying()){
+		mydata.vTrack.stop();
+		let port = mydata.mainNode.port;
+		let m = {
+			"cmd": "stopV"
+		};
+		port.postMessage(m);
+		onMainEngineStateChanged();
+	}
 }
 
 function onSoundListDblClick(){
 
-	$("#soundDeleteButton").get(0).disabled = false;
-	mydata.vTrack.pause();
-
-	let soundName = mydata.soundList.selectedText();
-
-	console.log("double click for sound name = " + soundName);
-
-
-	//get blob by ajax
-	let xhr = new XMLHttpRequest();
-	xhr.open("GET", "/sound/" + soundName);
-	xhr.responseType = "blob";
-	xhr.onreadystatechange = function () {
-		if (this.readyState == 4 && this.status == 200) {
-			mydata.vTrack.loadSampleFromFile(this.response, "vTrack")
-			.then(function () {
-				console.log("vtrack load done");
-				mydata.vTrack.setQuantize(false);
-				mydata.vTrack.setLoop(false);
-				// mydata.vTrack.play();
-				toShadow();
-			}, function (e) {
-				console.log("vtrack load failed:" + e);
-			});
-		}
+	if (mydata.vTrack.isPlaying()) {
+		mydata.vTrack.stop();
+		let port = mydata.mainNode.port;
+		let m = {
+			"cmd": "stopV"
+		};
+		port.postMessage(m);
+		onMainEngineStateChanged();
 	}
 
-	xhr.send();
+	$("#soundDeleteButton").get(0).disabled = false;
+	loadSample2(mydata.vTrack, -1, mydata.soundList.selectedText())
+	.then(function(){
+		mydata.vTrack.setQuantize(false);
+		mydata.vTrack.setLoop(false);
+		mydata.vTrack.togglePlay();
+		onMainEngineStateChanged();
+		let m = {
+			"cmd": "playV"
+		};
+		let port = mydata.mainNode.port;
+		port.postMessage(m);	
+	});
+
 }
 
-function toShadow(){
-	if (!mydata.mainNode) return ;
-	let port = mydata.mainNode.port;
+// function toShadow(){
+// 	if (!mydata.mainNode) return ;
+// 	let port = mydata.mainNode.port;
 	
-	let m = {
-		"cmd": "setBufferV",
-		"left" : mydata.vTrack._bufferLeft,
-		"right" : mydata.vTrack._bufferRight
-	};
-	let t = [mydata.vTrack._bufferLeft.buffer, mydata.vTrack._bufferRight.buffer];
-	port.postMessage(m,t);
+// 	let m = {
+// 		"cmd": "setBufferV",
+// 		"left" : mydata.vTrack._bufferLeft,
+// 		"right" : mydata.vTrack._bufferRight
+// 	};
+// 	let t = [mydata.vTrack._bufferLeft.buffer, mydata.vTrack._bufferRight.buffer];
+// 	port.postMessage(m,t);
 
-	m = {
-		"cmd" : "playV"
-	};
-	port.postMessage(m);
-	// port.postMessage(m, t);
-}
+// 	m = {
+// 		"cmd" : "playV"
+// 	};
+// 	port.postMessage(m);
+// 	// port.postMessage(m, t);
+// }
 
 function toShadow2(){
 	if (!mydata.mainNode) return;

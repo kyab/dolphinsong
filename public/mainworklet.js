@@ -7,7 +7,6 @@ class MainProcessor extends AudioWorkletProcessor {
 
     constructor() {
         super();
-        console.log("constructor");
         this._vTrack = new ShadowTrack();
         this._tracks = new Array(TRACK_NUM);
         for (let i = 0 ; i < TRACK_NUM; i++){
@@ -47,7 +46,11 @@ class MainProcessor extends AudioWorkletProcessor {
                 {
                     let index = m.index;
                     let si = m.stemIndex;
-                    this._tracks[index].setBuffer(si, m.left, m.right);
+                    if (index == -1){
+                        this._vTrack.setBuffer(si, m.left, m.right)
+                    }else{
+                        this._tracks[index].setBuffer(si, m.left, m.right);
+                    }
                 }
                 break;
 
@@ -76,20 +79,20 @@ class MainProcessor extends AudioWorkletProcessor {
                 break;
 
             case "playV":
-                this._vTrack.play();
+                this._vTrack.playStop();
                 break;
 
-            case "play":
-                this._tracks[m.index].play();
-                break;
+            // case "play":
+            //     this._tracks[m.index].play();
+            //     break;
 
             case "stopV":
-                this._vTrack.pause();
+                this._vTrack.stop();
                 break;
 
-            case "stop":
-                this._tracks[m.index].pause();
-                break;
+            // case "stop":
+            //     this._tracks[m.index].pause();
+            //     break;
 
             case "playStop":
                 this._tracks[m.index].playStop();
@@ -142,8 +145,15 @@ class MainProcessor extends AudioWorkletProcessor {
         }
 
         if (this._vTrack.isPlaying()){
-            this._vTrack.process(outLeft, outRight, outLeft.length);
+            for (let i = 0; i < outLeft.length; i++){
+                let y0 = this._vTrack.getAt(i);
+                outLeft[i] += y0[0];
+                outRight[i] += y0[1];
+            }
+            this._vTrack.consume_scratch(outLeft.length);
+            this._vTrack.consume_backyard(outLeft.length);
         }
+
 
         for (let i = 0; i < TRACK_NUM; i++) {
 

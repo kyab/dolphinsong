@@ -207,8 +207,11 @@ class DolphinSong < Sinatra::Base
 
 		#step1 : add 1sec silent to head 
 		#ffmpeg -i WARGNER.wav -af "adelay=1s|1s" -c:v copy WAGNER_prefixed.wav
-		
-		#step2 : spleeter it.
+		cmd = "ffmpeg -i #{save_path} -af \"adelay=1s|1s\" -c:v copy #{save_path}_prefixed.wav"
+		puts "executing command : #{cmd}"
+		system(cmd)
+
+		#step2 : separete to stems, using spleeter it.
 		client = HTTPClient.new()
 		url = "http://localhost:8080/separate/" + @filename
 		url = URI.escape(url)
@@ -217,9 +220,21 @@ class DolphinSong < Sinatra::Base
 		puts "response.status = " + response.status.to_s
 		puts "response : " + response.body
 
-		#step1 : trim 1sec from head.
-		#ffmpeg -i drums.wav  -af "atrim=1" -c:v copy drums_split.wav
-		#
+		`rm #{save_path}_prefixed.wav`
+
+		#step3 : trim 1sec from head.
+		#ffmpeg -i drums.wav  -af "atrim=1" -c:v copy drums_split.wav		
+		stems = ["bass.wav", "drums.wav", "other.wav", "piano.wav", "vocals.wav"]
+		basename = File.basename(@filename, ".*")
+		base_path = "./data/sounds/stems/" + basename + "/"
+		stems.each do |stem|
+			cmd = "ffmpeg -i #{base_path}#{stem} -af \"atrim=1\" -c:v copy #{base_path}#{stem}_unprefixed.wav"
+			system(cmd)
+			cmd = "rm #{base_path}#{stem}"
+			system(cmd)
+			cmd = "mv #{base_path}#{stem}_unprefixed.wav #{base_path}#{stem}"
+			system(cmd)
+		end
 
 		content_type :json
 		filelist

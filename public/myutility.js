@@ -10,15 +10,15 @@ class MyUtility{
     static loadFromBlob(blob){
         return new Promise(function (resolve, reject) {
             MyUtility._tryLoadFromBlobStandard(blob)
-            .then(function (left, right) {
-                resolve(left, right);
+            .then(function (b) {
+                resolve(b);
             }, function (e) {
-                MyUtility._tryLoadSampleFromFileAAC(blob)
-                    .then(function (left, right) {
-                        resolve(left, right);
-                    }, function (e) {
-                        reject(e);
-                    });
+                MyUtility._tryLoadFromBlobAAC(blob)
+                .then(function (b) {
+                    resolve(b);
+                }, function (e) {
+                    reject(e);
+                });
             });
         });
     }
@@ -40,7 +40,10 @@ class MyUtility{
                             right = buf.getChannelData(1);
                         }
                         audioContextForDecode.close();
-                        resolve(left, right);
+                        let b ={};
+                        b.left = left;
+                        b.right = right;
+                        resolve(b);
                     }, function (e) {
                         reject(e);
                     });
@@ -70,7 +73,10 @@ class MyUtility{
                             right[i] = buffer[i * 2 + 1];
                         }
                         console.log("samples = " + buffer.length / 2);
-                        resolve(left, right);
+                        let b = {};
+                        b.left = left;
+                        b.right = right;
+                        resolve(b);
                     });
                 }
                 fileReader.readAsArrayBuffer(blob);	//somehow this required

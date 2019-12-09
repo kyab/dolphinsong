@@ -44,7 +44,8 @@ function MyListBox(element, itemClass, ajaxUrl) {
                 items.forEach(function (item) {
                     // item.addEventListener("click", itemClicked);
                     item.addEventListener("mousedown", itemMousedown);
-                    item.addEventListener("dblclick", itemDblckick);
+                    item.addEventListener("click", itemMousedown);
+                    item.addEventListener("dblclick", itemDblClick);
                     item.addEventListener("dragstart", function (e) {
                         console.log("dragstart");
                         e.dataTransfer.setData("text", item.innerText);
@@ -130,8 +131,16 @@ function MyListBox(element, itemClass, ajaxUrl) {
         if (that.onClick) that.onClick(that);     
     }
 
-    function itemDblckick(e){
-        console.log("itemDblckick");
-
+    function itemDblClick(e){
+        let items = that._target.querySelectorAll("." + that._itemClass);
+        let item = e.target;
+        for (let i = 0; i < items.length; i++) {
+            if (item == items[i]) {
+                that._selectedIndex = i;
+            }
+        }
+        selectChanged();
+        if (that.onDblClick) that.onDblClick(that);         
     }
+
 }
