@@ -158,37 +158,8 @@ window.addEventListener("resize", function(e){
 	mydata.editor.onResize();
 });
 
-function onResize(){
-	let canvas = document.querySelector("#canvas");
-	let canvas2 = document.querySelector("#canvas2");
-	let rulerCanvas = document.querySelector("#rulerCanvas");
-	let w = canvas.clientWidth;
-	let h = canvas.clientHeight;
-	canvas.width = w;
-	canvas2.width = w;
-	canvas.height = h;
-	canvas2.height = h;
-
-	w = rulerCanvas.clientWidth;
-	h = rulerCanvas.clientHeight;
-	rulerCanvas.width = w;
-	rulerCanvas.height = h;
-
-	mydata.needsRedrawWave = true;
-	redrawCanvas();
-}
 
 window.addEventListener("load", function(){
-
-
-	// let canvas2 = document.querySelector("#canvas2");
-	// canvas2.addEventListener("mousedown", onCanvasMousedown, false);
-	// canvas2.addEventListener("mousemove", onCanvasMousemove, false);
-	// canvas2.addEventListener("mouseup", onCanvasMouseup, false);
-
-	// canvas2.addEventListener("wheel", onCanvasScroll, false);
-
-	// onResize();
 
 	mydata.editor = new Editor(document.querySelector("#canvas2"));
 	mydata.editor.onResize();

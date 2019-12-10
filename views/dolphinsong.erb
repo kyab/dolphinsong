@@ -5,15 +5,49 @@
 body{
 	margin:0 0;
 	background-color:darkgray;
+	display:flex;
+	flex-direction:column;
 }
 
+#header {
+	display :flex;
+	flex-direction: row;
+
+	margin-top:5px;
+	margin-bottom:5px;
+
+}
+
+#content{
+	display:flex;
+	flex-direction:row;
+}
 
 #sidebar{
-	float:left;
+	/* float:left; */
 	height:100%;
 	width:180px;
-
 }
+
+#mainContent{
+	width:100%;
+}
+
+
+
+#header > li{
+	list-style-type: none;
+}
+
+#header > li:first-of-type{
+	margin-right:auto;
+	padding-left : 1em;
+}
+
+#header > li:not(:first-of-type){
+	padding-right:10px;
+}
+
 
 #tapButton{
 	margin-left:10px;
@@ -24,27 +58,31 @@ body{
 	font-size:0.8em;
 }
 
-#soundUploadButtonLabel{
-	display:inline-block;
-	margin-left : 5px;
-	margin-top : 10px;
-	background-color: antiquewhite;
+#sidebar > #tab{
+	margin-top:10px;
+    display:flex;
+    flex-direction:row;
+    justify-content: center;
+    width:175px;
+}
+#sidebar > #tab > li {
+	
+    list-style-type:none;
+    padding-left:20px;
+    padding-right:20px;
+    border : 0.01em solid black; 
+	cursor: default;
 }
 
-#soundDeleteButton {
-	margin-left : 5px;
-}
 
 
 #soundList{
-
 	width:175px;
 	height:400px;
 	margin-left:5px;
 	background-color: rgb(71, 194, 194);
 	font-size:0.8em;
 	overflow:scroll;
-	
 }
 
 .soundItem{
@@ -55,20 +93,17 @@ body{
 	white-space:nowrap;
 }
 
-
 .soundItem.selected{
 	background-color: rgb(92, 92, 143);
 }
 
 #songList{
-
 	width:175px;
 	height:400px;
 	margin-left:5px;
 	background-color: rgb(196, 138, 131);
 	font-size:0.8em;
 	overflow:scroll;
-	
 }
 
 .songItem{
@@ -85,8 +120,22 @@ body{
 }
 
 
+
+#soundDeleteButton {
+	margin-left : 5px;
+}
+
+
+
+#soundUploadButtonLabel{
+	display:inline-block;
+	margin-left : 5px;
+	margin-top : 10px;
+	background-color: antiquewhite;
+}
+
 #main{
-	padding-left:180px;
+	/* padding-left:180px; */
 	text-align:center;
 	height:100%;
 }
@@ -107,7 +156,6 @@ body{
 
 	/* font-size:0.1em; */
 	
-
 }
 
 #editor{
@@ -180,41 +228,14 @@ body{
 	margin : 0px;
 }
 
-#header {
-	margin-top:5px;
-	margin-bottom:5px;
-	display :flex;
+
+/* 
+#sidebar{
+	display:flex;
 	flex-direction: row;
-}
+} */
 
-#header > li{
-	list-style-type: none;
-}
 
-#header > li:first-of-type{
-	margin-right:auto;
-	padding-left : 1em;
-}
-
-#header > li:not(:first-of-type){
-	padding-right:10px;
-}
-
-#sidebar > #tab{
-	margin-top:10px;
-    display:flex;
-    flex-direction:row;
-    justify-content: center;
-    width:175px;
-}
-#sidebar > #tab > li {
-	
-    list-style-type:none;
-    padding-left:20px;
-    padding-right:20px;
-    border : 0.01em solid black; 
-	cursor: default;
-}
 
 .ttContents{
 	width : 100%;
@@ -255,221 +276,213 @@ body{
 		<li><a href="./login">login</a></li>
 	<% end %>
 </div>
-<div id="sidebar">
-	<input id="tapButton" type="button" value="TAP"/>
-	<input id="autoBPMChk" type="checkbox">auto</input>
-	<span id="bpmLabel">120.0</span>
-	<input id="tapMasterChk" type="checkbox">master</input>
+<div id="content">
+	<div id="sidebar">
+		<input id="tapButton" type="button" value="TAP"/>
+		<input id="autoBPMChk" type="checkbox">auto</input>
+		<span id="bpmLabel">120.0</span>
+		<input id="tapMasterChk" type="checkbox">master</input>
 
-	<div id="tab">
-		<li id="tabButtonSounds">sound</li>
-		<li id="tabButtonSongs">song</li>
-	</div>
-	<div id="soundListContainer">
-		<div id="soundList" dropzone="copy" tabindex="-1">
-			<!-- <% @files.each do |filename| %>
-				<div class="soundItem" draggable="true"><%=filename%></div>
-			<% end %> -->
+		<div id="tab">
+			<li id="tabButtonSounds">sound</li>
+			<li id="tabButtonSongs">song</li>
 		</div>
-		<!-- <label id="soundUploadButtonLabel" for="soundUploadButton">
-			upload
-			<input id="soundUploadButton" type="file" value="upload" style="display:none"/>
-		</label> -->
-		<input id="soundDeleteButton" type="button" disabled value="delete"/>
+		<div id="soundListContainer">
+			<div id="soundList" dropzone="copy" tabindex="-1"></div>
+			<input id="soundDeleteButton" type="button" disabled value="delete"/>
+		</div>
+		<div id="songListContainer">
+			<div id="songList" dropzone="copy" tabindex="-1"></div>
+		</div>
 	</div>
-	<div id="songListContainer">
-		<div id="songList" dropzone="copy" tabindex="-1"></div>
-	</div>
-</div>
+	<div id="mainContent">
 
-
-
-<div id="main">
-<div id="mainPlayer" style="display:none;">
-	<input id="longMasterCheck" type="checkbox">master</input>
-	<input id="longPlayPauseButton" type="button" value="play/pause"></input>
-	<input id="longPlayLoopChk" type="checkbox"> loop </input>
-	<div>
-		<canvas  dropzone="copy" width="600px" height="200px" id="longPlayerCanvas"></canvas>
-	</div>
-
-</div>
-<div id="songControl">
-	<input id="songLoadButton" type="button" value="&#x27a1;loadsong" />
-	<input id="songTitle" type="text" value="song1" />
-	<input id="songSaveButton" type="button" value="save" />
-</div>
-<input type="button" id="aBtn" value="A" />
-<input type="range" id="abSlider" min="-1" max="1" value="0" step="0.01" />
-<input type="button" id="bBtn" value="B" />
-<div id="player">
-	<table>
-		<tr>
-			<% @track_num.times do |n| %>
-			<th class="title" title="sample name" dropzone="copy">----</th>
-			<% end %>
-		</tr>
-		<tr>
-			<% @track_num.times do |n| %>
-			<td class="loadButton" dropzone="copy">&#x2b07;load</td>
-			<% end %>
-		</tr>	
-		<tr>
-			<% @track_num.times do |n| %>
-			<td class="loadButton2" dropzone="copy">&#x27a1;load</td>
-			<% end %>
-		</tr>
-		<tr>
-			<% @track_num.times do |n| %>
-			<td class="playButton" dropzone="copy">
-				play[<%= @keymap[n] %>]
-			</td>
-			<% end %>
-		</tr>	
-		<tr>
-			<% @track_num.times do |n| %>
-			<td class="playMode" dropzone="copy">
-				<select class="playModeSelect">
-					<option>toggle</option>
-					<option>push</option>
-					<option>shot</option>
-					<option>oneshot</option>
-				</select>
-			</td>
-			<% end %>
-		</tr>
-		<tr>
-			<% @track_num.times do |n| %>
-			<td class="ttControl" dropzone="copy">
-				A
-				<input type="checkbox" class="Achk"></input>
-				<input type="button" class="ttButton" value="TT"/>
-				<input type="checkbox" class="Bchk"></input>
-				B
-			</td>
-			<% end %>
-		</tr>
-		<tr>
-			<% @track_num.times do |n| %>
-			<td class="speed" dropzone="copy" title="speed">
-				<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
-				<output class="speedLabel">100%</output>
-				<input type="button" class="speedResetButton" value="rst">
-			</td>
-			<% end %>
-		</tr>	
-		<tr>
-			<% @track_num.times do |n| %>
-			<td class="sync" dropzone="copy">
-				<input type="button" class="halfSpeedButton" value="/2"/>
-				<input type="button" class="syncButton" value="sync"/>
-				<input type="button" class="doubleSpeedButton" value="x2"/>
-			</td>
-			<% end %>
-		</tr>
-		<tr>
-			<% @track_num.times do |n| %>
-			<td class="master" dropzone="copy">
-				<input type="checkbox" class="masterChk">master</input>
-			</td>
-			<% end %>
-		</tr>
-		<tr>
-			<% @track_num.times do |n| %>
-			<td class="volume" dropzone="copy" title="volume">
-				<input type="range" class="volumeSlider" min="0" max="200" value="100" step="1"/>
-				<output class="volumeLabel">0.0dB</output>
-				<input type="button" class="volumeResetButton" value="rst">
-			</td>
-			<% end %>
-
-		</tr>
-		<tr>
-			<% @track_num.times do |n| %>
-			<td class="stemVolDrams" title="drums">
-				<input type="range" class="stemVolSliderDrams" min = "0" max="200" value="100" step="1"/>
-				<output class="stemVolLabelDrams">0.0dB</output>
-				<input type="button" class="stemVolResetButtonDrams" value="rst"/>
-				<input type="button" class="stemVolumeButton" value="stem"/>
-			</td>
-			<% end %>
-		</tr>
-		<tr>
-			<% @track_num.times do |n| %>
-			<td class="pan" dropzone="copy" title="pan">
-				<input type="range" class="panSlider" min="-100" max="100" value="0" step="1"/>
-				<output class="panLabel">0.0</output>
-				<input type="button" class="panResetButton" value="rst">
-			</td>
-			<% end %>
-		</tr>
-		<tr>
-			<% @track_num.times do |n| %>
-			<td class="quantize" dropzone="copy">
-				<input type="checkbox" class="quantizeChk" checked>quantize</input>
-			</td>
-			<% end %>
-		</tr>
-		<tr>
-			<% @track_num.times do |n| %>
-			<td class="offset" dropzone="copy" title="offset">
-				<input type="range" class="offsetSlider" min="-4410" max="4410" value="0" step="1"/>
-				<output class="offsetLabel">0</output>
-				<input type="button" class="offsetResetButton" value="rst">
-			</td>	
-			<% end %>
-		</tr>
-	</table>
-</div>
-
-	filter
-	<input type="range" id="filterSlider" min="-1" max="1" value="0" step="0.01" />
-
-<div id="control">
-	<div id="control-inner">
-		<div>
-			In:
-			<select id="selectInputDevices"></select>
-			<div id="inputLevel">
-				<canvas width=60 height=10; id="inputLevelCanvas"></canvas>
+		<div id="control">
+			<div id="control-inner">
+				<div>
+					In:
+					<select id="selectInputDevices"></select>
+					<div id="inputLevel">
+						<canvas width=60 height=10; id="inputLevelCanvas"></canvas>
+					</div>
+					<input id="chkLevel" type="checkbox" checked onclick="onLevelChanged();" />
+					<input id="chkMonitor" type="checkbox" value="true" onclick="onMonitorChanged();">monitor[m]</input>
+					<input id="chkEditorMaster" type="checkbox" value="false">master</input>
+					Out:
+					<select id="selectOutputDevices"></select>
+				</div>
+				<div>
+					<input type="button" value="startRecord" onclick="startRecord();" />
+					<input type="button" value="stopRecord" onclick="stopRecord();" />
+					<input type="button" value="startPlay" onclick="startPlay();" />
+					<input type="button" value="stopPlay" onclick="stopPlay();" />
+					<input type="button" value="download" onclick="exportWAV();" />
+					<input type="button" value="upload" onclick="uploadWAV()" ; />
+				</div>
 			</div>
-			<input id="chkLevel" type="checkbox" checked onclick="onLevelChanged();" />
-			<input id="chkMonitor" type="checkbox" value="true" onclick="onMonitorChanged();">monitor[m]</input>
-			<input id="chkEditorMaster" type="checkbox" value="false">master</input>
-			Out:
-			<select id="selectOutputDevices"></select>
 		</div>
-		<div>
-			<input type="button" value="startRecord" onclick="startRecord();" />
-			<input type="button" value="stopRecord" onclick="stopRecord();" />
-			<input type="button" value="startPlay" onclick="startPlay();" />
-			<input type="button" value="stopPlay" onclick="stopPlay();" />
-			<input type="button" value="download" onclick="exportWAV();" />
-			<input type="button" value="upload" onclick="uploadWAV()" ; />
+		<div id="editor">
+			<canvas id="canvas"></canvas>
+			<canvas id="canvas2" dropzone="copy"></canvas>
+			<canvas id="rulerCanvas"></canvas>
 		</div>
 
+		<div id="uploadDialog" style="display:none;">
+			<input type="text" id="upfilename" value=".wav" />
+		</div>
+
+		<div id="main">
+			<div id="mainPlayer" style="display:none;">
+				<input id="longMasterCheck" type="checkbox">master</input>
+				<input id="longPlayPauseButton" type="button" value="play/pause"></input>
+				<input id="longPlayLoopChk" type="checkbox"> loop </input>
+				<div>
+					<canvas  dropzone="copy" width="600px" height="200px" id="longPlayerCanvas"></canvas>
+				</div>
+
+			</div>
+			<div id="songControl">
+				<input id="songLoadButton" type="button" value="&#x27a1;loadsong" />
+				<input id="songTitle" type="text" value="song1" />
+				<input id="songSaveButton" type="button" value="save" />
+			</div>
+			<input type="button" id="aBtn" value="A" />
+			<input type="range" id="abSlider" min="-1" max="1" value="0" step="0.01" />
+			<input type="button" id="bBtn" value="B" />
+			<div id="player">
+				<table>
+					<tr>
+						<% @track_num.times do |n| %>
+						<th class="title" title="sample name" dropzone="copy">----</th>
+						<% end %>
+					</tr>
+					<tr>
+						<% @track_num.times do |n| %>
+						<td class="loadButton" dropzone="copy">&#x2b07;load</td>
+						<% end %>
+					</tr>	
+					<tr>
+						<% @track_num.times do |n| %>
+						<td class="loadButton2" dropzone="copy">&#x27a1;load</td>
+						<% end %>
+					</tr>
+					<tr>
+						<% @track_num.times do |n| %>
+						<td class="playButton" dropzone="copy">
+							play[<%= @keymap[n] %>]
+						</td>
+						<% end %>
+					</tr>	
+					<tr>
+						<% @track_num.times do |n| %>
+						<td class="playMode" dropzone="copy">
+							<select class="playModeSelect">
+								<option>toggle</option>
+								<option>push</option>
+								<option>shot</option>
+								<option>oneshot</option>
+							</select>
+						</td>
+						<% end %>
+					</tr>
+					<tr>
+						<% @track_num.times do |n| %>
+						<td class="ttControl" dropzone="copy">
+							A
+							<input type="checkbox" class="Achk"></input>
+							<input type="button" class="ttButton" value="TT"/>
+							<input type="checkbox" class="Bchk"></input>
+							B
+						</td>
+						<% end %>
+					</tr>
+					<tr>
+						<% @track_num.times do |n| %>
+						<td class="speed" dropzone="copy" title="speed">
+							<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
+							<output class="speedLabel">100%</output>
+							<input type="button" class="speedResetButton" value="rst">
+						</td>
+						<% end %>
+					</tr>	
+					<tr>
+						<% @track_num.times do |n| %>
+						<td class="sync" dropzone="copy">
+							<input type="button" class="halfSpeedButton" value="/2"/>
+							<input type="button" class="syncButton" value="sync"/>
+							<input type="button" class="doubleSpeedButton" value="x2"/>
+						</td>
+						<% end %>
+					</tr>
+					<tr>
+						<% @track_num.times do |n| %>
+						<td class="master" dropzone="copy">
+							<input type="checkbox" class="masterChk">master</input>
+						</td>
+						<% end %>
+					</tr>
+					<tr>
+						<% @track_num.times do |n| %>
+						<td class="volume" dropzone="copy" title="volume">
+							<input type="range" class="volumeSlider" min="0" max="200" value="100" step="1"/>
+							<output class="volumeLabel">0.0dB</output>
+							<input type="button" class="volumeResetButton" value="rst">
+						</td>
+						<% end %>
+
+					</tr>
+					<tr>
+						<% @track_num.times do |n| %>
+						<td class="stemVolDrams" title="drums">
+							<input type="range" class="stemVolSliderDrams" min = "0" max="200" value="100" step="1"/>
+							<output class="stemVolLabelDrams">0.0dB</output>
+							<input type="button" class="stemVolResetButtonDrams" value="rst"/>
+							<input type="button" class="stemVolumeButton" value="stem"/>
+						</td>
+						<% end %>
+					</tr>
+					<tr>
+						<% @track_num.times do |n| %>
+						<td class="pan" dropzone="copy" title="pan">
+							<input type="range" class="panSlider" min="-100" max="100" value="0" step="1"/>
+							<output class="panLabel">0.0</output>
+							<input type="button" class="panResetButton" value="rst">
+						</td>
+						<% end %>
+					</tr>
+					<tr>
+						<% @track_num.times do |n| %>
+						<td class="quantize" dropzone="copy">
+							<input type="checkbox" class="quantizeChk" checked>quantize</input>
+						</td>
+						<% end %>
+					</tr>
+					<tr>
+						<% @track_num.times do |n| %>
+						<td class="offset" dropzone="copy" title="offset">
+							<input type="range" class="offsetSlider" min="-4410" max="4410" value="0" step="1"/>
+							<output class="offsetLabel">0</output>
+							<input type="button" class="offsetResetButton" value="rst">
+						</td>	
+						<% end %>
+					</tr>
+				</table>
+			</div>
+
+			filter
+			<input type="range" id="filterSlider" min="-1" max="1" value="0" step="0.01" />
+		</div>
 	</div>
 </div>
-<div id="editor">
-	<canvas id="canvas"></canvas>
-	<canvas id="canvas2" dropzone="copy"></canvas>
-	<canvas id="rulerCanvas"></canvas>
-</div>
-
-<div id="uploadDialog" style="display:none;">
-	<input type="text" id="upfilename" value=".wav"/>
-</div>
-
 	<!-- <div id="phaser">
 		<input type="checkbox" id="effectBypassChk" checked>bypass effect(phaser)</input>
 	</div> -->
 
 	<script src="jquery-2.2.4.min.js"></script>
 	<script src="jquery.cookie-1.4.1.min.js"></script>
-<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
-<script type="text/javascript"
+	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+	<script type="text/javascript"
 	src="https://cdnjs.cloudflare.com/ajax/libs/jspanel3/3.11.2/jquery.jspanel-compiled.js"></script>
-
 
 	<script src="aurora.js"></script>
 	<script src="aac.js"></script>
