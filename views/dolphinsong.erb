@@ -65,6 +65,7 @@ body{
     justify-content: center;
     width:175px;
 }
+
 #sidebar > #tab > li {
 	
     list-style-type:none;
@@ -73,8 +74,6 @@ body{
     border : 0.01em solid black; 
 	cursor: default;
 }
-
-
 
 #soundList{
 	width:175px;
@@ -114,12 +113,9 @@ body{
 	white-space:nowrap;
 }
 
-
 .songItem.selected{
 	background-color: rgb(155, 41, 41);
 }
-
-
 
 #soundDeleteButton {
 	margin-left : 5px;
@@ -228,15 +224,6 @@ body{
 	margin : 0px;
 }
 
-
-/* 
-#sidebar{
-	display:flex;
-	flex-direction: row;
-} */
-
-
-
 .ttContents{
 	width : 100%;
 	height : 100%;
@@ -256,6 +243,30 @@ body{
 	/* background-color: rgb(100, 100, 228); */
 	overflow: auto;
 }
+
+
+#mainTabs{
+	margin-top:10px;
+    display:flex;
+    flex-direction:row;
+    justify-content: center;
+    width:175px;
+}
+
+#mainTabs > li {
+	
+    list-style-type:none;
+    padding-left:20px;
+    padding-right:20px;
+    border : 0.01em solid black; 
+	cursor: default;
+}
+
+.seqTrackControl{
+	border : 0.01em solid black; 
+	width : 200px;
+}
+
 
 
 </style>
@@ -296,187 +307,210 @@ body{
 		</div>
 	</div>
 	<div id="mainContent">
-
-		<div id="control">
-			<div id="control-inner">
-				<div>
-					In:
-					<select id="selectInputDevices"></select>
-					<div id="inputLevel">
-						<canvas width=60 height=10; id="inputLevelCanvas"></canvas>
+		<div id="mainTabs">
+			<li id="tabButtonPlayer">player</li>
+			<li id="tabButtonSequencer">sequencer</li>
+		</div>
+		<div id="playerTab">
+			<div id="control">
+				<div id="control-inner">
+					<div>
+						In:
+						<select id="selectInputDevices"></select>
+						<div id="inputLevel">
+							<canvas width=60 height=10; id="inputLevelCanvas"></canvas>
+						</div>
+						<input id="chkLevel" type="checkbox" checked onclick="onLevelChanged();" />
+						<input id="chkMonitor" type="checkbox" value="true" onclick="onMonitorChanged();">monitor[m]</input>
+						<input id="chkEditorMaster" type="checkbox" value="false">master</input>
+						Out:
+						<select id="selectOutputDevices"></select>
 					</div>
-					<input id="chkLevel" type="checkbox" checked onclick="onLevelChanged();" />
-					<input id="chkMonitor" type="checkbox" value="true" onclick="onMonitorChanged();">monitor[m]</input>
-					<input id="chkEditorMaster" type="checkbox" value="false">master</input>
-					Out:
-					<select id="selectOutputDevices"></select>
-				</div>
-				<div>
-					<input type="button" value="startRecord" onclick="startRecord();" />
-					<input type="button" value="stopRecord" onclick="stopRecord();" />
-					<input type="button" value="startPlay" onclick="startPlay();" />
-					<input type="button" value="stopPlay" onclick="stopPlay();" />
-					<input type="button" value="download" onclick="exportWAV();" />
-					<input type="button" value="upload" onclick="uploadWAV()" ; />
+					<div>
+						<input type="button" value="startRecord" onclick="startRecord();" />
+						<input type="button" value="stopRecord" onclick="stopRecord();" />
+						<input type="button" value="startPlay" onclick="startPlay();" />
+						<input type="button" value="stopPlay" onclick="stopPlay();" />
+						<input type="button" value="download" onclick="exportWAV();" />
+						<input type="button" value="upload" onclick="uploadWAV()" ; />
+					</div>
 				</div>
 			</div>
-		</div>
-		<div id="editor">
-			<canvas id="canvas"></canvas>
-			<canvas id="canvas2" dropzone="copy"></canvas>
-			<canvas id="rulerCanvas"></canvas>
-		</div>
+			<div id="editor">
+				<canvas id="canvas"></canvas>
+				<canvas id="canvas2" dropzone="copy"></canvas>
+				<canvas id="rulerCanvas"></canvas>
+			</div>
 
-		<div id="uploadDialog" style="display:none;">
-			<input type="text" id="upfilename" value=".wav" />
-		</div>
+			<div id="uploadDialog" style="display:none;">
+				<input type="text" id="upfilename" value=".wav" />
+			</div>
 
-		<div id="main">
-			<div id="mainPlayer" style="display:none;">
-				<input id="longMasterCheck" type="checkbox">master</input>
-				<input id="longPlayPauseButton" type="button" value="play/pause"></input>
-				<input id="longPlayLoopChk" type="checkbox"> loop </input>
-				<div>
-					<canvas  dropzone="copy" width="600px" height="200px" id="longPlayerCanvas"></canvas>
+			<div id="main">
+				<div id="mainPlayer" style="display:none;">
+					<input id="longMasterCheck" type="checkbox">master</input>
+					<input id="longPlayPauseButton" type="button" value="play/pause"></input>
+					<input id="longPlayLoopChk" type="checkbox"> loop </input>
+					<div>
+						<canvas  dropzone="copy" width="600px" height="200px" id="longPlayerCanvas"></canvas>
+					</div>
+
+				</div>
+				<div id="songControl">
+					<input id="songLoadButton" type="button" value="&#x27a1;loadsong" />
+					<input id="songTitle" type="text" value="song1" />
+					<input id="songSaveButton" type="button" value="save" />
+				</div>
+				<input type="button" id="aBtn" value="A" />
+				<input type="range" id="abSlider" min="-1" max="1" value="0" step="0.01" />
+				<input type="button" id="bBtn" value="B" />
+				<div id="player">
+					<table>
+						<tr>
+							<% @track_num.times do |n| %>
+							<th class="title" title="sample name" dropzone="copy">----</th>
+							<% end %>
+						</tr>
+						<tr>
+							<% @track_num.times do |n| %>
+							<td class="loadButton" dropzone="copy">&#x2b07;load</td>
+							<% end %>
+						</tr>	
+						<tr>
+							<% @track_num.times do |n| %>
+							<td class="loadButton2" dropzone="copy">&#x27a1;load</td>
+							<% end %>
+						</tr>
+						<tr>
+							<% @track_num.times do |n| %>
+							<td class="playButton" dropzone="copy">
+								play[<%= @keymap[n] %>]
+							</td>
+							<% end %>
+						</tr>	
+						<tr>
+							<% @track_num.times do |n| %>
+							<td class="playMode" dropzone="copy">
+								<select class="playModeSelect">
+									<option>toggle</option>
+									<option>push</option>
+									<option>shot</option>
+									<option>oneshot</option>
+								</select>
+							</td>
+							<% end %>
+						</tr>
+						<tr>
+							<% @track_num.times do |n| %>
+							<td class="ttControl" dropzone="copy">
+								A
+								<input type="checkbox" class="Achk"></input>
+								<input type="button" class="ttButton" value="TT"/>
+								<input type="checkbox" class="Bchk"></input>
+								B
+							</td>
+							<% end %>
+						</tr>
+						<tr>
+							<% @track_num.times do |n| %>
+							<td class="speed" dropzone="copy" title="speed">
+								<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
+								<output class="speedLabel">100%</output>
+								<input type="button" class="speedResetButton" value="rst">
+							</td>
+							<% end %>
+						</tr>	
+						<tr>
+							<% @track_num.times do |n| %>
+							<td class="sync" dropzone="copy">
+								<input type="button" class="halfSpeedButton" value="/2"/>
+								<input type="button" class="syncButton" value="sync"/>
+								<input type="button" class="doubleSpeedButton" value="x2"/>
+							</td>
+							<% end %>
+						</tr>
+						<tr>
+							<% @track_num.times do |n| %>
+							<td class="master" dropzone="copy">
+								<input type="checkbox" class="masterChk">master</input>
+							</td>
+							<% end %>
+						</tr>
+						<tr>
+							<% @track_num.times do |n| %>
+							<td class="volume" dropzone="copy" title="volume">
+								<input type="range" class="volumeSlider" min="0" max="200" value="100" step="1"/>
+								<output class="volumeLabel">0.0dB</output>
+								<input type="button" class="volumeResetButton" value="rst">
+							</td>
+							<% end %>
+
+						</tr>
+						<tr>
+							<% @track_num.times do |n| %>
+							<td class="stemVolDrams" title="drums">
+								<input type="range" class="stemVolSliderDrams" min = "0" max="200" value="100" step="1"/>
+								<output class="stemVolLabelDrams">0.0dB</output>
+								<input type="button" class="stemVolResetButtonDrams" value="rst"/>
+								<input type="button" class="stemVolumeButton" value="stem"/>
+							</td>
+							<% end %>
+						</tr>
+						<tr>
+							<% @track_num.times do |n| %>
+							<td class="pan" dropzone="copy" title="pan">
+								<input type="range" class="panSlider" min="-100" max="100" value="0" step="1"/>
+								<output class="panLabel">0.0</output>
+								<input type="button" class="panResetButton" value="rst">
+							</td>
+							<% end %>
+						</tr>
+						<tr>
+							<% @track_num.times do |n| %>
+							<td class="quantize" dropzone="copy">
+								<input type="checkbox" class="quantizeChk" checked>quantize</input>
+							</td>
+							<% end %>
+						</tr>
+						<tr>
+							<% @track_num.times do |n| %>
+							<td class="offset" dropzone="copy" title="offset">
+								<input type="range" class="offsetSlider" min="-4410" max="4410" value="0" step="1"/>
+								<output class="offsetLabel">0</output>
+								<input type="button" class="offsetResetButton" value="rst">
+							</td>	
+							<% end %>
+						</tr>
+					</table>
 				</div>
 
+				filter
+				<input type="range" id="filterSlider" min="-1" max="1" value="0" step="0.01" />
 			</div>
-			<div id="songControl">
-				<input id="songLoadButton" type="button" value="&#x27a1;loadsong" />
-				<input id="songTitle" type="text" value="song1" />
-				<input id="songSaveButton" type="button" value="save" />
-			</div>
-			<input type="button" id="aBtn" value="A" />
-			<input type="range" id="abSlider" min="-1" max="1" value="0" step="0.01" />
-			<input type="button" id="bBtn" value="B" />
-			<div id="player">
-				<table>
-					<tr>
-						<% @track_num.times do |n| %>
-						<th class="title" title="sample name" dropzone="copy">----</th>
-						<% end %>
-					</tr>
-					<tr>
-						<% @track_num.times do |n| %>
-						<td class="loadButton" dropzone="copy">&#x2b07;load</td>
-						<% end %>
-					</tr>	
-					<tr>
-						<% @track_num.times do |n| %>
-						<td class="loadButton2" dropzone="copy">&#x27a1;load</td>
-						<% end %>
-					</tr>
-					<tr>
-						<% @track_num.times do |n| %>
-						<td class="playButton" dropzone="copy">
-							play[<%= @keymap[n] %>]
-						</td>
-						<% end %>
-					</tr>	
-					<tr>
-						<% @track_num.times do |n| %>
-						<td class="playMode" dropzone="copy">
-							<select class="playModeSelect">
-								<option>toggle</option>
-								<option>push</option>
-								<option>shot</option>
-								<option>oneshot</option>
-							</select>
-						</td>
-						<% end %>
-					</tr>
-					<tr>
-						<% @track_num.times do |n| %>
-						<td class="ttControl" dropzone="copy">
-							A
-							<input type="checkbox" class="Achk"></input>
-							<input type="button" class="ttButton" value="TT"/>
-							<input type="checkbox" class="Bchk"></input>
-							B
-						</td>
-						<% end %>
-					</tr>
-					<tr>
-						<% @track_num.times do |n| %>
-						<td class="speed" dropzone="copy" title="speed">
-							<input type="range" class="speedSlider" min="0" max="200" value="100" step="1"/>
-							<output class="speedLabel">100%</output>
-							<input type="button" class="speedResetButton" value="rst">
-						</td>
-						<% end %>
-					</tr>	
-					<tr>
-						<% @track_num.times do |n| %>
-						<td class="sync" dropzone="copy">
-							<input type="button" class="halfSpeedButton" value="/2"/>
-							<input type="button" class="syncButton" value="sync"/>
-							<input type="button" class="doubleSpeedButton" value="x2"/>
-						</td>
-						<% end %>
-					</tr>
-					<tr>
-						<% @track_num.times do |n| %>
-						<td class="master" dropzone="copy">
-							<input type="checkbox" class="masterChk">master</input>
-						</td>
-						<% end %>
-					</tr>
-					<tr>
-						<% @track_num.times do |n| %>
-						<td class="volume" dropzone="copy" title="volume">
-							<input type="range" class="volumeSlider" min="0" max="200" value="100" step="1"/>
-							<output class="volumeLabel">0.0dB</output>
-							<input type="button" class="volumeResetButton" value="rst">
-						</td>
-						<% end %>
+		</div>
+		<div id="sequencerTab">
+			<table id="seqTable">
+				<tr>
+					<td class="seqTrackControl">contol</td>
+					<td>
+						<canvas width="200px" height="100px"></canvas>
+					</td>
+				</tr>
+				<tr>
+					<td class="seqTrackControl">contol</td>
+					<td>wave</td>
+				</tr>
+				<tr>
+					<td class="seqTrackControl">contol</td>
+					<td>wave
 
-					</tr>
-					<tr>
-						<% @track_num.times do |n| %>
-						<td class="stemVolDrams" title="drums">
-							<input type="range" class="stemVolSliderDrams" min = "0" max="200" value="100" step="1"/>
-							<output class="stemVolLabelDrams">0.0dB</output>
-							<input type="button" class="stemVolResetButtonDrams" value="rst"/>
-							<input type="button" class="stemVolumeButton" value="stem"/>
-						</td>
-						<% end %>
-					</tr>
-					<tr>
-						<% @track_num.times do |n| %>
-						<td class="pan" dropzone="copy" title="pan">
-							<input type="range" class="panSlider" min="-100" max="100" value="0" step="1"/>
-							<output class="panLabel">0.0</output>
-							<input type="button" class="panResetButton" value="rst">
-						</td>
-						<% end %>
-					</tr>
-					<tr>
-						<% @track_num.times do |n| %>
-						<td class="quantize" dropzone="copy">
-							<input type="checkbox" class="quantizeChk" checked>quantize</input>
-						</td>
-						<% end %>
-					</tr>
-					<tr>
-						<% @track_num.times do |n| %>
-						<td class="offset" dropzone="copy" title="offset">
-							<input type="range" class="offsetSlider" min="-4410" max="4410" value="0" step="1"/>
-							<output class="offsetLabel">0</output>
-							<input type="button" class="offsetResetButton" value="rst">
-						</td>	
-						<% end %>
-					</tr>
-				</table>
-			</div>
-
-			filter
-			<input type="range" id="filterSlider" min="-1" max="1" value="0" step="0.01" />
+					</td>
+				</tr>
+			</table>
 		</div>
 	</div>
 </div>
-	<!-- <div id="phaser">
-		<input type="checkbox" id="effectBypassChk" checked>bypass effect(phaser)</input>
-	</div> -->
+
 
 	<script src="jquery-2.2.4.min.js"></script>
 	<script src="jquery.cookie-1.4.1.min.js"></script>
@@ -486,7 +520,6 @@ body{
 
 	<script src="aurora.js"></script>
 	<script src="aac.js"></script>
-	<!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/xsound@latest/build/xsound.min.js"></script> -->
 	<script src="tuna-min.js"></script>
 	<script src="myutility.js"></script>
 	<script src="track.js"></script>
@@ -494,7 +527,6 @@ body{
 	<script src="editor.js"></script>
 	<script src="dolphinsong2.js"></script>
 	<script src="dolphinsong.js"></script>
-
 	<script src="beatdetect.js"></script>
 </body>
 </html>

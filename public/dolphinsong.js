@@ -401,6 +401,10 @@ window.addEventListener("load", function(){
 	$("#chkEditorMaster").on("change", onMasterChanged);
 
 
+	$("#tabButtonPlayer").on("click", tabPlayerClicked);
+	$("#tabButtonSequencer").on("click", tabSequencerClicked);
+	tabPlayerClicked();
+
 	initMedia();
 	initMIDI();
 
@@ -2695,36 +2699,18 @@ function onSoundListDblClick(){
 
 }
 
-// function toShadow(){
-// 	if (!mydata.mainNode) return ;
-// 	let port = mydata.mainNode.port;
-	
-// 	let m = {
-// 		"cmd": "setBufferV",
-// 		"left" : mydata.vTrack._bufferLeft,
-// 		"right" : mydata.vTrack._bufferRight
-// 	};
-// 	let t = [mydata.vTrack._bufferLeft.buffer, mydata.vTrack._bufferRight.buffer];
-// 	port.postMessage(m,t);
 
-// 	m = {
-// 		"cmd" : "playV"
+// function toShadow2(){
+// 	if (!mydata.mainNode) return;
+
+// 	let port = mydata.mainNode.port;
+
+// 	let m = {
+// 		"cmd":"stopV"
 // 	};
 // 	port.postMessage(m);
-// 	// port.postMessage(m, t);
+
 // }
-
-function toShadow2(){
-	if (!mydata.mainNode) return;
-
-	let port = mydata.mainNode.port;
-
-	let m = {
-		"cmd":"stopV"
-	};
-	port.postMessage(m);
-
-}
 
 
 
@@ -3727,6 +3713,25 @@ function onFilterSliderChanged(e){
 			console.log("filter freq(high) = " + freq);
 		}		
 	}
+}
+
+function tabPlayerClicked(){
+	let player = $("#playerTab").get(0);
+	let sequencer = $("#sequencerTab").get(0);
+
+	player.style.display="";
+	sequencer.style.display="none";
+
+
+}
+function tabSequencerClicked(){
+	let player = $("#playerTab").get(0);
+	let sequencer = $("#sequencerTab").get(0);
+
+	player.style.display = "none";
+	sequencer.style.display = "";
+
+
 }
 
 
